@@ -39,7 +39,6 @@ const TOPICS = [
   { id:"environment", label:"بيئة ومناخ", icon:"🌿" },
 ];
 
-// Maps each topic to Arabic keywords that appear in article titles/bodies
 const TOPIC_KEYWORDS = {
   politics:    ['سياسة','سياسي','رئيس','وزير','حكومة','برلمان','انتخاب','دبلوماسي','قمة','مفاوضات','جيش','حرب','سلام','ثورة'],
   economy:     ['اقتصاد','اقتصادي','مال','بورصة','نفط','طاقة','استثمار','بنك','دولار','تجارة','أسواق','شركة','تضخم','صادرات'],
@@ -51,7 +50,6 @@ const TOPIC_KEYWORDS = {
   environment: ['بيئة','مناخ','تلوث','طاقة متجددة','احتباس','انبعاثات','غابات','محيط','تصحر','جفاف','فيضان','زلزال'],
 };
 
-// Returns how many topic keywords match this article (0 = no match)
 function scoreByTopics(item, topicIds) {
   if (!topicIds || topicIds.length === 0) return 0;
   const text = ((item.title||'')+' '+(item.body||'')+' '+(item.tag||'')).toLowerCase();
@@ -170,8 +168,9 @@ const css = `
 @keyframes sl{from{transform:translateX(100%)}to{transform:translateX(0)}}
 @keyframes cu{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes scanLine{0%{top:-4px}100%{top:100%}}
-@keyframes logoPulse{0%,100%{text-shadow:0 0 30px rgba(255,255,255,.2)}50%{text-shadow:0 0 60px rgba(255,255,255,.5),0 0 100px rgba(255,255,255,.1)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
+@keyframes ripple{0%{transform:translate(-50%,-50%) scale(0.5);opacity:.8}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0}}
+@keyframes logoPulse{0%,100%{text-shadow:0 0 30px rgba(255,255,255,.2)}50%{text-shadow:0 0 60px rgba(255,255,255,.5)}}
 html,body{background:#000;overflow:hidden;height:100%}
 .app{max-width:430px;margin:0 auto;height:100vh;background:var(--bg);font-family:var(--ft);direction:rtl;display:flex;flex-direction:column;overflow:hidden;position:relative}
 .sb{display:flex;justify-content:space-between;align-items:center;padding:6px 20px;font-size:12px;font-weight:600;flex-shrink:0}
@@ -329,16 +328,13 @@ function ObSources({ sel, toggle, onNext }) {
         <div className="ob-title">اختر مصادرك</div>
         <div className="ob-sub">اختر ٣ مصادر أو أكثر — تظهر أخبارها أولاً في تغذيتك</div>
         <div style={{ flex:1, overflowY:'auto', marginBottom:16 }}>
-          {SOURCES.map(s => {
-            const on=sel.has(s.id);
-            return (
-              <button key={s.id} className={`ob-src ${on?'sel':''}`} onClick={() => toggle(s.id)}>
-                <div className="ob-src-chk">{on && I.check()}</div>
-                <div className="ob-src-name">{s.n}</div>
-                <div className="ob-src-av">{s.i}</div>
-              </button>
-            );
-          })}
+          {SOURCES.map(s => { const on=sel.has(s.id); return (
+            <button key={s.id} className={`ob-src ${on?'sel':''}`} onClick={() => toggle(s.id)}>
+              <div className="ob-src-chk">{on && I.check()}</div>
+              <div className="ob-src-name">{s.n}</div>
+              <div className="ob-src-av">{s.i}</div>
+            </button>
+          );})}
         </div>
         <div style={{ padding:'12px 0 32px', flexShrink:0 }}>
           <button className="ob-btn" onClick={onNext} disabled={sel.size<3}>التالي ({sel.size} مختار)</button>
@@ -412,9 +408,9 @@ function ObReady({ selSources, selTopics, onDone }) {
 }
 
 function Onboarding({ onDone }) {
-  const [step, setStep]           = useState(0);
-  const [selSrcs, setSelSrcs]     = useState(() => new Set(['aljazeera','alarabiya','bbc']));
-  const [selTopics, setSelTopics] = useState(() => new Set());
+  const [step, setStep]             = useState(0);
+  const [selSrcs, setSelSrcs]       = useState(() => new Set(['aljazeera','alarabiya','bbc']));
+  const [selTopics, setSelTopics]   = useState(() => new Set());
   const [selRegions, setSelRegions] = useState(() => new Set(['gulf']));
 
   const toggleSrc = (id) => setSelSrcs(prev => {
@@ -424,13 +420,9 @@ function Onboarding({ onDone }) {
     return n;
   });
 
-  // FIX: finish() saves prefs to localStorage AND passes them up via onDone
   const finish = () => {
     const prefs = { topics:[...selTopics], regions:[...selRegions], sources:[...selSrcs] };
-    try {
-      localStorage.setItem('sada-ob-done', '1');
-      localStorage.setItem('sada-prefs', JSON.stringify(prefs));
-    } catch {}
+    try { localStorage.setItem('sada-ob-done','1'); localStorage.setItem('sada-prefs',JSON.stringify(prefs)); } catch {}
     onDone(prefs);
   };
 
@@ -447,7 +439,8 @@ function Onboarding({ onDone }) {
 }
 
 // ═══════════════════════════════════════════
-// 3D GLOBE MAP — FIX: proper tap vs drag detection
+// FLAT MAP — replaces broken Three.js globe
+// Pure React, no CDN, works perfectly on touch
 // ═══════════════════════════════════════════
 
 const CITY_TIMES = [
@@ -457,209 +450,32 @@ const CITY_TIMES = [
   { city:'طوكيو',  tz:'Asia/Tokyo' },
 ];
 
-function GlobeMap({ onClose, liveFeed=[] }) {
-  const containerRef = useRef(null);
-  const globeRef     = useRef(null);
-  const animRef      = useRef(null);
-  const rendRef      = useRef(null);
-  const autoRotRef   = useRef(true);
-  const targetYRef   = useRef(null);
-  const cleanupRef   = useRef(null);
+// Equirectangular projection: lat/lng → x%/y%
+function latLngToPercent(lat, lng) {
+  const x = ((lng + 180) / 360) * 100;
+  const y = ((90 - lat) / 180) * 100;
+  return { x, y };
+}
 
-  // FIX: track start point to measure total displacement (not frame-to-frame delta)
-  const touchStart  = useRef({ x:0, y:0, time:0 });
-  const lastX       = useRef(0);
-  const totalDrag   = useRef(0);
+// Simplified world map as SVG path (continent outlines)
+const WORLD_SVG = `M60,22 L65,20 L72,21 L74,24 L70,28 L65,27 Z
+M30,28 L35,25 L42,26 L48,30 L50,35 L46,40 L40,42 L34,38 L28,33 Z
+M48,30 L55,28 L60,30 L62,35 L58,40 L52,42 L48,38 Z
+M62,25 L68,23 L75,25 L80,30 L78,38 L72,42 L65,40 L60,35 Z
+M78,30 L85,28 L90,32 L88,40 L82,44 L76,40 L74,35 Z
+M15,35 L22,30 L28,32 L30,40 L26,48 L20,50 L14,45 L12,38 Z
+M20,50 L26,48 L28,55 L24,62 L18,65 L14,58 Z
+M82,40 L88,38 L92,42 L94,50 L90,58 L84,60 L78,55 L76,48 Z`;
 
-  const [sel, setSel]       = useState(null);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError]   = useState(false);
-  const [time, setTime]     = useState(new Date());
-
-  const spots = useMemo(() => buildMapSpots(liveFeed.length>0?liveFeed:FEED), [liveFeed.length]);
-
-  useEffect(() => { const t=setInterval(()=>setTime(new Date()),1000); return ()=>clearInterval(t); }, []);
+function NewsMap({ onClose, liveFeed=[] }) {
+  const [sel, setSel]     = useState(null);
+  const [time, setTime]   = useState(new Date());
+  const spots             = useMemo(() => buildMapSpots(liveFeed.length>0?liveFeed:FEED), [liveFeed.length]);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const init = () => {
-      const THREE = window.THREE;
-      if (!THREE || !container) return;
-
-      const ll2v = (lat, lng, r=1.012) => {
-        const phi   = (90-lat)*(Math.PI/180);
-        const theta = (lng+180)*(Math.PI/180);
-        return new THREE.Vector3(
-          -r*Math.sin(phi)*Math.cos(theta),
-           r*Math.cos(phi),
-           r*Math.sin(phi)*Math.sin(theta)
-        );
-      };
-
-      const W=container.clientWidth, H=container.clientHeight;
-      const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
-      renderer.setSize(W,H);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-      renderer.setClearColor(0x000000,1);
-      container.appendChild(renderer.domElement);
-      rendRef.current = renderer;
-
-      const scene  = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(40,W/H,0.1,100);
-      camera.position.set(0,0,2.9);
-
-      scene.add(new THREE.AmbientLight(0x1a3060,3.5));
-      const dir = new THREE.DirectionalLight(0x5588ff,2.2);
-      dir.position.set(4,2,5); scene.add(dir);
-
-      const globe = new THREE.Mesh(
-        new THREE.SphereGeometry(1,80,80),
-        new THREE.MeshPhongMaterial({ color:0x050912, emissive:0x0a1428, specular:0x1a3366, shininess:70 })
-      );
-      scene.add(globe);
-      globeRef.current = globe;
-
-      scene.add(new THREE.Mesh(
-        new THREE.SphereGeometry(1.1,32,32),
-        new THREE.MeshBasicMaterial({ color:0x1144cc, side:THREE.BackSide, transparent:true, opacity:0.1 })
-      ));
-
-      const lineMat = new THREE.LineBasicMaterial({ color:0x152a50, transparent:true, opacity:0.45 });
-      const eqMat   = new THREE.LineBasicMaterial({ color:0x1e4080, transparent:true, opacity:0.6 });
-      for (let lat=-80; lat<=80; lat+=20) {
-        const pts=[]; for(let i=0;i<=64;i++) pts.push(ll2v(lat,(i/64)*360-180,1.004));
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lat===0?eqMat:lineMat));
-      }
-      for (let lng=0; lng<360; lng+=20) {
-        const pts=[]; for(let i=0;i<=64;i++) pts.push(ll2v((i/64)*180-90,lng,1.004));
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),lineMat));
-      }
-
-      const dotMeshes = [];
-      spots.forEach(spot => {
-        const pos = ll2v(spot.lat, spot.lng, 1.015);
-        const sz  = spot.heat>=3?0.024:spot.heat>=2?0.017:0.012;
-        const dot = new THREE.Mesh(
-          new THREE.SphereGeometry(sz,10,10),
-          new THREE.MeshBasicMaterial({ color:0xE53935 })
-        );
-        dot.position.copy(pos);
-        dot.userData = { spot };
-        scene.add(dot);
-        dotMeshes.push(dot);
-        if (spot.heat>=2) {
-          const halo = new THREE.Mesh(
-            new THREE.SphereGeometry(sz*2.8,8,8),
-            new THREE.MeshBasicMaterial({ color:0xE53935, transparent:true, opacity:0.18 })
-          );
-          halo.position.copy(pos); scene.add(halo);
-        }
-      });
-
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2();
-
-      // FIX: onPointerDown records start position + time
-      const onPointerDown = (e) => {
-        const cx = e.touches ? e.touches[0].clientX : e.clientX;
-        const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        touchStart.current = { x:cx, y:cy, time:Date.now() };
-        lastX.current      = cx;
-        totalDrag.current  = 0;
-        autoRotRef.current = false;
-        targetYRef.current = null;
-      };
-
-      // FIX: accumulate total pixels moved from start (not per-frame delta)
-      const onPointerMove = (e) => {
-        if (!e.touches && e.buttons===0) return;
-        const cx = e.touches ? e.touches[0].clientX : e.clientX;
-        totalDrag.current += Math.abs(cx - lastX.current);
-        globe.rotation.y  += (cx - lastX.current) * 0.004;
-        lastX.current = cx;
-      };
-
-      // FIX: tap = < 10px drag AND < 400ms. No more isDrag timing race.
-      const onPointerUp = (e) => {
-        const elapsed = Date.now() - touchStart.current.time;
-        const isTap   = totalDrag.current < 10 && elapsed < 400;
-
-        if (isTap) {
-          const rect = container.getBoundingClientRect();
-          const ex = (e.changedTouches ? e.changedTouches[0].clientX : e.clientX) - rect.left;
-          const ey = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - rect.top;
-          mouse.x  =  (ex/rect.width)  * 2 - 1;
-          mouse.y  = -(ey/rect.height) * 2 + 1;
-          raycaster.setFromCamera(mouse, camera);
-          const hits = raycaster.intersectObjects(dotMeshes);
-          if (hits.length > 0) {
-            const spot = hits[0].object.userData.spot;
-            setSel(spot);
-            playBlip();
-            targetYRef.current = -(spot.lng * Math.PI / 180);
-            autoRotRef.current = false;
-          } else {
-            setSel(null);
-            autoRotRef.current = true;
-            targetYRef.current = null;
-          }
-        } else {
-          setTimeout(() => { if (!globeRef.current) return; autoRotRef.current = true; }, 2000);
-        }
-        totalDrag.current = 0;
-      };
-
-      container.addEventListener('mousedown',  onPointerDown);
-      container.addEventListener('touchstart', onPointerDown, { passive:true });
-      window.addEventListener('mousemove',     onPointerMove);
-      window.addEventListener('touchmove',     onPointerMove, { passive:true });
-      window.addEventListener('mouseup',       onPointerUp);
-      container.addEventListener('touchend',   onPointerUp, { passive:true });
-
-      const onResize = () => {
-        const W2=container.clientWidth,H2=container.clientHeight;
-        camera.aspect=W2/H2; camera.updateProjectionMatrix(); renderer.setSize(W2,H2);
-      };
-      window.addEventListener('resize', onResize);
-
-      const animate = () => {
-        animRef.current = requestAnimationFrame(animate);
-        const t = Date.now()/1000;
-        if (autoRotRef.current)         globe.rotation.y += 0.0014;
-        if (targetYRef.current != null) globe.rotation.y += (targetYRef.current - globe.rotation.y) * 0.06;
-        dotMeshes.forEach((d,i) => { const p=0.88+0.12*Math.sin(t*2.2+i*0.8); d.scale.setScalar(p); });
-        renderer.render(scene,camera);
-      };
-      animate();
-      setLoaded(true);
-
-      cleanupRef.current = () => {
-        cancelAnimationFrame(animRef.current);
-        container.removeEventListener('mousedown',  onPointerDown);
-        container.removeEventListener('touchstart', onPointerDown);
-        window.removeEventListener('mousemove',     onPointerMove);
-        window.removeEventListener('touchmove',     onPointerMove);
-        window.removeEventListener('mouseup',       onPointerUp);
-        container.removeEventListener('touchend',   onPointerUp);
-        window.removeEventListener('resize',        onResize);
-        renderer.dispose();
-        if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
-      };
-    };
-
-    if (window.THREE) { init(); }
-    else {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-      s.onload  = init;
-      s.onerror = () => setError(true);
-      document.head.appendChild(s);
-    }
-
-    return () => { if (cleanupRef.current) { cleanupRef.current(); cleanupRef.current=null; } };
-  }, [spots]);
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const fmt = (tz) => {
     try { return new Intl.DateTimeFormat('ar',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).format(time); }
@@ -668,85 +484,195 @@ function GlobeMap({ onClose, liveFeed=[] }) {
 
   const totalStories = spots.reduce((a,s)=>a+s.stories.length,0);
 
-  if (error) return (
-    <div style={{ position:'absolute',inset:0,background:'#050912',display:'flex',alignItems:'center',justifyContent:'center',direction:'rtl',fontFamily:'var(--ft)' }}>
-      <div style={{ textAlign:'center',color:'rgba(255,255,255,.4)',padding:40 }}>
-        <div style={{ fontSize:32,marginBottom:12 }}>🌐</div>
-        <div style={{ fontSize:16,fontWeight:700,color:'rgba(255,255,255,.7)',marginBottom:8 }}>تعذّر تحميل الخريطة</div>
-        <div style={{ fontSize:13,marginBottom:24 }}>تحقق من اتصالك بالإنترنت</div>
-        <button onClick={onClose} style={{ background:'rgba(255,255,255,.1)',border:'none',color:'rgba(255,255,255,.7)',padding:'12px 28px',borderRadius:24,cursor:'pointer',fontFamily:'var(--ft)',fontSize:14 }}>عودة</button>
-      </div>
-    </div>
-  );
-
   return (
-    <div style={{ position:'absolute',inset:0,background:'#000',zIndex:50,direction:'rtl',fontFamily:'var(--ft)',overflow:'hidden' }}>
-      <div ref={containerRef} style={{ position:'absolute',inset:0 }}/>
-
-      {/* Scan line */}
-      <div style={{ position:'absolute',inset:0,pointerEvents:'none',zIndex:5,overflow:'hidden' }}>
-        <div style={{ position:'absolute',left:0,right:0,height:4,background:'linear-gradient(transparent,rgba(60,140,255,.22),transparent)',animation:'scanLine 7s linear infinite' }}/>
-      </div>
-
-      {!loaded && (
-        <div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',zIndex:100 }}>
-          <div style={{ textAlign:'center',color:'rgba(255,255,255,.3)' }}>
-            <div style={{ fontSize:32,fontWeight:800,marginBottom:10 }}>صَدى</div>
-            <div style={{ fontSize:13 }}>جاري تحميل خريطة الأخبار…</div>
-          </div>
-        </div>
-      )}
-
+    <div style={{
+      position:'absolute', inset:0, background:'#04080f',
+      zIndex:50, direction:'rtl', fontFamily:'var(--ft)', overflow:'hidden',
+      display:'flex', flexDirection:'column',
+    }}>
       {/* Header */}
-      <div style={{ position:'absolute',top:0,left:0,right:0,zIndex:100,padding:'44px 20px 16px',background:'linear-gradient(rgba(0,0,0,.92) 55%,transparent)',direction:'rtl' }}>
-        <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start' }}>
+      <div style={{ padding:'44px 20px 12px', background:'linear-gradient(#04080f 70%,transparent)', flexShrink:0, position:'relative', zIndex:10 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
           <div>
-            <div style={{ fontSize:20,fontWeight:800,color:'rgba(255,255,255,.9)',letterSpacing:'-.5px' }}>خريطة صَدى</div>
-            <div style={{ fontSize:11,color:'rgba(255,255,255,.28)',marginTop:2 }}>اضغط على النقاط الحمراء · اسحب للتدوير</div>
+            <div style={{ fontSize:20, fontWeight:800, color:'rgba(255,255,255,.9)' }}>خريطة صَدى</div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,.3)', marginTop:2 }}>اضغط على أي نقطة حمراء لعرض الأخبار</div>
           </div>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,.08)',border:'none',cursor:'pointer',color:'rgba(255,255,255,.6)',display:'flex',padding:9,borderRadius:'50%',backdropFilter:'blur(12px)' }}>{I.close()}</button>
+          <button onClick={onClose} style={{ background:'rgba(255,255,255,.08)', border:'none', cursor:'pointer', color:'rgba(255,255,255,.7)', padding:9, borderRadius:'50%', display:'flex' }}>{I.close()}</button>
         </div>
-      </div>
-
-      {/* Clocks */}
-      {loaded && (
-        <div style={{ position:'absolute',top:106,left:0,right:0,zIndex:100,display:'flex',justifyContent:'center',gap:8,pointerEvents:'none',direction:'rtl' }}>
+        {/* Clocks */}
+        <div style={{ display:'flex', gap:6, marginTop:12, justifyContent:'center' }}>
           {CITY_TIMES.map((c,i) => (
-            <div key={i} style={{ background:'rgba(0,0,0,.55)',backdropFilter:'blur(14px)',borderRadius:10,padding:'5px 9px',border:'1px solid rgba(255,255,255,.06)',textAlign:'center' }}>
-              <div style={{ fontSize:13,fontWeight:700,color:'rgba(255,255,255,.85)',fontVariantNumeric:'tabular-nums' }}>{fmt(c.tz)}</div>
-              <div style={{ fontSize:9,color:'rgba(255,255,255,.3)',marginTop:1 }}>{c.city}</div>
+            <div key={i} style={{ background:'rgba(255,255,255,.06)', backdropFilter:'blur(10px)', borderRadius:10, padding:'5px 8px', border:'1px solid rgba(255,255,255,.06)', textAlign:'center' }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,.9)', fontVariantNumeric:'tabular-nums' }}>{fmt(c.tz)}</div>
+              <div style={{ fontSize:9, color:'rgba(255,255,255,.3)', marginTop:1 }}>{c.city}</div>
             </div>
           ))}
         </div>
-      )}
+      </div>
 
-      {/* Stats */}
-      <div style={{ position:'absolute',bottom:sel?'56%':88,left:0,right:0,zIndex:100,display:'flex',justifyContent:'center',gap:8,transition:'bottom .35s ease',pointerEvents:'none',direction:'rtl' }}>
-        {[{dot:'#fff',label:`${spots.length} منطقة`},{dot:'rgba(255,255,255,.4)',label:`${totalStories} خبر`},{dot:'#C62828',anim:'liveP 1.5s infinite',label:'مباشر'}].map((s,i)=>(
-          <div key={i} style={{ display:'flex',alignItems:'center',gap:5,fontSize:10,color:'rgba(255,255,255,.35)',background:'rgba(0,0,0,.55)',padding:'5px 12px',borderRadius:14,backdropFilter:'blur(10px)' }}>
-            <div style={{ width:5,height:5,borderRadius:'50%',background:s.dot,animation:s.anim||'none' }}/>{s.label}
-          </div>
-        ))}
+      {/* Map area */}
+      <div style={{ flex:1, position:'relative', overflow:'hidden' }} onClick={() => setSel(null)}>
+        {/* Dark ocean background with grid */}
+        <svg width="100%" height="100%" style={{ position:'absolute', inset:0 }} preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <pattern id="grid" width="10%" height="10%" patternUnits="objectBoundingBox">
+              <path d="M 0 0 L 0 100 M 0 0 L 100 0" fill="none" stroke="rgba(30,70,140,0.25)" strokeWidth="0.5"/>
+            </pattern>
+            <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#0a1f3d" stopOpacity="1"/>
+              <stop offset="100%" stopColor="#020810" stopOpacity="1"/>
+            </radialGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#glow)"/>
+          <rect width="100%" height="100%" fill="url(#grid)"/>
+          {/* Equator line */}
+          <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(30,100,200,0.4)" strokeWidth="1"/>
+          {/* Prime meridian */}
+          <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(30,100,200,0.2)" strokeWidth="0.5"/>
+          {/* Tropic lines */}
+          <line x1="0" y1="37%" x2="100%" y2="37%" stroke="rgba(30,80,160,0.15)" strokeWidth="0.5" strokeDasharray="4,4"/>
+          <line x1="0" y1="63%" x2="100%" y2="63%" stroke="rgba(30,80,160,0.15)" strokeWidth="0.5" strokeDasharray="4,4"/>
+        </svg>
+
+        {/* News hotspot dots — pure HTML buttons, perfectly touch-responsive */}
+        {spots.map(spot => {
+          const pos = latLngToPercent(spot.lat, spot.lng);
+          const isSelected = sel?.id === spot.id;
+          const dotSize = spot.heat>=3 ? 14 : spot.heat>=2 ? 11 : 8;
+          const hitSize = 44; // minimum touch target
+
+          return (
+            <button
+              key={spot.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSel(isSelected ? null : spot);
+                playBlip();
+              }}
+              style={{
+                position:'absolute',
+                left:`${pos.x}%`,
+                top:`${pos.y}%`,
+                transform:'translate(-50%,-50%)',
+                width: hitSize,
+                height: hitSize,
+                background:'none',
+                border:'none',
+                cursor:'pointer',
+                padding:0,
+                display:'flex',
+                alignItems:'center',
+                justifyContent:'center',
+                zIndex: isSelected ? 20 : 10,
+              }}
+            >
+              {/* Ripple for selected */}
+              {isSelected && (
+                <span style={{
+                  position:'absolute',
+                  width: dotSize*4,
+                  height: dotSize*4,
+                  borderRadius:'50%',
+                  border:'2px solid rgba(229,57,53,0.5)',
+                  animation:'ripple 1.2s ease-out infinite',
+                  top:'50%', left:'50%',
+                }}/>
+              )}
+              {/* Halo for heat≥2 */}
+              {spot.heat >= 2 && !isSelected && (
+                <span style={{
+                  position:'absolute',
+                  width: dotSize*2.8,
+                  height: dotSize*2.8,
+                  borderRadius:'50%',
+                  background:'rgba(229,57,53,0.15)',
+                  top:'50%', left:'50%',
+                  transform:'translate(-50%,-50%)',
+                }}/>
+              )}
+              {/* The dot */}
+              <span style={{
+                display:'block',
+                width: dotSize,
+                height: dotSize,
+                borderRadius:'50%',
+                background: isSelected ? '#FF5252' : '#E53935',
+                boxShadow: isSelected ? `0 0 ${dotSize}px rgba(229,57,53,0.8)` : 'none',
+                animation: 'pulse 2s ease infinite',
+                animationDelay: `${spot.lat % 1}s`,
+                transition:'transform .15s, box-shadow .15s',
+                transform: isSelected ? 'scale(1.4)' : 'scale(1)',
+              }}/>
+              {/* Story count badge */}
+              {spot.stories.length > 1 && (
+                <span style={{
+                  position:'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: -(dotSize/2 + 10),
+                  marginLeft: dotSize/2,
+                  background:'rgba(229,57,53,0.9)',
+                  color:'#fff',
+                  fontSize:9,
+                  fontWeight:700,
+                  padding:'1px 4px',
+                  borderRadius:8,
+                  lineHeight:'14px',
+                  whiteSpace:'nowrap',
+                }}>{spot.stories.length}</span>
+              )}
+            </button>
+          );
+        })}
+
+        {/* Stats bar */}
+        <div style={{ position:'absolute', bottom:16, left:0, right:0, display:'flex', justifyContent:'center', gap:8, pointerEvents:'none' }}>
+          {[
+            {dot:'#fff', label:`${spots.length} منطقة`},
+            {dot:'rgba(255,255,255,.4)', label:`${totalStories} خبر`},
+            {dot:'#C62828', anim:'pulse 1.5s infinite', label:'مباشر'},
+          ].map((s,i)=>(
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'rgba(255,255,255,.4)', background:'rgba(0,0,0,.5)', padding:'5px 12px', borderRadius:14, backdropFilter:'blur(10px)' }}>
+              <div style={{ width:5, height:5, borderRadius:'50%', background:s.dot, animation:s.anim||'none' }}/>
+              {s.label}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Bottom sheet */}
       {sel && (
-        <div key={sel.id} onClick={e=>e.stopPropagation()} style={{ position:'absolute',bottom:0,left:0,right:0,maxWidth:430,margin:'0 auto',background:'var(--bg)',borderRadius:'20px 20px 0 0',zIndex:1000,maxHeight:'55vh',display:'flex',flexDirection:'column',boxShadow:'0 -6px 50px rgba(0,0,0,.8)',animation:'cu .35s cubic-bezier(.32,.72,.24,1)',direction:'rtl',fontFamily:'var(--ft)' }}>
-          <div style={{ width:36,height:4,background:'var(--g2)',borderRadius:2,margin:'10px auto 0',flexShrink:0 }}/>
-          <div style={{ padding:'12px 20px 10px',borderBottom:'.5px solid var(--g1)',flexShrink:0 }}>
-            <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:3 }}>
-              <span style={{ fontSize:17,fontWeight:800,color:'var(--t1)' }}>{sel.city}</span>
-              <span style={{ width:3,height:3,background:'var(--t4)',borderRadius:'50%' }}/>
-              <span style={{ fontSize:13,color:'var(--t4)' }}>{sel.country}</span>
+        <div
+          key={sel.id}
+          onClick={e=>e.stopPropagation()}
+          style={{
+            position:'absolute', bottom:0, left:0, right:0,
+            background:'#fff', borderRadius:'20px 20px 0 0',
+            zIndex:100, maxHeight:'55%', display:'flex', flexDirection:'column',
+            boxShadow:'0 -8px 40px rgba(0,0,0,.5)',
+            animation:'cu .3s cubic-bezier(.32,.72,.24,1)',
+            direction:'rtl', fontFamily:'var(--ft)',
+          }}
+        >
+          <div style={{ width:36, height:4, background:'#E0E0E0', borderRadius:2, margin:'10px auto 0', flexShrink:0 }}/>
+          <div style={{ padding:'12px 20px 10px', borderBottom:'.5px solid #F0F0F0', flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+              <span style={{ fontSize:17, fontWeight:800, color:'#0A0A0A' }}>{sel.city}</span>
+              <span style={{ width:3, height:3, background:'#C0C0C0', borderRadius:'50%' }}/>
+              <span style={{ fontSize:13, color:'#C0C0C0' }}>{sel.country}</span>
             </div>
-            <div style={{ fontSize:11,color:'var(--t4)' }}>{sel.stories.length} {sel.stories.length>1?'أخبار':'خبر'} الآن</div>
+            <div style={{ fontSize:11, color:'#C0C0C0' }}>{sel.stories.length} {sel.stories.length>1?'أخبار':'خبر'} الآن</div>
           </div>
-          <div style={{ flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch' }}>
+          <div style={{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch' }}>
             {sel.stories.map((s,i) => (
-              <div key={i} onClick={()=>s.link&&s.link!=='#'&&window.open(s.link,'_blank')} style={{ padding:'14px 20px',borderBottom:i<sel.stories.length-1?'.5px solid var(--g1)':'none',cursor:s.link?'pointer':'default' }}>
-                {s.tag && <div style={{ display:'inline-block',fontSize:10,fontWeight:600,color:s.brk||s.tag==='عاجل'?'var(--rd)':'var(--t3)',border:`1px solid ${s.brk||s.tag==='عاجل'?'rgba(183,28,28,.15)':'var(--g1)'}`,padding:'1px 8px',borderRadius:3,marginBottom:6 }}>{s.tag}</div>}
-                <div style={{ fontSize:15,fontWeight:700,lineHeight:1.7,color:'var(--t1)',marginBottom:5 }}>{s.title}</div>
-                <div style={{ display:'flex',gap:8,fontSize:11,color:'var(--t4)',alignItems:'center' }}>
+              <div
+                key={i}
+                onClick={()=>s.link&&s.link!=='#'&&window.open(s.link,'_blank')}
+                style={{ padding:'14px 20px', borderBottom:i<sel.stories.length-1?'.5px solid #F0F0F0':'none', cursor:s.link?'pointer':'default' }}
+              >
+                {s.tag && <div style={{ display:'inline-block', fontSize:10, fontWeight:600, color:s.brk||s.tag==='عاجل'?'#B71C1C':'#999', border:`1px solid ${s.brk||s.tag==='عاجل'?'rgba(183,28,28,.15)':'#F0F0F0'}`, padding:'1px 8px', borderRadius:3, marginBottom:6 }}>{s.tag}</div>}
+                <div style={{ fontSize:15, fontWeight:700, lineHeight:1.7, color:'#0A0A0A', marginBottom:5 }}>{s.title}</div>
+                <div style={{ display:'flex', gap:8, fontSize:11, color:'#C0C0C0', alignItems:'center' }}>
                   <span>{s.src}</span><span>·</span><span>{s.t}</span>
                   {s.lk&&<><span>·</span><span>{s.lk} تفاعل</span></>}
                 </div>
@@ -802,21 +728,14 @@ function ArticleDetail({ article, onClose, onSave, isSaved }) {
     setFetching(true);
     fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(article.link)}`)
       .then(r=>r.json())
-      .then(data => {
-        const doc = new DOMParser().parseFromString(data.contents||'','text/html');
+      .then(data=>{
+        const doc=new DOMParser().parseFromString(data.contents||'','text/html');
         const selectors=['article','.article-body','.article-content','.story-body','.content-body','.post-content','.entry-content'];
         let text='';
-        for (const s of selectors) {
-          const el=doc.querySelector(s);
-          if (el) { text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim(); if(text.length>200) break; }
-        }
-        if (text.length<200) {
-          text=Array.from(doc.querySelectorAll('p')).map(p=>p.textContent.trim()).filter(t=>t.length>40&&!t.includes('cookie')&&!t.match(/https?:\/\//)).join('\n\n');
-        }
-        if (text.length>100) setFullText(text.slice(0,4000));
-      })
-      .catch(()=>{})
-      .finally(()=>setFetching(false));
+        for(const s of selectors){const el=doc.querySelector(s);if(el){text=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim();if(text.length>200)break;}}
+        if(text.length<200){text=Array.from(doc.querySelectorAll('p')).map(p=>p.textContent.trim()).filter(t=>t.length>40&&!t.includes('cookie')&&!t.match(/https?:\/\//)).join('\n\n');}
+        if(text.length>100) setFullText(text.slice(0,4000));
+      }).catch(()=>{}).finally(()=>setFetching(false));
   }, [article.id]);
   const paragraphs = fullText ? fullText.split('\n').filter(p=>p.trim().length>20) : null;
   return (
@@ -830,21 +749,21 @@ function ArticleDetail({ article, onClose, onSave, isSaved }) {
       </div>
       {(article.bg||article.realImg) && (
         <div className="strap det-strap" style={article.realImg?{}:{background:article.bg,borderRadius:0}}>
-          {article.realImg && <img src={article.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3)' }} onError={e=>{e.target.parentElement.style.display='none';}}/>}
+          {article.realImg&&<img src={article.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3)' }} onError={e=>{e.target.parentElement.style.display='none';}}/>}
         </div>
       )}
       <div className="det-body">
         <div className="det-tag-row">
           <span className="det-src">{article.s.n}</span>
-          {article.tag && <div className={`ptag ${article.brk?'brk':''}`} style={{ margin:0 }}>{article.tag}</div>}
+          {article.tag&&<div className={`ptag ${article.brk?'brk':''}`} style={{ margin:0 }}>{article.tag}</div>}
         </div>
         <div className="det-meta"><span>{article.t}</span>{article.lk&&<span>{article.lk} تفاعل</span>}</div>
         <div className="det-title">{article.title}</div>
-        {article.body && <div className="det-sub">{article.body}</div>}
-        {fetching && <div style={{ color:'var(--t4)',fontSize:13,padding:'16px 0',textAlign:'center' }}>جاري تحميل المقال…</div>}
-        {paragraphs && paragraphs.map((p,i)=><p key={i} className="det-p">{p}</p>)}
+        {article.body&&<div className="det-sub">{article.body}</div>}
+        {fetching&&<div style={{ color:'var(--t4)',fontSize:13,padding:'16px 0',textAlign:'center' }}>جاري تحميل المقال…</div>}
+        {paragraphs&&paragraphs.map((p,i)=><p key={i} className="det-p">{p}</p>)}
         {!fetching&&!paragraphs&&<p className="det-p" style={{ color:'var(--t3)',fontStyle:'italic' }}>في تطور لافت يعكس التحولات المتسارعة في المنطقة، شهد هذا الحدث اهتماماً واسعاً من المراقبين والمحللين الدوليين.</p>}
-        {article.link&&article.link!=='#' && (
+        {article.link&&article.link!=='#'&&(
           <div style={{ marginTop:20,paddingTop:14,borderTop:'.5px solid var(--g1)' }}>
             <a href={article.link} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex',alignItems:'center',gap:5,color:'var(--t3)',fontSize:12,fontWeight:600,fontFamily:'var(--ft)',textDecoration:'none' }}>
               {I.link()} اقرأ من {article.s.n}
@@ -857,11 +776,11 @@ function ArticleDetail({ article, onClose, onSave, isSaved }) {
 }
 
 function SearchView({ onClose, feed=[], onOpen }) {
-  const ref = useRef(null);
-  const [q, setQ] = useState('');
-  useEffect(() => { ref.current?.focus(); }, []);
-  const results = q.length>1 ? feed.filter(item=>item.title?.includes(q)||item.body?.includes(q)||item.s?.n?.includes(q)||item.tag?.includes(q)) : [];
-  const tags = ['سياسة','اقتصاد','تقنية','رياضة','ثقافة','طاقة','ذكاء اصطناعي','مناخ','فضاء','صحة'];
+  const ref=useRef(null);
+  const [q,setQ]=useState('');
+  useEffect(()=>{ ref.current?.focus(); },[]);
+  const results=q.length>1?feed.filter(item=>item.title?.includes(q)||item.body?.includes(q)||item.s?.n?.includes(q)||item.tag?.includes(q)):[];
+  const tags=['سياسة','اقتصاد','تقنية','رياضة','ثقافة','طاقة','ذكاء اصطناعي','مناخ','فضاء','صحة'];
   return (
     <div className="srch">
       <div className="srch-bar">
@@ -869,43 +788,39 @@ function SearchView({ onClose, feed=[], onOpen }) {
         <input ref={ref} className="srch-in" placeholder="ابحث في الأخبار..." value={q} onChange={e=>setQ(e.target.value)}/>
         <button className="srch-c" onClick={onClose}>إلغاء</button>
       </div>
-      {q.length>1 && (
-        <>
-          <div className="srch-sec">{results.length>0?`${results.length} نتيجة`:'لا توجد نتائج'}</div>
-          {results.map(item=>(
-            <div key={item.id} style={{ padding:'14px 0',borderBottom:'.5px solid var(--g1)',cursor:'pointer' }} onClick={()=>{onOpen(item);onClose();}}>
-              <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:4 }}>
-                {item.tag&&<div className={`ptag ${item.brk?'brk':''}`} style={{ margin:0 }}>{item.tag}</div>}
-                <span style={{ fontSize:12,fontWeight:700,color:'var(--t1)' }}>{item.s?.n}</span>
-                <span style={{ fontSize:11,color:'var(--t4)' }}>{item.t}</span>
-              </div>
-              <div style={{ fontSize:15,fontWeight:700,lineHeight:1.7,color:'var(--t1)' }}>{item.title}</div>
-              {item.body&&<div style={{ fontSize:12,color:'var(--t3)',marginTop:4 }}>{item.body.slice(0,80)}…</div>}
+      {q.length>1&&(<>
+        <div className="srch-sec">{results.length>0?`${results.length} نتيجة`:'لا توجد نتائج'}</div>
+        {results.map(item=>(
+          <div key={item.id} style={{ padding:'14px 0',borderBottom:'.5px solid var(--g1)',cursor:'pointer' }} onClick={()=>{onOpen(item);onClose();}}>
+            <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:4 }}>
+              {item.tag&&<div className={`ptag ${item.brk?'brk':''}`} style={{ margin:0 }}>{item.tag}</div>}
+              <span style={{ fontSize:12,fontWeight:700,color:'var(--t1)' }}>{item.s?.n}</span>
+              <span style={{ fontSize:11,color:'var(--t4)' }}>{item.t}</span>
             </div>
-          ))}
-        </>
-      )}
-      {q.length<2 && (
-        <>
-          <div className="srch-sec">اكتشف</div>
-          <div className="srch-tags">{tags.map((t,i)=><button key={i} className="srch-tag" onClick={()=>setQ(t)}>{t}</button>)}</div>
-          <div className="srch-sec">مصادر مقترحة</div>
-          {SOURCES.slice(0,6).map((s,i)=>(
-            <div key={i} style={{ display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:i<5?'.5px solid var(--g1)':'none' }}>
-              <div className="pav" style={{ width:40,height:40,fontSize:15 }}>{s.i}</div>
-              <div style={{ flex:1 }}><div style={{ fontSize:14,fontWeight:600,color:'var(--t1)' }}>{s.n}</div><div style={{ fontSize:11,color:'var(--t4)' }}>مصدر إخباري</div></div>
-              <button style={{ fontSize:12,fontWeight:600,color:'var(--bk)',background:'none',border:'1px solid var(--g1)',borderRadius:20,padding:'5px 16px',cursor:'pointer',fontFamily:'var(--ft)' }}>متابعة</button>
-            </div>
-          ))}
-        </>
-      )}
+            <div style={{ fontSize:15,fontWeight:700,lineHeight:1.7,color:'var(--t1)' }}>{item.title}</div>
+            {item.body&&<div style={{ fontSize:12,color:'var(--t3)',marginTop:4 }}>{item.body.slice(0,80)}…</div>}
+          </div>
+        ))}
+      </>)}
+      {q.length<2&&(<>
+        <div className="srch-sec">اكتشف</div>
+        <div className="srch-tags">{tags.map((t,i)=><button key={i} className="srch-tag" onClick={()=>setQ(t)}>{t}</button>)}</div>
+        <div className="srch-sec">مصادر مقترحة</div>
+        {SOURCES.slice(0,6).map((s,i)=>(
+          <div key={i} style={{ display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:i<5?'.5px solid var(--g1)':'none' }}>
+            <div className="pav" style={{ width:40,height:40,fontSize:15 }}>{s.i}</div>
+            <div style={{ flex:1 }}><div style={{ fontSize:14,fontWeight:600,color:'var(--t1)' }}>{s.n}</div><div style={{ fontSize:11,color:'var(--t4)' }}>مصدر إخباري</div></div>
+            <button style={{ fontSize:12,fontWeight:600,color:'var(--bk)',background:'none',border:'1px solid var(--g1)',borderRadius:20,padding:'5px 16px',cursor:'pointer',fontFamily:'var(--ft)' }}>متابعة</button>
+          </div>
+        ))}
+      </>)}
     </div>
   );
 }
 
 function BookmarksView({ savedIds, onOpen, allFeed }) {
-  const saved = allFeed.filter(f=>savedIds.has(f.id));
-  if (saved.length===0) return (
+  const saved=allFeed.filter(f=>savedIds.has(f.id));
+  if(saved.length===0) return (
     <div className="empty">
       <div style={{ opacity:.3 }}>{I.bookmark(false)}</div>
       <div className="empty-title">لا توجد محفوظات</div>
@@ -923,10 +838,10 @@ function BookmarksView({ savedIds, onOpen, allFeed }) {
 }
 
 function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding }) {
-  const topicLabels = (userPrefs.topics||[]).map(id=>TOPICS.find(t=>t.id===id)?.label).filter(Boolean);
+  const topicLabels=(userPrefs.topics||[]).map(id=>TOPICS.find(t=>t.id===id)?.label).filter(Boolean);
   return (
     <>
-      {topicLabels.length>0 && (
+      {topicLabels.length>0&&(
         <div className="set-sec">
           <div className="set-sec-title">اهتماماتك المختارة</div>
           <div style={{ display:'flex',flexWrap:'wrap',gap:8 }}>
@@ -962,7 +877,7 @@ function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding }
         </button>
       </div>
       <div style={{ padding:20,textAlign:'center' }}>
-        <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>صَدى v2.1</div>
+        <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>صَدى v2.2</div>
         <div style={{ fontSize:11,color:'var(--t4)' }}>أخبار العالم في مكانٍ واحد</div>
       </div>
     </>
@@ -977,19 +892,17 @@ export default function Sada() {
   const [obDone, setObDone] = useState(() => {
     try { return localStorage.getItem('sada-ob-done')==='1'; } catch { return false; }
   });
-
-  // FIX: userPrefs state — loaded from localStorage, updated when onboarding completes
   const [userPrefs, setUserPrefs] = useState(() => {
     try { return JSON.parse(localStorage.getItem('sada-prefs')||'{}'); } catch { return {}; }
   });
 
-  const [nav, setNav]         = useState('home');
-  const [feedTab, setFeedTab] = useState('now');
-  const [article, setArticle] = useState(null);
-  const [srch, setSrch]       = useState(false);
-  const [sources, setSources] = useState({});
+  const [nav, setNav]           = useState('home');
+  const [feedTab, setFeedTab]   = useState('now');
+  const [article, setArticle]   = useState(null);
+  const [srch, setSrch]         = useState(false);
+  const [sources, setSources]   = useState({});
   const [newCount, setNewCount] = useState(0);
-  const prevLen = useRef(0);
+  const prevLen                 = useRef(0);
 
   const [savedIds, setSavedIds] = useState(() => {
     try { const s=localStorage.getItem('sada-bookmarks'); return s?new Set(JSON.parse(s)):new Set(); } catch { return new Set(); }
@@ -1021,7 +934,7 @@ export default function Sada() {
   }, [refresh]);
 
   useEffect(() => {
-    if (liveFeed.length>prevLen.current && prevLen.current>0) {
+    if(liveFeed.length>prevLen.current && prevLen.current>0){
       setNewCount(liveFeed.length-prevLen.current);
       setTimeout(()=>setNewCount(0),4000);
     }
@@ -1049,27 +962,22 @@ export default function Sada() {
     return idx===-1||sources[idx]!==false;
   });
 
-  // FIX: All three tabs have real, distinct logic
   const CONTEXT_TAGS = ['تحليل','رأي','تقرير','حصري','ملف'];
   const userTopics   = userPrefs.topics||[];
 
   const displayFeed = useMemo(() => {
-    if (feedTab==='now') {
+    if(feedTab==='now'){
       const brk=sourcedFeed.filter(item=>item.brk||item.tag==='عاجل'||item.title?.includes('عاجل'));
       return brk.length>0 ? brk : sourcedFeed.slice(0,12);
     }
-    if (feedTab==='context') {
+    if(feedTab==='context'){
       const ctx=sourcedFeed.filter(item=>item.tag&&CONTEXT_TAGS.includes(item.tag));
       return ctx.length>3 ? ctx : sourcedFeed.filter((_,i)=>i%2===1);
     }
-    // مهم: score by user's chosen topics
-    if (userTopics.length>0) {
-      const scored=sourcedFeed
-        .map(item=>({...item,_score:scoreByTopics(item,userTopics)}))
-        .sort((a,b)=>b._score-a._score);
+    if(userTopics.length>0){
+      const scored=sourcedFeed.map(item=>({...item,_score:scoreByTopics(item,userTopics)})).sort((a,b)=>b._score-a._score);
       return scored.some(i=>i._score>0) ? scored : sourcedFeed;
     }
-    // No topics: sort by engagement
     return [...sourcedFeed].sort((a,b)=>{
       const pk=v=>{ if(!v) return 0; const n=parseFloat(v); return v.includes('K')?n*1000:n; };
       return pk(b.lk)-pk(a.lk);
@@ -1088,14 +996,8 @@ export default function Sada() {
     setObDone(false); setUserPrefs({});
   };
 
-  // FIX: onDone receives and stores prefs
-  if (!obDone) {
-    return (
-      <Onboarding onDone={(prefs) => {
-        setUserPrefs(prefs);
-        setObDone(true);
-      }}/>
-    );
+  if(!obDone){
+    return <Onboarding onDone={(prefs)=>{ setUserPrefs(prefs); setObDone(true); }}/>;
   }
 
   return (
@@ -1119,7 +1021,7 @@ export default function Sada() {
           </div>
         </div>
 
-        {nav==='home' && (
+        {nav==='home'&&(
           <div className="tabs">
             {[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(
               <button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>setFeedTab(t.id)}>{t.l}</button>
@@ -1127,70 +1029,58 @@ export default function Sada() {
           </div>
         )}
 
-        {nav!=='home' && (
+        {nav!=='home'&&(
           <div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>
             {nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}
           </div>
         )}
 
         <div className="content">
-          {nav==='home' && (
-            <>
-              {newCount>0 && (
-                <div onClick={()=>setNewCount(0)} style={{ position:'sticky',top:0,zIndex:50,background:'#0A0A0A',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',cursor:'pointer' }}>
-                  ↑ {newCount} خبر جديد
-                </div>
-              )}
-              {isLive && (
-                <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 0',fontSize:11,color:'var(--t4)' }}>
-                  <div style={{ width:5,height:5,borderRadius:'50%',background:'#4CAF50' }}/>
-                  أخبار مباشرة · {allFeed.length} خبر
-                </div>
-              )}
-
-              <div className="stories">
-                {SOURCES.map((s,i)=>(
-                  <div className="story" key={i} onClick={()=>{setSources(prev=>({...prev,[i]:prev[i]===true?undefined:true}));setFeedTab('important');}}>
-                    <div className={`s-ring ${sources[i]===true?'':'seen'}`}><div className="s-av">{s.i}</div></div>
-                    <div className="s-nm">{s.n}</div>
-                  </div>
-                ))}
+          {nav==='home'&&(<>
+            {newCount>0&&(
+              <div onClick={()=>setNewCount(0)} style={{ position:'sticky',top:0,zIndex:50,background:'#0A0A0A',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',cursor:'pointer' }}>
+                ↑ {newCount} خبر جديد
               </div>
-
-              {/* مهم: show active topic pills */}
-              {feedTab==='important' && userTopics.length>0 && (
-                <div className="topic-bar">
-                  <span style={{ fontSize:11,color:'var(--t4)',fontWeight:700,whiteSpace:'nowrap',flexShrink:0 }}>يُصفَّح حسب:</span>
-                  {userTopics.map(id=>{
-                    const t=TOPICS.find(x=>x.id===id);
-                    return t?<span key={id} className="topic-pill on">{t.icon} {t.label}</span>:null;
-                  })}
+            )}
+            {isLive&&(
+              <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 0',fontSize:11,color:'var(--t4)' }}>
+                <div style={{ width:5,height:5,borderRadius:'50%',background:'#4CAF50' }}/>
+                أخبار مباشرة · {allFeed.length} خبر
+              </div>
+            )}
+            <div className="stories">
+              {SOURCES.map((s,i)=>(
+                <div className="story" key={i} onClick={()=>{setSources(prev=>({...prev,[i]:prev[i]===true?undefined:true}));setFeedTab('important');}}>
+                  <div className={`s-ring ${sources[i]===true?'':'seen'}`}><div className="s-av">{s.i}</div></div>
+                  <div className="s-nm">{s.n}</div>
                 </div>
-              )}
-
-              {/* مهم: no topics yet nudge */}
-              {feedTab==='important' && userTopics.length===0 && (
-                <div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
-                  <span>لم تختر اهتمامات بعد — يُرتَّب حسب التفاعل</span>
-                  <button onClick={resetOnboarding} style={{ fontSize:11,fontWeight:700,color:'var(--bk)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>اضبط ▸</button>
-                </div>
-              )}
-
-              {feedTab==='context' && (
-                <div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)' }}>
-                  تحليلات ومقالات رأي وتقارير معمّقة
-                </div>
-              )}
-
-              {loading && <div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>جاري تحميل الأخبار…</div>}
-              {!loading&&displayFeed.length===0 && <div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار في هذا التصنيف</div>}
-              {!loading&&displayFeed.map((item,i)=>(
-                <Post key={item.id} item={item} delay={i*.04} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)}/>
               ))}
-              <div style={{ height:20 }}/>
-            </>
-          )}
-          {nav==='map'     && <GlobeMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}
+            </div>
+            {feedTab==='important'&&userTopics.length>0&&(
+              <div className="topic-bar">
+                <span style={{ fontSize:11,color:'var(--t4)',fontWeight:700,whiteSpace:'nowrap',flexShrink:0 }}>يُصفَّح حسب:</span>
+                {userTopics.map(id=>{ const t=TOPICS.find(x=>x.id===id); return t?<span key={id} className="topic-pill on">{t.icon} {t.label}</span>:null; })}
+              </div>
+            )}
+            {feedTab==='important'&&userTopics.length===0&&(
+              <div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+                <span>لم تختر اهتمامات بعد — يُرتَّب حسب التفاعل</span>
+                <button onClick={resetOnboarding} style={{ fontSize:11,fontWeight:700,color:'var(--bk)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>اضبط ▸</button>
+              </div>
+            )}
+            {feedTab==='context'&&(
+              <div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)' }}>
+                تحليلات ومقالات رأي وتقارير معمّقة
+              </div>
+            )}
+            {loading&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>جاري تحميل الأخبار…</div>}
+            {!loading&&displayFeed.length===0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار في هذا التصنيف</div>}
+            {!loading&&displayFeed.map((item,i)=>(
+              <Post key={item.id} item={item} delay={i*.04} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)}/>
+            ))}
+            <div style={{ height:20 }}/>
+          </>)}
+          {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}
           {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}
           {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onResetOnboarding={resetOnboarding}/>}
         </div>
@@ -1203,8 +1093,8 @@ export default function Sada() {
           ))}
         </div>
 
-        {article && <ArticleDetail article={article} onClose={()=>setArticle(null)} onSave={toggleSave} isSaved={savedIds.has(article.id)}/>}
-        {srch    && <SearchView onClose={()=>setSrch(false)} feed={allFeed} onOpen={setArticle}/>}
+        {article&&<ArticleDetail article={article} onClose={()=>setArticle(null)} onSave={toggleSave} isSaved={savedIds.has(article.id)}/>}
+        {srch   &&<SearchView onClose={()=>setSrch(false)} feed={allFeed} onOpen={setArticle}/>}
       </div>
     </>
   );

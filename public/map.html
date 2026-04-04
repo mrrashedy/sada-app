@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>خريطة صَدى</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#050505;font-family:-apple-system,"SF Arabic","SF Pro Arabic",system-ui,sans-serif}
+  #map{width:100%;height:100%}
+  .leaflet-container{background:#050505!important}
+  .leaflet-control-attribution{display:none!important}
+  .leaflet-control-zoom{display:none!important}
+
+  /* Header */
+  .hdr{position:fixed;top:0;left:0;right:0;z-index:1000;padding:env(safe-area-inset-top,44px) 20px 14px;padding-top:calc(env(safe-area-inset-top,20px) + 24px);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(rgba(5,5,5,.92) 50%,transparent);pointer-events:none;direction:rtl}
+  .hdr>*{pointer-events:all}
+  .hdr-logo{font-size:22px;font-weight:800;color:rgba(255,255,255,.95);letter-spacing:-.5px}
+  .hdr-sub{font-size:11px;color:rgba(255,255,255,.2);margin-right:8px;font-weight:400}
+  .hdr-btn{background:rgba(255,255,255,.08);border:none;cursor:pointer;color:rgba(255,255,255,.6);display:flex;padding:8px;border-radius:50%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .hdr-btn:active{background:rgba(255,255,255,.15)}
+
+  /* Stats */
+  .stats{position:fixed;top:calc(env(safe-area-inset-top,20px) + 68px);left:0;right:0;z-index:1000;display:flex;justify-content:center;gap:8px;pointer-events:none;direction:rtl}
+  .stat{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,.35);background:rgba(5,5,5,.65);padding:5px 12px;border-radius:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-family:inherit}
+  .stat-dot{width:5px;height:5px;border-radius:50%}
+  @keyframes lp{0%,100%{opacity:1}50%{opacity:.35}}
+  .live-dot{animation:lp 1.5s infinite}
+
+  /* Hotspot markers */
+  .hs-marker{position:relative;display:flex;align-items:center;justify-content:center}
+  .hs-dot{border-radius:50%;position:relative;z-index:2;cursor:pointer;transition:transform .15s,box-shadow .15s}
+  .hs-ring{position:absolute;top:50%;left:50%;border-radius:50%;pointer-events:none}
+  .hs-r1{animation:ring 2.8s ease-out infinite}
+  .hs-r2{animation:ring 2.8s ease-out infinite 1s}
+  @keyframes ring{0%{width:6px;height:6px;opacity:.6;transform:translate(-50%,-50%)}100%{width:52px;height:52px;opacity:0;transform:translate(-50%,-50%)}}
+  .hs-label{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:rgba(255,255,255,.4);white-space:nowrap;font-family:inherit;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.9),0 0 20px rgba(0,0,0,.8)}
+  .hs-badge{position:absolute;top:-7px;right:-11px;background:rgba(255,255,255,.95);color:#050505;font-size:9px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;z-index:3;pointer-events:none;font-family:system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+  /* Bottom sheet */
+  .sheet-bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1500;pointer-events:none}
+  .sheet-bg.open{pointer-events:all}
+  .sheet-scrim{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0);transition:background .3s}
+  .sheet-bg.open .sheet-scrim{background:rgba(0,0,0,.25)}
+  .sheet{position:absolute;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:#fff;border-radius:22px 22px 0 0;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,.24,1);max-height:55vh;display:flex;flex-direction:column;box-shadow:0 -4px 50px rgba(0,0,0,.5);direction:rtl;font-family:inherit}
+  .sheet-bg.open .sheet{transform:translateY(0)}
+  .sheet-handle{width:36px;height:4px;background:#E0E0E0;border-radius:2px;margin:10px auto 0;flex-shrink:0}
+  .sheet-hdr{padding:14px 20px 10px;flex-shrink:0;border-bottom:.5px solid #F0F0F0}
+  .sheet-loc{display:flex;align-items:center;gap:6px}
+  .sheet-city{font-size:18px;font-weight:800;color:#0A0A0A}
+  .sheet-sep{width:3px;height:3px;background:#C0C0C0;border-radius:50%}
+  .sheet-country{font-size:13px;color:#C0C0C0}
+  .sheet-count{font-size:11px;color:#C0C0C0;margin-top:4px}
+  .sheet-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,20px)}
+  .sheet-item{padding:14px 20px;border-bottom:.5px solid #F0F0F0;cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.05)}
+  .sheet-item:last-child{border-bottom:none}
+  .sheet-item:active{background:#FAFAFA}
+  .sheet-tag{display:inline-block;font-size:10px;font-weight:600;color:#999;border:1px solid #F0F0F0;padding:2px 9px;border-radius:3px;margin-bottom:7px}
+  .sheet-tag.brk{color:#B71C1C;border-color:rgba(183,28,28,.15)}
+  .sheet-title{font-size:15px;font-weight:700;line-height:1.7;color:#0A0A0A;margin-bottom:5px}
+  .sheet-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:#C0C0C0}
+  .sheet-read{padding:12px 20px 20px}
+  .sheet-btn{width:100%;background:#000;color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:600;padding:13px;border-radius:24px;cursor:pointer}
+  .sheet-btn:active{opacity:.7}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Header -->
+<div class="hdr">
+  <div style="display:flex;align-items:baseline">
+    <span class="hdr-logo">خريطة صَدى</span>
+    <span class="hdr-sub">مباشر</span>
+  </div>
+  <button class="hdr-btn" onclick="resetMap()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-9.31L1 10"/></svg>
+  </button>
+</div>
+
+<!-- Stats -->
+<div class="stats" id="stats"></div>
+
+<!-- Sheet -->
+<div class="sheet-bg" id="sheetBg" onclick="closeSheet()">
+  <div class="sheet-scrim"></div>
+  <div class="sheet" id="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-hdr" id="sheetHdr"></div>
+    <div class="sheet-list" id="sheetList"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const HOTSPOTS = [
+  {id:1,lat:24.7136,lng:46.6753,city:"الرياض",country:"السعودية",heat:3,stories:[
+    {title:"قمة الرياض تختتم بإعلان تاريخي — خارطة طريق اقتصادية جديدة",src:"الجزيرة",t:"٣ د",tag:"عاجل",lk:"12.4K"},
+    {title:"ولي العهد يستقبل قادة ٢٠ دولة في قصر اليمامة",src:"العربية",t:"٣٠ د",lk:"8.1K"},
+    {title:"إعلان تأسيس صندوق إقليمي بقيمة ١٠٠ مليار دولار",src:"CNBC عربية",t:"١ س",lk:"6.3K"},
+  ]},
+  {id:2,lat:25.2048,lng:55.2708,city:"دبي",country:"الإمارات",heat:3,stories:[
+    {title:"إطلاق أول قمر صناعي عربي مشترك من قاعدة الإمارات",src:"BBC عربي",t:"٤٥ د",tag:"فيديو",lk:"31.5K"},
+    {title:"المدن الذكية في الخليج — بين الطموح والواقع",src:"الجزيرة",t:"٤ س",tag:"تقرير",lk:"3.3K"},
+  ]},
+  {id:3,lat:30.0444,lng:31.2357,city:"القاهرة",country:"مصر",heat:2,stories:[
+    {title:"مصر تعلن عن خطة استثمارية جديدة بقيمة ٣٠ مليار دولار",src:"العربية",t:"٥ س",lk:"4.2K"},
+  ]},
+  {id:4,lat:46.2044,lng:6.1432,city:"جنيف",country:"سويسرا",heat:2,stories:[
+    {title:"محادثات جنيف تحقق اختراقاً دبلوماسياً بشأن الملف النووي",src:"سكاي نيوز",t:"٢ س",lk:"7.8K"},
+  ]},
+  {id:5,lat:38.9072,lng:-77.0369,city:"واشنطن",country:"أمريكا",heat:2,stories:[
+    {title:"الدولار يتراجع أمام سلة العملات بعد بيانات التوظيف",src:"رويترز",t:"٢٨ د",lk:"3.2K"},
+    {title:"البيت الأبيض يعلن عن مبادرة تجارية جديدة مع الخليج",src:"CNBC عربية",t:"٣ س",lk:"2.8K"},
+  ]},
+  {id:6,lat:39.9042,lng:116.4074,city:"بكين",country:"الصين",heat:2,stories:[
+    {title:"الصين تكشف عن سياسة تجارية جديدة تجاه دول الخليج",src:"رويترز",t:"٣ س",lk:"5.1K"},
+  ]},
+  {id:7,lat:51.5074,lng:-0.1278,city:"لندن",country:"بريطانيا",heat:1,stories:[
+    {title:"بريطانيا تطلق صندوقاً استثمارياً مشتركاً مع دول الخليج",src:"BBC عربي",t:"٦ س",lk:"1.9K"},
+  ]},
+  {id:8,lat:33.8938,lng:35.5018,city:"بيروت",country:"لبنان",heat:1,stories:[
+    {title:"لبنان يشهد تطورات سياسية جديدة مع تشكيل الحكومة",src:"الجزيرة",t:"٧ س",lk:"2.3K"},
+  ]},
+  {id:9,lat:21.4225,lng:39.8262,city:"مكة",country:"السعودية",heat:1,stories:[
+    {title:"توسعة جديدة في المسجد الحرام تستوعب مليون مصلٍّ إضافي",src:"العربية",t:"١٠ س",lk:"9.7K"},
+  ]},
+  {id:10,lat:35.6762,lng:139.6503,city:"طوكيو",country:"اليابان",heat:1,stories:[
+    {title:"اليابان تعلن شراكة تقنية مع الإمارات في الذكاء الاصطناعي",src:"دويتشه فيله",t:"٩ س",lk:"1.8K"},
+  ]},
+  {id:11,lat:48.8566,lng:2.3522,city:"باريس",country:"فرنسا",heat:1,stories:[
+    {title:"فرنسا تستضيف مؤتمراً دولياً حول مستقبل الطاقة النظيفة",src:"فرانس ٢٤",t:"٨ س",lk:"2.1K"},
+  ]},
+  {id:12,lat:25.2854,lng:51.5310,city:"الدوحة",country:"قطر",heat:2,stories:[
+    {title:"قطر توقّع اتفاقية غاز طبيعي مسال طويلة الأمد مع ألمانيا",src:"الجزيرة",t:"٥ س",lk:"4.5K"},
+  ]},
+];
+
+// Init map — centered on Middle East
+const map = L.map('map', {
+  center: [28, 42],
+  zoom: 3,
+  minZoom: 2,
+  maxZoom: 14,
+  zoomControl: false,
+  attributionControl: false,
+  zoomSnap: 0.5,
+  zoomDelta: 0.5,
+  wheelPxPerZoomLevel: 120,
+});
+
+// Dark tiles with labels — CartoDB Dark Matter
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+// Stats
+const totalStories = HOTSPOTS.reduce((a,h) => a + h.stories.length, 0);
+document.getElementById('stats').innerHTML = `
+  <div class="stat"><div class="stat-dot" style="background:#fff"></div>${HOTSPOTS.length} مواقع</div>
+  <div class="stat"><div class="stat-dot" style="background:rgba(255,255,255,.4)"></div>${totalStories} خبر</div>
+  <div class="stat"><div class="stat-dot live-dot" style="background:#C62828"></div>مباشر</div>
+`;
+
+// Add markers
+let activeMarker = null;
+
+HOTSPOTS.forEach(h => {
+  const sz = h.heat >= 3 ? 14 : h.heat >= 2 ? 10 : 7;
+  const clr = h.heat >= 3 ? '#ffffff' : h.heat >= 2 ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.35)';
+  const glow = h.heat >= 3 ? '0 0 18px rgba(255,255,255,.5),0 0 40px rgba(255,255,255,.15)' : h.heat >= 2 ? '0 0 10px rgba(255,255,255,.2)' : 'none';
+  const ringSize = h.heat >= 3 ? 52 : h.heat >= 2 ? 40 : 30;
+
+  const icon = L.divIcon({
+    className: 'hs-marker',
+    html: `
+      <div class="hs-ring hs-r1" style="border:1.5px solid ${clr};width:${ringSize}px;height:${ringSize}px"></div>
+      <div class="hs-ring hs-r2" style="border:1px solid ${clr};width:${ringSize}px;height:${ringSize}px"></div>
+      <div class="hs-dot" style="width:${sz}px;height:${sz}px;background:${clr};box-shadow:${glow}"></div>
+      ${h.stories.length > 1 ? `<span class="hs-badge">${h.stories.length}</span>` : ''}
+      <span class="hs-label">${h.city}</span>
+    `,
+    iconSize: [sz, sz],
+    iconAnchor: [sz/2, sz/2],
+  });
+
+  const marker = L.marker([h.lat, h.lng], { icon }).addTo(map);
+
+  marker.on('click', () => {
+    activeMarker = h;
+    map.flyTo([h.lat, h.lng], Math.max(map.getZoom(), 6), { duration: 0.8 });
+    openSheet(h);
+  });
+});
+
+// Click map to close
+map.on('click', closeSheet);
+
+function openSheet(h) {
+  const bg = document.getElementById('sheetBg');
+  const hdr = document.getElementById('sheetHdr');
+  const list = document.getElementById('sheetList');
+
+  hdr.innerHTML = `
+    <div class="sheet-loc">
+      <span class="sheet-city">${h.city}</span>
+      <span class="sheet-sep"></span>
+      <span class="sheet-country">${h.country}</span>
+    </div>
+    <div class="sheet-count">${h.stories.length} ${h.stories.length > 1 ? 'أخبار' : 'خبر'} من هذا الموقع</div>
+  `;
+
+  list.innerHTML = h.stories.map((s, i) => `
+    <div class="sheet-item">
+      ${s.tag ? `<div class="sheet-tag ${s.tag === 'عاجل' ? 'brk' : ''}">${s.tag}</div>` : ''}
+      <div class="sheet-title">${s.title}</div>
+      <div class="sheet-meta">
+        <span>${s.src}</span><span>·</span><span>${s.t}</span>
+        ${s.lk ? `<span>·</span><span>${s.lk} تفاعل</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  bg.classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('sheetBg').classList.remove('open');
+  activeMarker = null;
+}
+
+function resetMap() {
+  closeSheet();
+  map.flyTo([28, 42], 3, { duration: 0.8 });
+}
+</script>
+</body>
+</html>

@@ -1,10 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNews } from "./lib/useNews";
 
-// ═══════════════════════════════════════════
-// STATIC DATA
-// ═══════════════════════════════════════════
-
 const SOURCES = [
   { n:"الجزيرة",     i:"ج",  id:"aljazeera"  },
   { n:"العربية",     i:"ع",  id:"alarabiya"  },
@@ -160,8 +156,6 @@ const css = `
 @keyframes sl{from{transform:translateX(100%)}to{transform:translateX(0)}}
 @keyframes cu{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
-@keyframes ripple{0%{transform:translate(-50%,-50%) scale(0.5);opacity:.8}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0}}
 @keyframes logoPulse{0%,100%{text-shadow:0 0 30px rgba(255,255,255,.2)}50%{text-shadow:0 0 60px rgba(255,255,255,.5)}}
 html,body{background:#000;overflow:hidden;height:100%}
 .app{max-width:430px;margin:0 auto;height:100vh;background:var(--bg);font-family:var(--ft);direction:rtl;display:flex;flex-direction:column;overflow:hidden;position:relative}
@@ -263,6 +257,10 @@ html,body{background:#000;overflow:hidden;height:100%}
 .topic-bar::-webkit-scrollbar{display:none}
 .topic-pill{flex-shrink:0;padding:5px 14px;border-radius:20px;border:1px solid var(--g2);font-size:12px;font-weight:600;color:var(--t3);background:none;white-space:nowrap}
 .topic-pill.on{background:var(--bk);color:#fff;border-color:var(--bk)}
+/* Leaflet marker override */
+.sada-marker{background:none!important;border:none!important}
+.sada-dot{display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;transition:transform .15s}
+.sada-dot:active{transform:scale(1.2)}
 `;
 
 const I = {
@@ -285,6 +283,10 @@ const I = {
   link:     () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>,
   check:    () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>,
 };
+
+// ═══════════════════════════════════════════
+// ONBOARDING
+// ═══════════════════════════════════════════
 
 function ObSplash({ onNext }) {
   const [vis, setVis] = useState(false);
@@ -397,10 +399,8 @@ function Onboarding({ onDone }) {
   const [selTopics, setSelTopics]   = useState(() => new Set());
   const [selRegions, setSelRegions] = useState(() => new Set(['gulf']));
   const toggleSrc = (id) => setSelSrcs(prev => {
-    const n = new Set(prev);
-    if (n.has(id) && n.size <= 3) return n;
-    n.has(id) ? n.delete(id) : n.add(id);
-    return n;
+    const n = new Set(prev); if (n.has(id) && n.size <= 3) return n;
+    n.has(id) ? n.delete(id) : n.add(id); return n;
   });
   const finish = () => {
     const prefs = { topics:[...selTopics], regions:[...selRegions], sources:[...selSrcs] };
@@ -419,187 +419,163 @@ function Onboarding({ onDone }) {
   );
 }
 
-const CITY_TIMES = [
-  { city:'الرياض', tz:'Asia/Riyadh' },
-  { city:'لندن',   tz:'Europe/London' },
-  { city:'نيويورك',tz:'America/New_York' },
-  { city:'طوكيو',  tz:'Asia/Tokyo' },
-];
-
-function latLngToPercent(lat, lng) {
-  return { x: ((lng + 180) / 360) * 100, y: ((90 - lat) / 180) * 100 };
-}
+// ═══════════════════════════════════════════
+// REAL MAP — Leaflet.js with OpenStreetMap tiles
+// Full zoom/pan/touch, real countries & city labels
+// ═══════════════════════════════════════════
 
 function NewsMap({ onClose, liveFeed=[] }) {
-  const [sel, setSel]   = useState(null);
-  const [time, setTime] = useState(new Date());
-  const spots           = useMemo(() => buildMapSpots(liveFeed.length>0?liveFeed:FEED), [liveFeed.length]);
-  useEffect(() => { const t=setInterval(()=>setTime(new Date()),1000); return ()=>clearInterval(t); }, []);
-  const fmt = (tz) => { try { return new Intl.DateTimeFormat('ar',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).format(time); } catch { return '--:--'; } };
-  const totalStories = spots.reduce((a,s)=>a+s.stories.length,0);
+  const mapRef      = useRef(null);
+  const leafletRef  = useRef(null);
+  const markersRef  = useRef([]);
+  const [sel, setSel] = useState(null);
+  const spots = useMemo(() => buildMapSpots(liveFeed.length>0?liveFeed:FEED), [liveFeed.length]);
+
+  useEffect(() => {
+    // Load Leaflet CSS
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+      document.head.appendChild(link);
+    }
+
+    // Load Leaflet JS then init map
+    const initMap = () => {
+      if (!mapRef.current || leafletRef.current) return;
+      const L = window.L;
+      if (!L) return;
+
+      const map = L.map(mapRef.current, {
+        center: [26, 35],
+        zoom: 4,
+        zoomControl: false,
+        attributionControl: false,
+      });
+
+      // Dark tile layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 18,
+      }).addTo(map);
+
+      leafletRef.current = map;
+
+      // Add markers
+      spots.forEach(spot => {
+        const size = spot.heat>=3 ? 40 : spot.heat>=2 ? 32 : 26;
+        const count = spot.stories.length;
+
+        const icon = L.divIcon({
+          className: 'sada-marker',
+          html: `
+            <div style="
+              width:${size}px;height:${size}px;
+              background:${spot.heat>=3?'rgba(183,28,28,0.9)':'rgba(229,57,53,0.85)'};
+              border:2px solid rgba(255,100,100,0.6);
+              border-radius:50%;
+              display:flex;align-items:center;justify-content:center;
+              color:#fff;font-weight:800;font-size:${size>32?13:11}px;
+              font-family:-apple-system,sans-serif;
+              box-shadow:0 0 ${size/2}px rgba(229,57,53,0.5);
+              cursor:pointer;
+            ">${count>1?count:''}</div>
+          `,
+          iconSize: [size, size],
+          iconAnchor: [size/2, size/2],
+        });
+
+        const marker = L.marker([spot.lat, spot.lng], { icon })
+          .addTo(map)
+          .on('click', () => { setSel(spot); playBlip(); });
+
+        markersRef.current.push(marker);
+      });
+    };
+
+    if (window.L) {
+      initMap();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+      script.onload = initMap;
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+      }
+      markersRef.current = [];
+    };
+  }, []);
+
+  // Update markers when spots change
+  useEffect(() => {
+    if (!leafletRef.current || !window.L) return;
+    // markers already placed in init — no-op for now
+  }, [spots]);
 
   return (
-    <div style={{ position:'absolute', inset:0, background:'#04080f', zIndex:50, direction:'rtl', fontFamily:'var(--ft)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
-      <div style={{ padding:'44px 20px 12px', background:'linear-gradient(#04080f 70%,transparent)', flexShrink:0, position:'relative', zIndex:10 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+    <div style={{ position:'absolute', inset:0, zIndex:50, display:'flex', flexDirection:'column', background:'#1a1a2e' }}>
+      {/* Header */}
+      <div style={{ position:'absolute', top:0, left:0, right:0, zIndex:1000, padding:'44px 16px 12px', background:'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)', pointerEvents:'none' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', pointerEvents:'auto' }}>
           <div>
-            <div style={{ fontSize:20, fontWeight:800, color:'rgba(255,255,255,.9)' }}>خريطة صَدى</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,.3)', marginTop:2 }}>اضغط على أي نقطة حمراء لعرض الأخبار</div>
+            <div style={{ fontSize:18, fontWeight:800, color:'#fff', direction:'rtl' }}>خريطة الأخبار</div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,.5)', direction:'rtl', marginTop:2 }}>
+              {spots.length} منطقة · {spots.reduce((a,s)=>a+s.stories.length,0)} خبر مباشر
+            </div>
           </div>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,.08)', border:'none', cursor:'pointer', color:'rgba(255,255,255,.7)', padding:9, borderRadius:'50%', display:'flex' }}>{I.close()}</button>
-        </div>
-        <div style={{ display:'flex', gap:6, marginTop:12, justifyContent:'center' }}>
-          {CITY_TIMES.map((c,i) => (
-            <div key={i} style={{ background:'rgba(255,255,255,.06)', backdropFilter:'blur(10px)', borderRadius:10, padding:'5px 8px', border:'1px solid rgba(255,255,255,.06)', textAlign:'center' }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,.9)', fontVariantNumeric:'tabular-nums' }}>{fmt(c.tz)}</div>
-              <div style={{ fontSize:9, color:'rgba(255,255,255,.3)', marginTop:1 }}>{c.city}</div>
-            </div>
-          ))}
+          <button onClick={onClose} style={{ background:'rgba(0,0,0,.5)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,.15)', cursor:'pointer', color:'#fff', padding:10, borderRadius:'50%', display:'flex', pointerEvents:'auto' }}>
+            {I.close()}
+          </button>
         </div>
       </div>
 
-      <div style={{ flex:1, position:'relative', overflow:'hidden' }} onClick={() => setSel(null)}>
-        {/* World map — equirectangular, viewBox 0 0 100 100 matches dot % positions */}
-        <svg viewBox="0 0 100 100" width="100%" height="100%" style={{ position:'absolute', inset:0 }} preserveAspectRatio="xMidYMid slice">
-          <defs>
-            <radialGradient id="ocean" cx="50%" cy="50%" r="70%">
-              <stop offset="0%" stopColor="#0a1f3d"/>
-              <stop offset="100%" stopColor="#020810"/>
-            </radialGradient>
-          </defs>
-          <rect width="100" height="100" fill="url(#ocean)"/>
-          {[10,20,30,40,50,60,70,80,90].map(v=>(
-            <g key={v}>
-              <line x1={v} y1="0" x2={v} y2="100" stroke="rgba(30,70,140,0.18)" strokeWidth="0.15"/>
-              <line x1="0" y1={v} x2="100" y2={v} stroke="rgba(30,70,140,0.18)" strokeWidth="0.15"/>
-            </g>
-          ))}
-          <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(40,130,230,0.45)" strokeWidth="0.3"/>
-          <line x1="0" y1="37.2" x2="100" y2="37.2" stroke="rgba(30,90,180,0.2)" strokeWidth="0.15" strokeDasharray="1.5,1.5"/>
-          <line x1="0" y1="62.8" x2="100" y2="62.8" stroke="rgba(30,90,180,0.2)" strokeWidth="0.15" strokeDasharray="1.5,1.5"/>
-          <g fill="#0f2e52" stroke="#1e5898" strokeWidth="0.16" strokeLinejoin="round">
-            {/* Russia */}
-            <path d="M50,19 L50,14 L55,12 L63,11 L71,10 L79,10 L87,11 L93,12 L97,14 L97,19 L92,21 L85,20 L78,19 L70,20 L62,20 L55,20 Z"/>
-            <path d="M90,11 L95,10 L98,12 L98,17 L95,19 L90,17 Z"/>
-            {/* Greenland */}
-            <path d="M30,9 L36,8 L42,9 L45,12 L44,16 L39,18 L34,17 L30,13 Z"/>
-            {/* Iceland */}
-            <path d="M43,14 L47,13 L50,15 L49,17 L44,17 Z"/>
-            {/* North America */}
-            <path d="M4,14 L8,12 L15,11 L22,11 L28,12 L33,14 L35,18 L32,22 L30,26 L31,29 L29,32 L27,35 L28,37 L26,40 L24,43 L22,44 L19,42 L16,38 L12,34 L10,29 L7,23 L5,18 Z"/>
-            {/* Cuba */}
-            <path d="M25,38 L28,37 L30,38 L28,40 L25,40 Z"/>
-            {/* Central America */}
-            <path d="M22,44 L25,43 L26,45 L25,47 L22,47 Z"/>
-            {/* South America */}
-            <path d="M23,47 L27,44 L32,44 L37,46 L39,50 L40,54 L39,59 L37,64 L35,68 L33,73 L31,78 L31,81 L30,77 L29,71 L27,64 L25,58 L24,52 Z"/>
-            {/* UK + Ireland */}
-            <path d="M46,18 L49,16 L51,17 L51,20 L48,21 L46,20 Z"/>
-            <path d="M44,18 L46,17 L47,19 L45,20 Z"/>
-            {/* Scandinavia + Finland */}
-            <path d="M50,14 L54,13 L58,13 L60,15 L59,18 L57,21 L54,22 L52,21 L50,19 Z"/>
-            <path d="M58,13 L62,13 L62,17 L59,19 L57,17 Z"/>
-            {/* Europe */}
-            <path d="M46,21 L51,20 L55,20 L59,20 L62,21 L63,25 L62,28 L59,30 L57,30 L54,27 L51,26 L49,26 L47,24 Z"/>
-            {/* Iberia */}
-            <path d="M46,24 L51,23 L53,25 L53,29 L50,31 L47,29 Z"/>
-            {/* Italy */}
-            <path d="M52,25 L56,23 L57,26 L56,30 L54,33 L52,31 L52,27 Z"/>
-            {/* Balkans */}
-            <path d="M59,24 L63,23 L64,26 L62,29 L59,29 Z"/>
-            {/* Africa */}
-            <path d="M46,30 L50,29 L55,29 L60,30 L64,31 L66,35 L66,40 L64,45 L62,49 L60,53 L59,58 L58,63 L57,67 L56,63 L55,57 L53,52 L51,48 L48,43 L47,39 L46,34 Z"/>
-            {/* Horn of Africa */}
-            <path d="M62,49 L67,44 L69,47 L66,51 L63,52 Z"/>
-            {/* Madagascar */}
-            <path d="M63,57 L65,55 L66,59 L66,64 L64,65 L62,62 Z"/>
-            {/* Turkey */}
-            <path d="M57,28 L63,27 L68,27 L70,30 L68,33 L63,32 L59,31 Z"/>
-            <path d="M63,25 L68,24 L69,26 L67,27 L63,27 Z"/>
-            {/* Levant/Iraq */}
-            <path d="M59,29 L64,28 L68,29 L68,32 L65,33 L61,33 L59,31 Z"/>
-            {/* Arabian Peninsula */}
-            <path d="M60,33 L65,31 L70,32 L71,37 L69,42 L67,46 L64,48 L61,46 L60,42 L59,38 Z"/>
-            {/* Iran */}
-            <path d="M63,26 L69,25 L73,26 L74,30 L73,33 L68,34 L65,33 L63,30 Z"/>
-            {/* Pakistan/India */}
-            <path d="M70,27 L75,26 L79,27 L79,31 L77,36 L75,39 L74,44 L72,46 L70,43 L69,38 L68,34 L68,30 Z"/>
-            <path d="M72,40 L76,38 L77,42 L74,45 L72,44 Z"/>
-            {/* SE Asia */}
-            <path d="M77,30 L82,29 L85,31 L85,36 L83,40 L81,43 L79,44 L77,42 L76,37 L75,33 Z"/>
-            <path d="M80,38 L84,36 L86,39 L85,43 L83,46 L80,46 L79,44 Z"/>
-            <path d="M79,45 L82,44 L83,47 L81,49 L79,48 Z"/>
-            <path d="M82,45 L86,44 L88,46 L87,51 L84,52 L81,51 L81,48 Z"/>
-            <path d="M76,47 L81,45 L82,48 L80,51 L77,51 L75,49 Z"/>
-            <path d="M80,52 L85,51 L87,53 L85,55 L81,54 Z"/>
-            <path d="M84,36 L86,35 L88,37 L87,40 L85,41 L83,40 Z"/>
-            <path d="M87,51 L91,49 L94,51 L93,55 L89,56 L87,54 Z"/>
-            {/* China */}
-            <path d="M70,20 L77,18 L84,18 L89,20 L90,24 L89,29 L86,31 L82,32 L78,32 L74,30 L71,28 L70,23 Z"/>
-            {/* Korea + Japan */}
-            <path d="M85,28 L88,27 L89,29 L88,32 L85,32 L84,30 Z"/>
-            <path d="M87,24 L91,22 L92,25 L91,28 L89,30 L87,28 Z"/>
-            <path d="M85,33 L87,32 L88,34 L86,36 Z"/>
-            {/* Australia + NZ */}
-            <path d="M80,59 L85,57 L90,57 L94,60 L94,65 L92,69 L89,71 L85,72 L81,71 L79,67 L79,63 Z"/>
-            <path d="M86,73 L88,72 L89,74 L87,76 Z"/>
-            <path d="M94,69 L96,67 L98,70 L97,73 L94,72 Z"/>
-            <path d="M94,73 L97,71 L98,75 L97,77 L93,76 Z"/>
-          </g>
-        </svg>
+      {/* Leaflet map container */}
+      <div ref={mapRef} style={{ flex:1, width:'100%' }}/>
 
-        {spots.map(spot => {
-          const pos = latLngToPercent(spot.lat, spot.lng);
-          const isSelected = sel?.id === spot.id;
-          const dotSize = spot.heat>=3 ? 14 : spot.heat>=2 ? 11 : 8;
-          return (
-            <button key={spot.id} onClick={(e) => { e.stopPropagation(); setSel(isSelected ? null : spot); playBlip(); }}
-              style={{ position:'absolute', left:`${pos.x}%`, top:`${pos.y}%`, transform:'translate(-50%,-50%)', width:44, height:44, background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', justifyContent:'center', zIndex: isSelected ? 20 : 10 }}>
-              {isSelected && <span style={{ position:'absolute', width:dotSize*4, height:dotSize*4, borderRadius:'50%', border:'2px solid rgba(229,57,53,0.5)', animation:'ripple 1.2s ease-out infinite', top:'50%', left:'50%' }}/>}
-              {spot.heat >= 2 && !isSelected && <span style={{ position:'absolute', width:dotSize*2.8, height:dotSize*2.8, borderRadius:'50%', background:'rgba(229,57,53,0.15)', top:'50%', left:'50%', transform:'translate(-50%,-50%)' }}/>}
-              <span style={{ display:'block', width:dotSize, height:dotSize, borderRadius:'50%', background: isSelected ? '#FF5252' : '#E53935', boxShadow: isSelected ? `0 0 ${dotSize}px rgba(229,57,53,0.8)` : 'none', animation:'pulse 2s ease infinite', animationDelay:`${spot.lat % 1}s`, transition:'transform .15s, box-shadow .15s', transform: isSelected ? 'scale(1.4)' : 'scale(1)' }}/>
-              {spot.stories.length > 1 && <span style={{ position:'absolute', top:'50%', left:'50%', marginTop:-(dotSize/2+10), marginLeft:dotSize/2, background:'rgba(229,57,53,0.9)', color:'#fff', fontSize:9, fontWeight:700, padding:'1px 4px', borderRadius:8, lineHeight:'14px', whiteSpace:'nowrap' }}>{spot.stories.length}</span>}
-            </button>
-          );
-        })}
-
-        <div style={{ position:'absolute', bottom:16, left:0, right:0, display:'flex', justifyContent:'center', gap:8, pointerEvents:'none' }}>
-          {[{dot:'#fff',label:`${spots.length} منطقة`},{dot:'rgba(255,255,255,.4)',label:`${totalStories} خبر`},{dot:'#C62828',anim:'pulse 1.5s infinite',label:'مباشر'}].map((s,i)=>(
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'rgba(255,255,255,.4)', background:'rgba(0,0,0,.5)', padding:'5px 12px', borderRadius:14, backdropFilter:'blur(10px)' }}>
-              <div style={{ width:5, height:5, borderRadius:'50%', background:s.dot, animation:s.anim||'none' }}/>{s.label}
-            </div>
-          ))}
-        </div>
-      </div>
-
+      {/* Bottom sheet */}
       {sel && (
-        <div key={sel.id} onClick={e=>e.stopPropagation()} style={{ position:'absolute', bottom:0, left:0, right:0, background:'#fff', borderRadius:'20px 20px 0 0', zIndex:100, maxHeight:'55%', display:'flex', flexDirection:'column', boxShadow:'0 -8px 40px rgba(0,0,0,.5)', animation:'cu .3s cubic-bezier(.32,.72,.24,1)', direction:'rtl', fontFamily:'var(--ft)' }}>
-          <div style={{ width:36, height:4, background:'#E0E0E0', borderRadius:2, margin:'10px auto 0', flexShrink:0 }}/>
-          <div style={{ padding:'12px 20px 10px', borderBottom:'.5px solid #F0F0F0', flexShrink:0 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
-              <span style={{ fontSize:17, fontWeight:800, color:'#0A0A0A' }}>{sel.city}</span>
-              <span style={{ width:3, height:3, background:'#C0C0C0', borderRadius:'50%' }}/>
-              <span style={{ fontSize:13, color:'#C0C0C0' }}>{sel.country}</span>
-            </div>
-            <div style={{ fontSize:11, color:'#C0C0C0' }}>{sel.stories.length} {sel.stories.length>1?'أخبار':'خبر'} الآن</div>
-          </div>
-          <div style={{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch' }}>
-            {sel.stories.map((s,i) => (
-              <div key={i} onClick={()=>s.link&&s.link!=='#'&&window.open(s.link,'_blank')} style={{ padding:'14px 20px', borderBottom:i<sel.stories.length-1?'.5px solid #F0F0F0':'none', cursor:s.link?'pointer':'default' }}>
-                {s.tag && <div style={{ display:'inline-block', fontSize:10, fontWeight:600, color:s.brk||s.tag==='عاجل'?'#B71C1C':'#999', border:`1px solid ${s.brk||s.tag==='عاجل'?'rgba(183,28,28,.15)':'#F0F0F0'}`, padding:'1px 8px', borderRadius:3, marginBottom:6 }}>{s.tag}</div>}
-                <div style={{ fontSize:15, fontWeight:700, lineHeight:1.7, color:'#0A0A0A', marginBottom:5 }}>{s.title}</div>
-                <div style={{ display:'flex', gap:8, fontSize:11, color:'#C0C0C0', alignItems:'center' }}>
-                  <span>{s.src}</span><span>·</span><span>{s.t}</span>
-                  {s.lk&&<><span>·</span><span>{s.lk} تفاعل</span></>}
-                </div>
+        <div onClick={()=>setSel(null)} style={{ position:'absolute', inset:0, zIndex:2000 }}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            position:'absolute', bottom:0, left:0, right:0,
+            background:'#fff', borderRadius:'20px 20px 0 0',
+            maxHeight:'55%', display:'flex', flexDirection:'column',
+            boxShadow:'0 -8px 40px rgba(0,0,0,.4)',
+            animation:'cu .3s cubic-bezier(.32,.72,.24,1)',
+            direction:'rtl', fontFamily:'var(--ft)',
+          }}>
+            <div style={{ width:36, height:4, background:'#E0E0E0', borderRadius:2, margin:'10px auto 0', flexShrink:0 }}/>
+            <div style={{ padding:'12px 20px 10px', borderBottom:'.5px solid #F0F0F0', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                <span style={{ fontSize:18, fontWeight:800, color:'#0A0A0A' }}>{sel.city}</span>
+                <span style={{ fontSize:13, color:'#C0C0C0' }}>· {sel.country}</span>
               </div>
-            ))}
+              <div style={{ fontSize:11, color:'#C0C0C0' }}>{sel.stories.length} {sel.stories.length>1?'أخبار':'خبر'} الآن</div>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch' }}>
+              {sel.stories.map((s,i) => (
+                <div key={i} onClick={()=>s.link&&s.link!=='#'&&window.open(s.link,'_blank')}
+                  style={{ padding:'14px 20px', borderBottom:i<sel.stories.length-1?'.5px solid #F0F0F0':'none', cursor:s.link?'pointer':'default' }}>
+                  {s.tag && <div style={{ display:'inline-block', fontSize:10, fontWeight:600, color:s.brk||s.tag==='عاجل'?'#B71C1C':'#999', border:`1px solid ${s.brk||s.tag==='عاجل'?'rgba(183,28,28,.15)':'#F0F0F0'}`, padding:'1px 8px', borderRadius:3, marginBottom:6 }}>{s.tag}</div>}
+                  <div style={{ fontSize:15, fontWeight:700, lineHeight:1.7, color:'#0A0A0A', marginBottom:4 }}>{s.title}</div>
+                  <div style={{ fontSize:11, color:'#C0C0C0' }}>{s.src} · {s.t}{s.lk?` · ${s.lk} تفاعل`:''}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
+
+// ═══════════════════════════════════════════
+// NEWSROOM COMPONENTS
+// ═══════════════════════════════════════════
 
 function Post({ item, delay, onOpen, onSave, isSaved }) {
   const [liked, setLiked] = useState(false);
@@ -787,12 +763,16 @@ function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding }
         </button>
       </div>
       <div style={{ padding:20,textAlign:'center' }}>
-        <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>صَدى v2.2</div>
+        <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>صَدى v2.3</div>
         <div style={{ fontSize:11,color:'var(--t4)' }}>أخبار العالم في مكانٍ واحد</div>
       </div>
     </>
   );
 }
+
+// ═══════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════
 
 export default function Sada() {
   const [obDone, setObDone] = useState(() => { try { return localStorage.getItem('sada-ob-done')==='1'; } catch { return false; } });

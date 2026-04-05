@@ -257,10 +257,6 @@ html,body{background:#000;overflow:hidden;height:100%}
 .topic-bar::-webkit-scrollbar{display:none}
 .topic-pill{flex-shrink:0;padding:5px 14px;border-radius:20px;border:1px solid var(--g2);font-size:12px;font-weight:600;color:var(--t3);background:none;white-space:nowrap}
 .topic-pill.on{background:var(--bk);color:#fff;border-color:var(--bk)}
-/* Leaflet marker override */
-.sada-marker{background:none!important;border:none!important}
-.sada-dot{display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;transition:transform .15s}
-.sada-dot:active{transform:scale(1.2)}
 `;
 
 const I = {
@@ -420,131 +416,254 @@ function Onboarding({ onDone }) {
 }
 
 // ═══════════════════════════════════════════
-// REAL MAP — Leaflet.js with OpenStreetMap tiles
-// Full zoom/pan/touch, real countries & city labels
+// NEWS MAP — MapLibre GL JS
+// WebGL, flyTo camera, pulsing markers, free
 // ═══════════════════════════════════════════
 
+const CITY_TIMES = [
+  { city:'الرياض', tz:'Asia/Riyadh' },
+  { city:'لندن',   tz:'Europe/London' },
+  { city:'نيويورك',tz:'America/New_York' },
+  { city:'طوكيو',  tz:'Asia/Tokyo' },
+];
+
 function NewsMap({ onClose, liveFeed=[] }) {
-  const mapRef      = useRef(null);
-  const leafletRef  = useRef(null);
-  const markersRef  = useRef([]);
-  const [sel, setSel] = useState(null);
+  const mapContainerRef = useRef(null);
+  const mapRef          = useRef(null);
+  const markersRef      = useRef([]);
+  const [sel, setSel]   = useState(null);
+  const [time, setTime] = useState(new Date());
+  const [mapReady, setMapReady] = useState(false);
   const spots = useMemo(() => buildMapSpots(liveFeed.length>0?liveFeed:FEED), [liveFeed.length]);
 
+  const fmt = (tz) => {
+    try { return new Intl.DateTimeFormat('ar',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).format(time); }
+    catch { return '--:--'; }
+  };
+
   useEffect(() => {
-    // Load Leaflet CSS
-    if (!document.getElementById('leaflet-css')) {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (!document.getElementById('maplibre-css')) {
       const link = document.createElement('link');
-      link.id = 'leaflet-css';
+      link.id = 'maplibre-css';
       link.rel = 'stylesheet';
-      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+      link.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
       document.head.appendChild(link);
     }
 
-    // Load Leaflet JS then init map
     const initMap = () => {
-      if (!mapRef.current || leafletRef.current) return;
-      const L = window.L;
-      if (!L) return;
+      if (!mapContainerRef.current || mapRef.current) return;
+      const ML = window.maplibregl;
 
-      const map = L.map(mapRef.current, {
-        center: [26, 35],
-        zoom: 4,
-        zoomControl: false,
+      const map = new ML.Map({
+        container: mapContainerRef.current,
+        style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+        center: [38, 28],
+        zoom: 3.2,
+        pitch: 30,
+        bearing: 0,
         attributionControl: false,
+        maxPitch: 65,
       });
 
-      // Dark tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 18,
-      }).addTo(map);
+      mapRef.current = map;
 
-      leafletRef.current = map;
+      map.on('load', () => {
+        setMapReady(true);
 
-      // Add markers
-      spots.forEach(spot => {
-        const size = spot.heat>=3 ? 40 : spot.heat>=2 ? 32 : 26;
-        const count = spot.stories.length;
-
-        const icon = L.divIcon({
-          className: 'sada-marker',
-          html: `
-            <div style="
-              width:${size}px;height:${size}px;
-              background:${spot.heat>=3?'rgba(183,28,28,0.9)':'rgba(229,57,53,0.85)'};
-              border:2px solid rgba(255,100,100,0.6);
-              border-radius:50%;
-              display:flex;align-items:center;justify-content:center;
-              color:#fff;font-weight:800;font-size:${size>32?13:11}px;
-              font-family:-apple-system,sans-serif;
-              box-shadow:0 0 ${size/2}px rgba(229,57,53,0.5);
-              cursor:pointer;
-            ">${count>1?count:''}</div>
-          `,
-          iconSize: [size, size],
-          iconAnchor: [size/2, size/2],
-        });
-
-        const marker = L.marker([spot.lat, spot.lng], { icon })
-          .addTo(map)
-          .on('click', () => { setSel(spot); playBlip(); });
-
-        markersRef.current.push(marker);
+        // Inject marker animation CSS
+        if (!document.getElementById('sada-marker-css')) {
+          const style = document.createElement('style');
+          style.id = 'sada-marker-css';
+          style.textContent = `
+            @keyframes sadaPulse {
+              0%,100% { transform:translate(-50%,-50%) scale(0.7); opacity:0.5; }
+              50% { transform:translate(-50%,-50%) scale(1.3); opacity:1; }
+            }
+            @keyframes sadaRing {
+              0% { transform:translate(-50%,-50%) scale(0.5); opacity:0.8; }
+              100% { transform:translate(-50%,-50%) scale(2.2); opacity:0; }
+            }
+            .sada-map-marker { cursor:pointer; }
+            .sada-map-marker:hover .sada-marker-core {
+              transform: scale(1.25) !important;
+              box-shadow: 0 0 32px rgba(229,57,53,1), 0 4px 16px rgba(0,0,0,0.7) !important;
+            }
+          `;
+          document.head.appendChild(style);
+        }
       });
+
+      return map;
     };
 
-    if (window.L) {
+    if (window.maplibregl) {
       initMap();
     } else {
       const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+      script.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
       script.onload = initMap;
       document.head.appendChild(script);
     }
 
     return () => {
-      if (leafletRef.current) {
-        leafletRef.current.remove();
-        leafletRef.current = null;
-      }
+      markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+      setMapReady(false);
     };
   }, []);
 
-  // Update markers when spots change
+  // Place markers when ready
   useEffect(() => {
-    if (!leafletRef.current || !window.L) return;
-    // markers already placed in init — no-op for now
-  }, [spots]);
+    if (!mapReady || !mapRef.current || !window.maplibregl) return;
+    const map = mapRef.current;
+    const ML = window.maplibregl;
+
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
+
+    spots.forEach(spot => {
+      const size  = spot.heat >= 3 ? 44 : spot.heat >= 2 ? 34 : 24;
+      const count = spot.stories.length;
+      const color = spot.heat >= 3 ? '#B71C1C' : '#E53935';
+      const ringDelay = (spot.lat % 2).toFixed(2);
+
+      const el = document.createElement('div');
+      el.className = 'sada-map-marker';
+      el.style.cssText = 'position:absolute;width:0;height:0;';
+      el.innerHTML = `
+        <div style="
+          position:absolute;
+          width:${size*2.4}px; height:${size*2.4}px;
+          background:radial-gradient(circle, rgba(229,57,53,0.2) 0%, transparent 70%);
+          top:50%; left:50%;
+          animation: sadaPulse 2.5s ease-in-out ${ringDelay}s infinite;
+          border-radius:50%; pointer-events:none;
+        "></div>
+        <div style="
+          position:absolute;
+          width:${size*1.8}px; height:${size*1.8}px;
+          border:1.5px solid rgba(229,57,53,0.4);
+          top:50%; left:50%;
+          animation: sadaRing 2.5s ease-out ${ringDelay}s infinite;
+          border-radius:50%; pointer-events:none;
+        "></div>
+        <div class="sada-marker-core" style="
+          position:absolute;
+          width:${size}px; height:${size}px;
+          background:${color};
+          border:2px solid rgba(255,180,180,0.5);
+          border-radius:50%;
+          top:50%; left:50%;
+          transform:translate(-50%,-50%);
+          display:flex; align-items:center; justify-content:center;
+          color:#fff; font-weight:800;
+          font-size:${size>34?14:11}px;
+          font-family:-apple-system,sans-serif;
+          box-shadow:0 0 ${size/2}px rgba(229,57,53,0.65), 0 2px 10px rgba(0,0,0,0.6);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+          z-index:2;
+        ">${count > 1 ? count : ''}</div>
+      `;
+
+      const marker = new ML.Marker({ element: el, anchor: 'center' })
+        .setLngLat([spot.lng, spot.lat])
+        .addTo(map);
+
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playBlip();
+        setSel(spot);
+        map.flyTo({
+          center: [spot.lng, spot.lat - 1.5],
+          zoom: 5.8,
+          pitch: 50,
+          bearing: (Math.random() - 0.5) * 20,
+          duration: 1600,
+          easing: t => t < 0.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1,
+        });
+      });
+
+      markersRef.current.push(marker);
+    });
+  }, [mapReady, spots]);
+
+  const handleClose = () => {
+    setSel(null);
+    if (mapRef.current) {
+      mapRef.current.flyTo({ center:[38,28], zoom:3.2, pitch:30, bearing:0, duration:1000 });
+    }
+    onClose();
+  };
+
+  const totalStories = spots.reduce((a,s)=>a+s.stories.length,0);
 
   return (
-    <div style={{ position:'absolute', inset:0, zIndex:50, display:'flex', flexDirection:'column', background:'#1a1a2e' }}>
-      {/* Header */}
-      <div style={{ position:'absolute', top:0, left:0, right:0, zIndex:1000, padding:'44px 16px 12px', background:'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)', pointerEvents:'none' }}>
+    <div style={{ position:'absolute', inset:0, zIndex:50, display:'flex', flexDirection:'column', background:'#04080f' }}>
+
+      {/* Gradient overlay header */}
+      <div style={{
+        position:'absolute', top:0, left:0, right:0, zIndex:100,
+        padding:'44px 16px 16px',
+        background:'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
+        pointerEvents:'none',
+      }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', pointerEvents:'auto' }}>
           <div>
             <div style={{ fontSize:18, fontWeight:800, color:'#fff', direction:'rtl' }}>خريطة الأخبار</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,.5)', direction:'rtl', marginTop:2 }}>
-              {spots.length} منطقة · {spots.reduce((a,s)=>a+s.stories.length,0)} خبر مباشر
+            <div style={{ fontSize:11, color:'rgba(255,255,255,.45)', direction:'rtl', marginTop:2 }}>
+              {spots.length} منطقة · {totalStories} خبر مباشر
             </div>
           </div>
-          <button onClick={onClose} style={{ background:'rgba(0,0,0,.5)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,.15)', cursor:'pointer', color:'#fff', padding:10, borderRadius:'50%', display:'flex', pointerEvents:'auto' }}>
-            {I.close()}
-          </button>
+          <button onClick={handleClose} style={{
+            background:'rgba(0,0,0,0.55)', backdropFilter:'blur(12px)',
+            border:'1px solid rgba(255,255,255,.18)', cursor:'pointer',
+            color:'#fff', padding:10, borderRadius:'50%', display:'flex',
+            pointerEvents:'auto',
+          }}>{I.close()}</button>
+        </div>
+
+        {/* World clocks */}
+        <div style={{ display:'flex', gap:6, marginTop:12, justifyContent:'center', pointerEvents:'auto' }}>
+          {CITY_TIMES.map((c,i) => (
+            <div key={i} style={{
+              background:'rgba(0,0,0,0.55)', backdropFilter:'blur(12px)',
+              borderRadius:10, padding:'5px 8px', border:'1px solid rgba(255,255,255,.12)',
+              textAlign:'center',
+            }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,.95)', fontVariantNumeric:'tabular-nums' }}>{fmt(c.tz)}</div>
+              <div style={{ fontSize:9, color:'rgba(255,255,255,.35)', marginTop:1 }}>{c.city}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Leaflet map container */}
-      <div ref={mapRef} style={{ flex:1, width:'100%' }}/>
+      {/* MapLibre GL container */}
+      <div ref={mapContainerRef} style={{ flex:1, width:'100%' }}/>
 
-      {/* Bottom sheet */}
+      {/* Loading spinner */}
+      {!mapReady && (
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'#04080f', zIndex:99 }}>
+          <div style={{ textAlign:'center', color:'rgba(255,255,255,.4)', fontSize:13 }}>
+            <div style={{ width:32, height:32, border:'2px solid rgba(255,255,255,.12)', borderTopColor:'#E53935', borderRadius:'50%', margin:'0 auto 12px', animation:'spin .8s linear infinite' }}/>
+            جاري تحميل الخريطة…
+          </div>
+        </div>
+      )}
+
+      {/* Story drawer */}
       {sel && (
-        <div onClick={()=>setSel(null)} style={{ position:'absolute', inset:0, zIndex:2000 }}>
+        <div onClick={()=>setSel(null)} style={{ position:'absolute', inset:0, zIndex:200 }}>
           <div onClick={e=>e.stopPropagation()} style={{
             position:'absolute', bottom:0, left:0, right:0,
             background:'#fff', borderRadius:'20px 20px 0 0',
             maxHeight:'55%', display:'flex', flexDirection:'column',
-            boxShadow:'0 -8px 40px rgba(0,0,0,.4)',
+            boxShadow:'0 -8px 40px rgba(0,0,0,.5)',
             animation:'cu .3s cubic-bezier(.32,.72,.24,1)',
             direction:'rtl', fontFamily:'var(--ft)',
           }}>
@@ -763,16 +882,12 @@ function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding }
         </button>
       </div>
       <div style={{ padding:20,textAlign:'center' }}>
-        <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>صَدى v2.3</div>
+        <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>صَدى v2.4</div>
         <div style={{ fontSize:11,color:'var(--t4)' }}>أخبار العالم في مكانٍ واحد</div>
       </div>
     </>
   );
 }
-
-// ═══════════════════════════════════════════
-// MAIN APP
-// ═══════════════════════════════════════════
 
 export default function Sada() {
   const [obDone, setObDone] = useState(() => { try { return localStorage.getItem('sada-ob-done')==='1'; } catch { return false; } });

@@ -24,6 +24,15 @@ const SOURCES = [
   { n:"القدس العربي",  i:"ق",  id:"alquds"          },
   { n:"نون بوست",      i:"ن",  id:"noonpost"        },
   { n:"لوسيل",         i:"لس", id:"lusail"          },
+  // مصادر إنجليزية (مترجمة تلقائياً)
+  { n:"BBC عالمي",     i:"BB", id:"bbc_en"          },
+  { n:"رويترز",        i:"R",  id:"reuters_en"      },
+  { n:"CNN عالمي",     i:"CN", id:"cnn_en"          },
+  { n:"الغارديان",     i:"G",  id:"guardian"         },
+  { n:"نيويورك تايمز", i:"NY", id:"nyt"             },
+  { n:"فوكس نيوز",    i:"FX", id:"fox"              },
+  { n:"BBC تقنية",     i:"BT", id:"bbc_tech"         },
+  { n:"NBC نيوز",      i:"NB", id:"nbc"              },
 ];
 
 const TOPICS = [

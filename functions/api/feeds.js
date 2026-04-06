@@ -1,5 +1,6 @@
 // Cloudflare Pages Function — /api/feeds
 // Auto-deploys as /api/feeds on Cloudflare Pages
+// English sources are auto-translated to Arabic via Workers AI + KV cache
 
 const SOURCES = {
   // ── Tier 1: Flagship Arabic broadcasters ──
@@ -96,7 +97,112 @@ const SOURCES = {
     name: "لوسيل", initial: "لس", tier: 2,
     feeds: ["https://lusailnews.net/feed"]
   },
+
+  // ── Tier 3: English sources (auto-translated → native Arabic) ──
+  bbc_en: {
+    name: "BBC عالمي", initial: "BB", tier: 3, lang: "en",
+    feeds: ["https://feeds.bbci.co.uk/news/world/rss.xml"]
+  },
+  reuters_en: {
+    name: "رويترز", initial: "R", tier: 3, lang: "en",
+    feeds: ["https://feeds.reuters.com/Reuters/worldNews"]
+  },
+  cnn_en: {
+    name: "CNN عالمي", initial: "CN", tier: 3, lang: "en",
+    feeds: ["https://rss.cnn.com/rss/cnn_topstories.rss"]
+  },
+  guardian: {
+    name: "الغارديان", initial: "G", tier: 3, lang: "en",
+    feeds: ["https://www.theguardian.com/world/rss"]
+  },
+  nyt: {
+    name: "نيويورك تايمز", initial: "NY", tier: 3, lang: "en",
+    feeds: ["https://rss.nytimes.com/services/xml/rss/nyt/World.xml"]
+  },
+  fox: {
+    name: "فوكس نيوز", initial: "FX", tier: 3, lang: "en",
+    feeds: ["https://feeds.foxnews.com/foxnews/latest?format=xml"]
+  },
+  bbc_tech: {
+    name: "BBC تقنية", initial: "BT", tier: 3, lang: "en",
+    feeds: ["https://feeds.bbci.co.uk/news/technology/rss.xml"]
+  },
+  nbc: {
+    name: "NBC نيوز", initial: "NB", tier: 3, lang: "en",
+    feeds: ["https://feeds.nbcnews.com/feeds/topstories"]
+  },
 };
+
+// ── Identify English sources ──
+const EN_SOURCE_IDS = new Set(
+  Object.entries(SOURCES).filter(([, v]) => v.lang === 'en').map(([k]) => k)
+);
+
+// ── Simple hash for KV cache keys ──
+function hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i);
+    h |= 0;
+  }
+  return (h >>> 0).toString(36);
+}
+
+// ── KV-cached translation: translate once, serve forever ──
+async function translateItem(item, ai, kv) {
+  const cacheKey = `t:${item.sourceId}:${hash(item.title)}`;
+
+  // 1. Check KV cache first
+  if (kv) {
+    try {
+      const cached = await kv.get(cacheKey, 'json');
+      if (cached) {
+        return { ...item, title: cached.t, description: cached.d, translated: true };
+      }
+    } catch {}
+  }
+
+  // 2. No cache hit — translate via Workers AI
+  if (!ai) return item; // no AI binding, skip
+
+  try {
+    const [titleRes, descRes] = await Promise.all([
+      ai.run('@cf/meta/m2m100-1.2b', {
+        text: item.title,
+        source_lang: 'english',
+        target_lang: 'arabic',
+      }),
+      item.description
+        ? ai.run('@cf/meta/m2m100-1.2b', {
+            text: item.description,
+            source_lang: 'english',
+            target_lang: 'arabic',
+          })
+        : Promise.resolve({ translated_text: '' }),
+    ]);
+
+    const translatedTitle = titleRes.translated_text || item.title;
+    const translatedDesc = descRes.translated_text || item.description;
+
+    // 3. Store in KV for 24 hours so next request is instant
+    if (kv) {
+      try {
+        await kv.put(cacheKey, JSON.stringify({ t: translatedTitle, d: translatedDesc }), {
+          expirationTtl: 86400, // 24h
+        });
+      } catch {}
+    }
+
+    return {
+      ...item,
+      title: translatedTitle,
+      description: translatedDesc,
+      translated: true,
+    };
+  } catch {
+    return item; // translation failed, serve English as fallback
+  }
+}
 
 function parseXML(xml) {
   const items = [];
@@ -113,12 +219,10 @@ function parseXML(xml) {
     const title = get('title');
     const link = get('link');
     let rawDesc = get('description');
-    // Decode HTML entities first
     rawDesc = rawDesc
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
       .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&nbsp;/g, ' ')
       .replace(/&#\d+;/g, ' ').replace(/&[a-z]+;/g, ' ');
-    // Strip all HTML tags and URLs
     const description = rawDesc
       .replace(/<[^>]*>/g, ' ')
       .replace(/https?:\/\/[^\s<>"']+/g, '')
@@ -126,7 +230,6 @@ function parseXML(xml) {
       .trim();
     const pubDate = get('pubDate');
 
-    // Image extraction — try multiple sources
     let image = '';
     const mediaMatch = block.match(/url=["']([^"']+\.(jpg|jpeg|png|webp)[^"']*)/i);
     if (mediaMatch) image = mediaMatch[1];
@@ -139,7 +242,6 @@ function parseXML(xml) {
       if (imgMatch) image = imgMatch[0];
     }
 
-    // Categories
     const categories = [];
     const catRegex = /<category[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/category>/g;
     let catMatch;
@@ -148,7 +250,6 @@ function parseXML(xml) {
       if (cat && cat.length < 30) categories.push(cat);
     }
 
-    // Breaking news detection
     const isBreaking = title && (
       title.includes('عاجل') ||
       title.includes('breaking') ||
@@ -187,7 +288,6 @@ export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
 
-  // CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -202,9 +302,12 @@ export async function onRequest(context) {
     const requestedSources = url.searchParams.get('sources')
       ? url.searchParams.get('sources').split(',')
       : Object.keys(SOURCES);
-    const limit = parseInt(url.searchParams.get('limit')) || 50;
-    // Tier filter: 1 = flagship only, 2 = all, default = all
-    const tier = parseInt(url.searchParams.get('tier')) || 2;
+    const limit = parseInt(url.searchParams.get('limit')) || 80;
+    const tier = parseInt(url.searchParams.get('tier')) || 3;
+
+    // Bindings (set up in Cloudflare dashboard)
+    const ai = context.env?.AI || null;
+    const kv = context.env?.TRANSLATIONS || null;
 
     const allItems = [];
 
@@ -218,7 +321,7 @@ export async function onRequest(context) {
             const timeout = setTimeout(() => controller.abort(), 8000);
             const res = await fetch(feedUrl, {
               headers: {
-                'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/2.5; +https://sada-app.pages.dev)',
+                'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/2.6; +https://sada-app.pages.dev)',
                 'Accept': 'application/rss+xml, application/xml, text/xml, */*',
                 'Cache-Control': 'no-cache',
               },
@@ -234,9 +337,10 @@ export async function onRequest(context) {
               sourceName: source.name,
               sourceInitial: source.initial,
               sourceTier: source.tier,
+              lang: source.lang || 'ar',
               timeAgo: timeAgo(item.pubDate),
             }));
-          } catch (e) {
+          } catch {
             return [];
           }
         });
@@ -244,6 +348,28 @@ export async function onRequest(context) {
 
     const results = await Promise.allSettled(fetches);
     results.forEach(r => { if (r.status === 'fulfilled') allItems.push(...r.value); });
+
+    // ── Translate English items (KV-cached: only new articles hit AI) ──
+    const translatePromises = allItems
+      .filter(i => i.lang === 'en')
+      .slice(0, 25) // cap per request
+      .map(item => translateItem(item, ai, kv));
+
+    if (translatePromises.length > 0) {
+      const translated = await Promise.allSettled(translatePromises);
+      const translatedMap = new Map();
+      translated.forEach(r => {
+        if (r.status === 'fulfilled' && r.value) {
+          translatedMap.set(r.value.link, r.value);
+        }
+      });
+      // Replace English items in-place with translated versions
+      for (let i = 0; i < allItems.length; i++) {
+        if (translatedMap.has(allItems[i].link)) {
+          allItems[i] = translatedMap.get(allItems[i].link);
+        }
+      }
+    }
 
     // Sort: breaking first, then by recency
     allItems.sort((a, b) => {
@@ -270,6 +396,7 @@ export async function onRequest(context) {
       categories: item.categories,
       time: item.timeAgo,
       isBreaking: item.isBreaking,
+      translated: item.translated || false,
       source: {
         id: item.sourceId,
         name: item.sourceName,

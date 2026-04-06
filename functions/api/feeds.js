@@ -407,23 +407,51 @@ export async function onRequest(context) {
       }
     }
 
-    // Sort: breaking first, then by recency
-    allItems.sort((a, b) => {
+    // Split into Arabic and translated English, sort each by recency
+    const arabicItems = allItems.filter(i => i.lang !== 'en');
+    const translatedEn = allItems.filter(i => i.lang === 'en' && i.translated);
+
+    const sortByRecency = (a, b) => {
       if (a.isBreaking && !b.isBreaking) return -1;
       if (!a.isBreaking && b.isBreaking) return 1;
       return b.timestamp - a.timestamp;
-    });
+    };
+    arabicItems.sort(sortByRecency);
+    translatedEn.sort(sortByRecency);
 
-    // Deduplicate by title similarity
-    const seen = new Set();
-    const deduped = allItems.filter(item => {
-      const key = item.title.slice(0, 30).trim();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    // Deduplicate each pool
+    const dedup = (items) => {
+      const seen = new Set();
+      return items.filter(item => {
+        const key = item.title.slice(0, 30).trim();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    };
+    const dedupedAr = dedup(arabicItems);
+    const dedupedEn = dedup(translatedEn);
 
-    const feed = deduped.slice(0, limit).map((item, i) => ({
+    // Mix: ~70% Arabic, ~30% translated English, interleaved
+    const mixed = [];
+    let ai2 = 0, ei = 0;
+    while (mixed.length < limit && (ai2 < dedupedAr.length || ei < dedupedEn.length)) {
+      // Add 3 Arabic then 1 English (roughly 75/25 mix)
+      for (let n = 0; n < 3 && ai2 < dedupedAr.length && mixed.length < limit; n++) {
+        mixed.push(dedupedAr[ai2++]);
+      }
+      if (ei < dedupedEn.length && mixed.length < limit) {
+        mixed.push(dedupedEn[ei++]);
+      }
+    }
+
+    // If no translated English yet, fill entirely with Arabic
+    if (dedupedEn.length === 0) {
+      mixed.length = 0;
+      mixed.push(...dedup(allItems.sort(sortByRecency)).slice(0, limit));
+    }
+
+    const feed = mixed.map((item, i) => ({
       id: `${item.sourceId}-${i}-${item.timestamp}`,
       title: item.title,
       body: item.description,
@@ -463,7 +491,7 @@ export async function onRequest(context) {
         hasKV: !!kv,
         aiType: ai ? typeof ai.run : 'n/a',
         aiTest: aiTestResult,
-        singleTest: singleTestResult,
+        translatedEnPool: dedupedEn.length,
         englishFetched: enIndices.length,
         translatedCount: feed.filter(f => f.translated).length,
         translationErrors: debugErrors,

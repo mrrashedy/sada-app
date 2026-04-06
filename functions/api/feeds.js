@@ -103,25 +103,13 @@ const SOURCES = {
     name: "BBC عالمي", initial: "BB", tier: 3, lang: "en",
     feeds: ["https://feeds.bbci.co.uk/news/world/rss.xml"]
   },
-  reuters_en: {
-    name: "رويترز", initial: "R", tier: 3, lang: "en",
-    feeds: ["https://feeds.reuters.com/Reuters/worldNews"]
-  },
-  cnn_en: {
-    name: "CNN عالمي", initial: "CN", tier: 3, lang: "en",
-    feeds: ["https://rss.cnn.com/rss/cnn_topstories.rss"]
-  },
-  guardian: {
-    name: "الغارديان", initial: "G", tier: 3, lang: "en",
-    feeds: ["https://www.theguardian.com/world/rss"]
-  },
   nyt: {
     name: "نيويورك تايمز", initial: "NY", tier: 3, lang: "en",
     feeds: ["https://rss.nytimes.com/services/xml/rss/nyt/World.xml"]
   },
   fox: {
     name: "فوكس نيوز", initial: "FX", tier: 3, lang: "en",
-    feeds: ["https://feeds.foxnews.com/foxnews/latest?format=xml"]
+    feeds: ["https://moxie.foxnews.com/google-publisher/latest.xml"]
   },
   bbc_tech: {
     name: "BBC تقنية", initial: "BT", tier: 3, lang: "en",
@@ -130,6 +118,18 @@ const SOURCES = {
   nbc: {
     name: "NBC نيوز", initial: "NB", tier: 3, lang: "en",
     feeds: ["https://feeds.nbcnews.com/feeds/topstories"]
+  },
+  npr: {
+    name: "NPR عالمي", initial: "NP", tier: 3, lang: "en",
+    feeds: ["https://feeds.npr.org/1004/rss.xml"]
+  },
+  abc_en: {
+    name: "ABC نيوز", initial: "AB", tier: 3, lang: "en",
+    feeds: ["https://feeds.abcnews.com/abcnews/topstories"]
+  },
+  sky_en: {
+    name: "سكاي نيوز EN", initial: "SK", tier: 3, lang: "en",
+    feeds: ["https://feeds.skynews.com/feeds/rss/world.xml"]
   },
 };
 
@@ -163,32 +163,34 @@ async function translateItem(item, ai, kv) {
   }
 
   // 2. No cache hit — translate via Workers AI
-  if (!ai) return item; // no AI binding, skip
+  if (!ai) return { ...item, _err: 'no_ai_binding' };
 
   try {
-    const [titleRes, descRes] = await Promise.all([
-      ai.run('@cf/meta/m2m100-1.2b', {
-        text: item.title,
-        source_lang: 'english',
-        target_lang: 'arabic',
-      }),
-      item.description
-        ? ai.run('@cf/meta/m2m100-1.2b', {
-            text: item.description,
-            source_lang: 'english',
-            target_lang: 'arabic',
-          })
-        : Promise.resolve({ translated_text: '' }),
-    ]);
+    const titleRes = await ai.run('@cf/meta/m2m100-1.2b', {
+      text: item.title,
+      source_lang: 'english',
+      target_lang: 'arabic',
+    });
+
+    let translatedDesc = item.description;
+    if (item.description) {
+      try {
+        const descRes = await ai.run('@cf/meta/m2m100-1.2b', {
+          text: item.description,
+          source_lang: 'english',
+          target_lang: 'arabic',
+        });
+        translatedDesc = descRes.translated_text || item.description;
+      } catch {}
+    }
 
     const translatedTitle = titleRes.translated_text || item.title;
-    const translatedDesc = descRes.translated_text || item.description;
 
     // 3. Store in KV for 24 hours so next request is instant
     if (kv) {
       try {
         await kv.put(cacheKey, JSON.stringify({ t: translatedTitle, d: translatedDesc }), {
-          expirationTtl: 86400, // 24h
+          expirationTtl: 86400,
         });
       } catch {}
     }
@@ -199,8 +201,8 @@ async function translateItem(item, ai, kv) {
       description: translatedDesc,
       translated: true,
     };
-  } catch {
-    return item; // translation failed, serve English as fallback
+  } catch (err) {
+    return { ...item, _err: err.message || 'translate_fail' };
   }
 }
 
@@ -414,11 +416,24 @@ export async function onRequest(context) {
         tier: SOURCES[id].tier,
       }));
 
+    // Collect translation errors for debugging
+    const translationErrors = feed
+      .filter(f => f._err)
+      .map(f => ({ source: f.source?.id, err: f._err }));
+    feed.forEach(f => delete f._err);
+
     return new Response(JSON.stringify({
       ok: true,
       count: feed.length,
       sources: sourceList,
       feed,
+      _debug: {
+        hasAI: !!ai,
+        hasKV: !!kv,
+        englishFetched: allItems.filter(i => i.lang === 'en').length,
+        translatedCount: feed.filter(f => f.translated).length,
+        translationErrors,
+      },
     }), {
       headers: {
         'Content-Type': 'application/json',

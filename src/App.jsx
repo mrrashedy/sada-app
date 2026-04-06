@@ -159,8 +159,8 @@ const css = `
 @keyframes logoPulse{0%,100%{text-shadow:0 0 30px rgba(255,255,255,.2)}50%{text-shadow:0 0 60px rgba(255,255,255,.5)}}
 html,body{background:#000;overflow:hidden;height:100%}
 .app{max-width:430px;margin:0 auto;height:100vh;background:var(--bg);font-family:var(--ft);direction:rtl;display:flex;flex-direction:column;overflow:hidden;position:relative}
-.sb{display:flex;justify-content:space-between;align-items:center;padding:6px 20px;font-size:12px;font-weight:600;flex-shrink:0}
-.hdr{display:flex;justify-content:space-between;align-items:center;padding:2px 20px 10px;flex-shrink:0}
+.sb{display:none}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:max(12px, env(safe-area-inset-top, 12px)) 20px 10px;flex-shrink:0}
 .logo{font-size:24px;font-weight:800;letter-spacing:-.5px}
 .hdr-r{display:flex;gap:16px;align-items:center}
 .ib{background:none;border:none;cursor:pointer;color:var(--t1);padding:2px;display:flex;align-items:center}
@@ -201,7 +201,7 @@ html,body{background:#000;overflow:hidden;height:100%}
 .act.liked svg{animation:hp .3s ease}
 .act.saved{color:var(--bk)}
 .act:last-child{flex:0}
-.bnav{display:flex;border-top:.5px solid var(--g1);padding:8px 0 20px;background:var(--bg);flex-shrink:0}
+.bnav{display:flex;border-top:.5px solid var(--g1);padding:8px 0 max(20px, env(safe-area-inset-bottom, 20px));background:var(--bg);flex-shrink:0}
 .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;background:none;border:none;color:var(--t4);font-family:var(--ft);font-size:10px;font-weight:500;padding:4px 0;transition:color .2s}
 .bnav-item.on{color:var(--bk)}
 .detail{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:100;overflow-y:auto;animation:sl .3s cubic-bezier(.25,.46,.45,.94);direction:rtl;font-family:var(--ft)}

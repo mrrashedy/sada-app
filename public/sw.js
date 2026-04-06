@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sada-v3.0';
+const CACHE_NAME = 'sada-v3.1';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', (e) => {

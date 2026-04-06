@@ -100,20 +100,7 @@ const GEO_MAP = [
   { id:"in", city:"نيودلهي",  country:"الهند",    lat:28.61, lng:77.23, keywords:["الهند","نيودلهي","هندي","مودي"] },
 ];
 
-const FEED = [
-  { id:1,  s:SOURCES[0], t:"٣ د",  tag:"عاجل",  brk:true, bg:"linear-gradient(135deg,#1a1a2e,#0f3460)", title:"قمة الرياض تختتم بإعلان تاريخي — خارطة طريق اقتصادية جديدة للشرق الأوسط", body:"القادة يتوافقون على إنشاء صندوق إقليمي بقيمة ١٠٠ مليار دولار لدعم التحول الرقمي والتكامل الاقتصادي في المنطقة", lk:"12.4K", cm:"2.1K", sh:"5.8K" },
-  { id:2,  s:SOURCES[1], t:"١٥ د", tag:"حصري",            bg:"linear-gradient(135deg,#2d3436,#636e72)", title:"حوار خاص مع رئيس أرامكو: ٥٠ مليار دولار للطاقة المتجددة والاقتصاد الأخضر", body:"في مقابلة حصرية يكشف الرئيس التنفيذي عن خطط الشركة لقيادة التحول في قطاع الطاقة والاستثمار", lk:"8.7K", cm:"1.3K", sh:"3.2K" },
-  { id:3,  s:SOURCES[4], t:"٢٨ د",                        title:"الدولار يتراجع أمام سلة العملات بعد بيانات التوظيف الأمريكية", body:"شهدت الأسواق والبورصة تحركات لافتة مع صدور تقرير الوظائف الاقتصادي الذي جاء دون التوقعات", lk:"3.2K", cm:"891", sh:"1.5K" },
-  { id:4,  s:SOURCES[2], t:"٤٥ د", tag:"فيديو", vid:true, bg:"linear-gradient(135deg,#0c0c0c,#1a1a2e)", title:"لحظة إطلاق أول قمر صناعي عربي مشترك من قاعدة الإمارات الفضائية", body:"نجاح تاريخي في علوم الفضاء والتقنية العربية مع إطلاق القمر الصناعي في مداره", lk:"31.5K", cm:"4.2K", sh:"18.3K" },
-  { id:5,  s:SOURCES[5], t:"١ س",  tag:"تحليل",           bg:"linear-gradient(135deg,#434343,#000)", title:"كيف يُعيد الذكاء الاصطناعي والتقنية تشكيل صناعة الإعلام العربي؟", body:"تحليل معمّق لتأثير التقنيات الحديثة على غرف الأخبار وصناعة المحتوى الرقمي", lk:"4.9K", cm:"723", sh:"2.1K" },
-  { id:6,  s:SOURCES[3], t:"٢ س",                         bg:"linear-gradient(135deg,#3d3d3d,#575757)", title:"محادثات جنيف تحقق اختراقاً دبلوماسياً وسياسياً بشأن الملف النووي", body:"مصادر مطلعة تكشف عن تفاصيل الاتفاق السياسي الذي وصفه المبعوث الأممي بأنه خطوة تاريخية", lk:"7.8K", cm:"2.9K", sh:"4.4K" },
-  { id:7,  s:SOURCES[6], t:"٣ س",  tag:"رأي",             title:"لماذا يحتاج العالم العربي إلى ثورة في صناعة الثقافة والفن والنشر الرقمي؟", body:"الفجوة بين المحتوى الثقافي والفني العربي والعالمي تتسع يوماً بعد يوم رغم وجود المواهب", lk:"2.1K", cm:"345", sh:"987" },
-  { id:8,  s:SOURCES[0], t:"٤ س",  tag:"تقرير",           bg:"linear-gradient(135deg,#141e30,#243b55)", title:"المدن الذكية والتقنية في الخليج — رحلة داخل نيوم ومدينة المستقبل", body:"أين وصلت المشاريع الكبرى وما التحديات التي تواجهها على أرض الواقع", lk:"3.3K", cm:"512", sh:"1.8K" },
-  { id:9,  s:SOURCES[2], t:"٥ س",  tag:"رياضة",           title:"دوري أبطال أوروبا: نتائج مباريات الأمس وترتيب الفرق والهدافين", body:"كرة القدم الأوروبية تشهد مباريات مثيرة في دوري الأبطال مع فوز الفرق الكبرى وتألق اللاعبين", lk:"9.1K", cm:"1.8K", sh:"4.2K" },
-  { id:10, s:SOURCES[1], t:"٦ س",  tag:"صحة",             title:"دراسة طبية جديدة تكشف عن علاج واعد لأمراض القلب والأوعية الدموية", body:"أطباء ومختبرات بحثية تعلن عن نتائج دراسة علمية مهمة قد تغير بروتوكولات العلاج الصحي", lk:"5.3K", cm:"920", sh:"2.7K" },
-  { id:11, s:SOURCES[4], t:"٧ س",  tag:"بيئة",            title:"تقرير أممي: انبعاثات الكربون والاحتباس الحراري يصلان مستويات قياسية جديدة", body:"تحذيرات بيئية من تأثيرات المناخ والتلوث على البيئة البحرية والبرية في المنطقة", lk:"4.1K", cm:"677", sh:"1.9K" },
-  { id:12, s:SOURCES[3], t:"٨ س",  tag:"فن",              title:"مهرجان السينما العربية يكشف عن قائمة الأفلام والمسلسلات المشاركة هذا العام", body:"أفلام وأعمال فنية وثقافية وأدبية عربية تتنافس في المهرجان الدولي للسينما والإنتاج", lk:"3.6K", cm:"512", sh:"1.4K" },
-];
+// No hardcoded feed — all data comes from the live API via useNews()
 
 const SPLASH_DOTS = Array.from({ length: 24 }, (_, i) => ({
   w: ((i * 13) % 3) + 1, l: (i * 37) % 100, t: (i * 53) % 100, o: (((i * 17) % 5) + 1) * 0.04,
@@ -137,7 +124,7 @@ function buildMapSpots(feed) {
     spots[geo.id].stories.push({
       title: item.title, src: item.s?.n||item.source?.name||'—',
       t: item.t||item.time||'', tag: item.tag||item.categories?.[0]||null,
-      brk: item.brk||false, lk: item.lk||null, link: item.link||null,
+      brk: item.brk||false, link: item.link||null,
     });
   });
   Object.values(spots).forEach(s => { const c=s.stories.length; s.heat=c>=5?3:c>=2?2:1; });
@@ -444,7 +431,7 @@ function NewsMap({ onClose, liveFeed=[] }) {
   const [sel, setSel]   = useState(null);
   const [time, setTime] = useState(new Date());
   const [mapReady, setMapReady] = useState(false);
-  const spots = useMemo(() => buildMapSpots(liveFeed.length>0?liveFeed:FEED), [liveFeed.length]);
+  const spots = useMemo(() => buildMapSpots(liveFeed), [liveFeed.length]);
   const spotsRef = useRef(spots);
   useEffect(() => { spotsRef.current = spots; }, [spots]);
   const geojsonData = useMemo(() => ({
@@ -692,7 +679,7 @@ function NewsMap({ onClose, liveFeed=[] }) {
                   style={{ padding:'14px 20px', borderBottom:i<sel.stories.length-1?'.5px solid #F0F0F0':'none', cursor:s.link?'pointer':'default' }}>
                   {s.tag && <div style={{ display:'inline-block', fontSize:10, fontWeight:600, color:s.brk||s.tag==='عاجل'?'#B71C1C':'#999', border:`1px solid ${s.brk||s.tag==='عاجل'?'rgba(183,28,28,.15)':'#F0F0F0'}`, padding:'1px 8px', borderRadius:3, marginBottom:6 }}>{s.tag}</div>}
                   <div style={{ fontSize:15, fontWeight:700, lineHeight:1.7, color:'#0A0A0A', marginBottom:4 }}>{s.title}</div>
-                  <div style={{ fontSize:11, color:'#C0C0C0' }}>{s.src} · {s.t}{s.lk?` · ${s.lk} تفاعل`:''}</div>
+                  <div style={{ fontSize:11, color:'#C0C0C0' }}>{s.src} · {s.t}</div>
                 </div>
               ))}
             </div>
@@ -708,7 +695,6 @@ function NewsMap({ onClose, liveFeed=[] }) {
 // ═══════════════════════════════════════════
 
 function Post({ item, delay, onOpen, onSave, isSaved }) {
-  const [liked, setLiked] = useState(false);
   const [exp, setExp]     = useState(false);
   const trunc = item.body && item.body.length>100 && !exp;
   return (
@@ -722,16 +708,14 @@ function Post({ item, delay, onOpen, onSave, isSaved }) {
       <div className="ptitle" onClick={()=>onOpen(item)} style={{ cursor:'pointer' }}>{item.title}</div>
       {item.body && !trunc && <div className="pbody">{item.body}</div>}
       {trunc && <div className="pbody">{item.body.slice(0,100)}… <span className="pmore-t" onClick={()=>setExp(true)}>المزيد</span></div>}
-      {(item.bg||item.realImg) && (
-        <div className="strap" style={item.realImg?{}:{background:item.bg}} onClick={()=>onOpen(item)}>
-          {item.realImg && <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3) contrast(1.05)' }} onError={e=>{e.target.style.display='none';}}/>}
-          {item.vid && <><div className="strap-play">{I.play()}</div><div className="strap-dur">٢:٣٤</div></>}
+      {item.realImg && (
+        <div className="strap" onClick={()=>onOpen(item)}>
+          <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3) contrast(1.05)' }} onError={e=>{e.target.style.display='none';}}/>
         </div>
       )}
       <div className="pactions">
-        <button className={`act ${liked?'liked':''}`} onClick={()=>setLiked(!liked)}>{I.heart(liked)} {item.lk}</button>
-        <button className="act">{I.bubble()} {item.cm}</button>
-        <button className="act">{I.repeat()} {item.sh}</button>
+        <button className="act" onClick={()=>onOpen(item)}>{I.link()} اقرأ المقال</button>
+        <button className="act" onClick={()=>{ if(navigator.share) navigator.share({title:item.title,url:item.link}).catch(()=>{}); else if(item.link) navigator.clipboard?.writeText(item.link); }}>{I.share()} مشاركة</button>
         <button className={`act ${isSaved?'saved':''}`} onClick={()=>onSave(item.id)}>{I.bookmark(isSaved)}</button>
       </div>
     </div>
@@ -765,9 +749,9 @@ function ArticleDetail({ article, onClose, onSave, isSaved }) {
           <button className="ib">{I.share()}</button>
         </div>
       </div>
-      {(article.bg||article.realImg) && (
-        <div className="strap det-strap" style={article.realImg?{}:{background:article.bg,borderRadius:0}}>
-          {article.realImg&&<img src={article.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3)' }} onError={e=>{e.target.parentElement.style.display='none';}}/>}
+      {article.realImg && (
+        <div className="strap det-strap">
+          <img src={article.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3)' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
         </div>
       )}
       <div className="det-body">
@@ -775,12 +759,12 @@ function ArticleDetail({ article, onClose, onSave, isSaved }) {
           <span className="det-src">{article.s.n}</span>
           {article.tag&&<div className={`ptag ${article.brk?'brk':''}`} style={{ margin:0 }}>{article.tag}</div>}
         </div>
-        <div className="det-meta"><span>{article.t}</span>{article.lk&&<span>{article.lk} تفاعل</span>}</div>
+        <div className="det-meta"><span>{article.t}</span></div>
         <div className="det-title">{article.title}</div>
         {article.body&&<div className="det-sub">{article.body}</div>}
         {fetching&&<div style={{ color:'var(--t4)',fontSize:13,padding:'16px 0',textAlign:'center' }}>جاري تحميل المقال…</div>}
         {paragraphs&&paragraphs.map((p,i)=><p key={i} className="det-p">{p}</p>)}
-        {!fetching&&!paragraphs&&<p className="det-p" style={{ color:'var(--t3)',fontStyle:'italic' }}>في تطور لافت يعكس التحولات المتسارعة في المنطقة، شهد هذا الحدث اهتماماً واسعاً من المراقبين والمحللين الدوليين.</p>}
+        {!fetching&&!paragraphs&&article.link&&article.link!=='#'&&<p className="det-p" style={{ color:'var(--t3)',fontStyle:'italic' }}>لم يتم تحميل نص المقال. اقرأ المقال كاملاً من المصدر أدناه.</p>}
         {article.link&&article.link!=='#'&&(
           <div style={{ marginTop:20,paddingTop:14,borderTop:'.5px solid var(--g1)' }}>
             <a href={article.link} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex',alignItems:'center',gap:5,color:'var(--t3)',fontSize:12,fontWeight:600,fontFamily:'var(--ft)',textDecoration:'none' }}>
@@ -893,7 +877,7 @@ function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding }
         </button>
       </div>
       <div style={{ padding:20,textAlign:'center' }}>
-        <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>صَدى v2.4</div>
+        <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>صَدى v3.0</div>
         <div style={{ fontSize:11,color:'var(--t4)' }}>أخبار العالم في مكانٍ واحد</div>
       </div>
     </>
@@ -915,28 +899,40 @@ export default function Sada() {
   useEffect(() => { try { const s=localStorage.getItem('sada-sources'); if(s) setSources(JSON.parse(s)); } catch {} }, []);
   const toggleSource = useCallback(i => { setSources(prev => { const next={...prev,[i]:prev[i]===false?true:false}; try { localStorage.setItem('sada-sources',JSON.stringify(next)); } catch {} return next; }); }, []);
   const { feed:liveFeed, loading, isLive, refresh } = useNews();
-  useEffect(() => { const t=setInterval(()=>{ if(refresh) refresh(); },10000); return ()=>clearInterval(t); }, [refresh]);
+  // useNews already refreshes every 45s + on tab visibility change
   useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
 
-  const allFeed = liveFeed.length>0 ? liveFeed.map((item,i) => ({
+  const allFeed = liveFeed.map((item,i) => ({
     id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟' },
-    t: item.time||'الآن', title: item.title,
+    t: item.time||'الآن', pubTs: item.timestamp || (Date.now() - i*60000),
+    title: item.title,
     body: (item.body||'').replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,200)||null,
-    bg: item.image?null:(i%3===0?'linear-gradient(135deg,#1a1a2e,#0f3460)':i%3===1?'linear-gradient(135deg,#2d3436,#636e72)':null),
     realImg: item.image||null, link: item.link, tag: item.categories?.[0]||null,
     brk: item.categories?.[0]==='عاجل'||!!item.title?.includes('عاجل'),
-    lk: `${Math.floor(((i*7+3)%15)+1)}.${(i*3)%9}K`, cm: `${((i*11+5)%3000)}`, sh: `${Math.floor(((i*5+2)%6)+1)}.${(i*7)%9}K`,
-  })) : FEED;
+  }));
 
   const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
   const CONTEXT_TAGS = ['تحليل','رأي','تقرير','حصري','ملف'];
   const userTopics = userPrefs.topics||[];
 
   const displayFeed = useMemo(() => {
-    if(feedTab==='now'){ return [...sourcedFeed].sort((a,b)=>{ if(a.brk&&!b.brk) return -1; if(!a.brk&&b.brk) return 1; return 0; }); }
-    if(feedTab==='context'){ const ctx=sourcedFeed.filter(item=>item.tag&&CONTEXT_TAGS.includes(item.tag)); return ctx.length>3?ctx:sourcedFeed.filter((_,i)=>i%2===1); }
-    if(userTopics.length>0){ const scored=sourcedFeed.map(item=>({...item,_score:scoreByTopics(item,userTopics)})).sort((a,b)=>b._score-a._score); return scored.some(i=>i._score>0)?scored:sourcedFeed; }
-    return [...sourcedFeed].sort((a,b)=>{ const pk=v=>{ if(!v) return 0; const n=parseFloat(v); return v.includes('K')?n*1000:n; }; return pk(b.lk)-pk(a.lk); });
+    const byTime = [...sourcedFeed].sort((a,b) => (b.pubTs||0) - (a.pubTs||0));
+    if(feedTab==='now'){
+      // Breaking news pinned to top, then chronological
+      const breaking = byTime.filter(i=>i.brk);
+      const rest = byTime.filter(i=>!i.brk);
+      return [...breaking, ...rest];
+    }
+    if(feedTab==='context'){
+      const ctx = byTime.filter(item=>item.tag&&CONTEXT_TAGS.includes(item.tag));
+      return ctx.length>0 ? ctx : byTime;
+    }
+    // "مهم" tab — score by user topics, fallback to chronological
+    if(userTopics.length>0){
+      const scored = byTime.map(item=>({...item,_score:scoreByTopics(item,userTopics)})).sort((a,b)=>b._score-a._score||(b.pubTs||0)-(a.pubTs||0));
+      return scored.some(i=>i._score>0)?scored:byTime;
+    }
+    return byTime;
   }, [feedTab, sourcedFeed, userTopics.join(',')]);
 
   const navItems = [

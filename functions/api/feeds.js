@@ -459,6 +459,7 @@ export async function onRequest(context) {
       image: item.image,
       categories: item.categories,
       time: item.timeAgo,
+      timestamp: item.timestamp || 0,
       isBreaking: item.isBreaking,
       translated: item.translated || false,
       source: {

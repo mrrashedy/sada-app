@@ -351,29 +351,40 @@ export async function onRequest(context) {
     const results = await Promise.allSettled(fetches);
     results.forEach(r => { if (r.status === 'fulfilled') allItems.push(...r.value); });
 
-    // ── Translate English items (KV-cached: only new articles hit AI) ──
-    const enItems = [];
+    // ── Translate English items ──
+    const enIndices = [];
     for (let i = 0; i < allItems.length; i++) {
-      if (allItems[i].lang === 'en') enItems.push(i);
+      if (allItems[i].lang === 'en') enIndices.push(i);
     }
     const debugErrors = [];
-    if (enItems.length > 0) {
-      // Translate up to 25 English items in parallel
-      const indicesToTranslate = enItems.slice(0, 25);
-      const translateResults = await Promise.allSettled(
-        indicesToTranslate.map(idx => translateItem(allItems[idx], ai, kv))
-      );
-      translateResults.forEach((result, j) => {
-        const idx = indicesToTranslate[j];
-        if (result.status === 'fulfilled' && result.value) {
-          allItems[idx] = result.value;
-          if (result.value._err) {
-            debugErrors.push({ src: result.value.sourceId, err: result.value._err });
-          }
-        } else if (result.status === 'rejected') {
-          debugErrors.push({ src: allItems[idx].sourceId, err: result.reason?.message || 'rejected' });
+    let aiTestResult = null;
+
+    // Quick AI smoke test
+    if (ai && enIndices.length > 0) {
+      try {
+        const test = await ai.run('@cf/meta/m2m100-1.2b', {
+          text: 'Hello world',
+          source_lang: 'english',
+          target_lang: 'arabic',
+        });
+        aiTestResult = test?.translated_text || JSON.stringify(test);
+      } catch (e) {
+        aiTestResult = 'ERROR: ' + (e.message || String(e));
+      }
+    }
+
+    // Translate top 15 English items sequentially to avoid overwhelming AI
+    if (ai && aiTestResult && !aiTestResult.startsWith('ERROR')) {
+      const toTranslate = enIndices.slice(0, 15);
+      for (const idx of toTranslate) {
+        try {
+          const item = allItems[idx];
+          const result = await translateItem(item, ai, kv);
+          allItems[idx] = result;
+        } catch (e) {
+          debugErrors.push({ src: allItems[idx].sourceId, err: e.message });
         }
-      });
+      }
     }
 
     // Sort: breaking first, then by recency
@@ -431,7 +442,8 @@ export async function onRequest(context) {
         hasAI: !!ai,
         hasKV: !!kv,
         aiType: ai ? typeof ai.run : 'n/a',
-        englishFetched: enItems.length,
+        aiTest: aiTestResult,
+        englishFetched: enIndices.length,
         translatedCount: feed.filter(f => f.translated).length,
         translationErrors: debugErrors,
       },

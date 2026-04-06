@@ -604,12 +604,12 @@ function NewsMap({ onClose, liveFeed=[] }) {
   const totalStories = spots.reduce((a,s)=>a+s.stories.length,0);
 
   return (
-    <div style={{ position:'absolute', inset:0, zIndex:50, display:'flex', flexDirection:'column', background:'#04080f' }}>
+    <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, zIndex:50, display:'flex', flexDirection:'column', background:'#04080f', height:'100dvh' }}>
 
       {/* Gradient overlay header */}
       <div style={{
         position:'absolute', top:0, left:0, right:0, zIndex:100,
-        padding:'44px 16px 16px',
+        padding:'max(44px, env(safe-area-inset-top, 44px)) 16px 16px',
         background:'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
         pointerEvents:'none',
       }}>

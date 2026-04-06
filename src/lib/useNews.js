@@ -3,12 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 const API_URL = '/api/feeds';
 
-// Sample data fallback when API is unavailable (local dev)
-const SAMPLE_FEED = [
-  { id:"s1", source:{id:"aljazeera",name:"الجزيرة",initial:"ج"}, time:"منذ ٣ د", title:"قمة الرياض تختتم بإعلان تاريخي — خارطة طريق اقتصادية جديدة للشرق الأوسط", body:"القادة يتوافقون على إنشاء صندوق إقليمي بقيمة ١٠٠ مليار دولار لدعم التحول الرقمي والتكامل الاقتصادي في المنطقة", categories:["سياسة"], image:"", link:"#" },
-  { id:"s2", source:{id:"bbc",name:"BBC عربي",initial:"B"}, time:"منذ ١٥ د", title:"حوار خاص مع رئيس أرامكو: ٥٠ مليار دولار للطاقة المتجددة", body:"في مقابلة حصرية يكشف الرئيس التنفيذي عن خطط الشركة لقيادة التحول في قطاع الطاقة", categories:["اقتصاد"], image:"", link:"#" },
-  { id:"s3", source:{id:"skynews",name:"سكاي نيوز",initial:"S"}, time:"منذ ٤٥ د", title:"محادثات جنيف تحقق اختراقاً دبلوماسياً بشأن الملف النووي", body:"مصادر مطلعة تكشف عن تفاصيل الاتفاق الذي وصفه المبعوث الأممي بأنه خطوة تاريخية", categories:["سياسة"], image:"", link:"#" },
-];
+// No sample data — this is a production app
 
 export function useNews(sources = []) {
   const [feed, setFeed] = useState([]);
@@ -53,10 +48,7 @@ export function useNews(sources = []) {
     } catch (e) {
       if (e.name === 'AbortError') return;
       console.warn('[useNews] fetch failed:', e.message);
-      // Only use fallback if we have no data at all
-      if (feed.length === 0) {
-        setFeed(SAMPLE_FEED);
-      }
+      // No fallback — show empty state if API fails
       setIsLive(false);
       setError(e.message);
     }

@@ -352,25 +352,28 @@ export async function onRequest(context) {
     results.forEach(r => { if (r.status === 'fulfilled') allItems.push(...r.value); });
 
     // ── Translate English items (KV-cached: only new articles hit AI) ──
-    const translatePromises = allItems
-      .filter(i => i.lang === 'en')
-      .slice(0, 25) // cap per request
-      .map(item => translateItem(item, ai, kv));
-
-    if (translatePromises.length > 0) {
-      const translated = await Promise.allSettled(translatePromises);
-      const translatedMap = new Map();
-      translated.forEach(r => {
-        if (r.status === 'fulfilled' && r.value) {
-          translatedMap.set(r.value.link, r.value);
+    const enItems = [];
+    for (let i = 0; i < allItems.length; i++) {
+      if (allItems[i].lang === 'en') enItems.push(i);
+    }
+    const debugErrors = [];
+    if (enItems.length > 0) {
+      // Translate up to 25 English items in parallel
+      const indicesToTranslate = enItems.slice(0, 25);
+      const translateResults = await Promise.allSettled(
+        indicesToTranslate.map(idx => translateItem(allItems[idx], ai, kv))
+      );
+      translateResults.forEach((result, j) => {
+        const idx = indicesToTranslate[j];
+        if (result.status === 'fulfilled' && result.value) {
+          allItems[idx] = result.value;
+          if (result.value._err) {
+            debugErrors.push({ src: result.value.sourceId, err: result.value._err });
+          }
+        } else if (result.status === 'rejected') {
+          debugErrors.push({ src: allItems[idx].sourceId, err: result.reason?.message || 'rejected' });
         }
       });
-      // Replace English items in-place with translated versions
-      for (let i = 0; i < allItems.length; i++) {
-        if (translatedMap.has(allItems[i].link)) {
-          allItems[i] = translatedMap.get(allItems[i].link);
-        }
-      }
     }
 
     // Sort: breaking first, then by recency
@@ -416,10 +419,7 @@ export async function onRequest(context) {
         tier: SOURCES[id].tier,
       }));
 
-    // Collect translation errors for debugging
-    const translationErrors = feed
-      .filter(f => f._err)
-      .map(f => ({ source: f.source?.id, err: f._err }));
+    // Clean up internal fields before sending
     feed.forEach(f => delete f._err);
 
     return new Response(JSON.stringify({
@@ -430,9 +430,10 @@ export async function onRequest(context) {
       _debug: {
         hasAI: !!ai,
         hasKV: !!kv,
-        englishFetched: allItems.filter(i => i.lang === 'en').length,
+        aiType: ai ? typeof ai.run : 'n/a',
+        englishFetched: enItems.length,
         translatedCount: feed.filter(f => f.translated).length,
-        translationErrors,
+        translationErrors: debugErrors,
       },
     }), {
       headers: {

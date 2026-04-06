@@ -430,11 +430,20 @@ const CITY_TIMES = [
 function NewsMap({ onClose, liveFeed=[] }) {
   const mapContainerRef = useRef(null);
   const mapRef          = useRef(null);
-  const markersRef      = useRef([]);
   const [sel, setSel]   = useState(null);
   const [time, setTime] = useState(new Date());
   const [mapReady, setMapReady] = useState(false);
   const spots = useMemo(() => buildMapSpots(liveFeed.length>0?liveFeed:FEED), [liveFeed.length]);
+  const spotsRef = useRef(spots);
+  useEffect(() => { spotsRef.current = spots; }, [spots]);
+  const geojsonData = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: spots.map(spot => ({
+      type: 'Feature',
+      properties: { weight: spot.stories.length, id: spot.id },
+      geometry: { type: 'Point', coordinates: [spot.lng, spot.lat] },
+    })),
+  }), [spots]);
 
   const fmt = (tz) => {
     try { return new Intl.DateTimeFormat('ar',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).format(time); }
@@ -475,27 +484,67 @@ function NewsMap({ onClose, liveFeed=[] }) {
       map.on('load', () => {
         setMapReady(true);
 
-        // Inject marker animation CSS
-        if (!document.getElementById('sada-marker-css')) {
-          const style = document.createElement('style');
-          style.id = 'sada-marker-css';
-          style.textContent = `
-            @keyframes sadaPulse {
-              0%,100% { transform:translate(-50%,-50%) scale(0.7); opacity:0.5; }
-              50% { transform:translate(-50%,-50%) scale(1.3); opacity:1; }
-            }
-            @keyframes sadaRing {
-              0% { transform:translate(-50%,-50%) scale(0.5); opacity:0.8; }
-              100% { transform:translate(-50%,-50%) scale(2.2); opacity:0; }
-            }
-            .sada-map-marker { cursor:pointer; }
-            .sada-map-marker:hover .sada-marker-core {
-              transform: scale(1.25) !important;
-              box-shadow: 0 0 32px rgba(229,57,53,1), 0 4px 16px rgba(0,0,0,0.7) !important;
-            }
-          `;
-          document.head.appendChild(style);
-        }
+        // Heatmap GeoJSON source
+        map.addSource('news-heat', { type: 'geojson', data: geojsonData });
+
+        // Snap Map-style heatmap layer
+        map.addLayer({
+          id: 'news-heatmap',
+          type: 'heatmap',
+          source: 'news-heat',
+          paint: {
+            'heatmap-weight': ['get', 'weight'],
+            'heatmap-intensity': ['interpolate',['linear'],['zoom'], 0,0.6, 5,1.2, 9,2.0],
+            'heatmap-color': [
+              'interpolate',['linear'],['heatmap-density'],
+              0,   'rgba(0,0,0,0)',
+              0.1, 'rgba(30,60,180,0.4)',
+              0.25,'rgba(0,180,220,0.55)',
+              0.4, 'rgba(0,220,120,0.6)',
+              0.55,'rgba(180,220,0,0.7)',
+              0.7, 'rgba(255,180,0,0.8)',
+              0.85,'rgba(255,100,0,0.85)',
+              1.0, 'rgba(230,40,30,0.9)',
+            ],
+            'heatmap-radius': ['interpolate',['linear'],['zoom'], 0,30, 3,45, 5,65, 8,90, 12,120],
+            'heatmap-opacity': 0.85,
+          },
+        });
+
+        // Invisible circles for pointer cursor feedback
+        map.addLayer({
+          id: 'news-heat-circles',
+          type: 'circle',
+          source: 'news-heat',
+          paint: {
+            'circle-radius': ['interpolate',['linear'],['zoom'], 0,4, 5,8, 10,14],
+            'circle-color': 'rgba(255,255,255,0)',
+            'circle-stroke-width': 0,
+          },
+        });
+        map.on('mouseenter','news-heat-circles', () => { map.getCanvas().style.cursor='pointer'; });
+        map.on('mouseleave','news-heat-circles', () => { map.getCanvas().style.cursor=''; });
+
+        // Click → find nearest spot → open drawer
+        map.on('click', (e) => {
+          const { lng: cLng, lat: cLat } = e.lngLat;
+          const zoom = map.getZoom();
+          const maxDist = zoom < 4 ? 5 : zoom < 6 ? 3 : zoom < 8 ? 1.5 : 0.5;
+          let nearest = null, minDist = Infinity;
+          spotsRef.current.forEach(spot => {
+            const d = Math.sqrt(Math.pow(spot.lng-cLng,2)+Math.pow(spot.lat-cLat,2));
+            if (d < minDist && d < maxDist) { minDist = d; nearest = spot; }
+          });
+          if (nearest) {
+            playBlip();
+            setSel(nearest);
+            map.flyTo({
+              center: [nearest.lng, nearest.lat-1.5], zoom:5.8, pitch:50,
+              bearing: (Math.random()-0.5)*20, duration:1600,
+              easing: t => t<0.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1,
+            });
+          }
+        });
       });
 
       return map;
@@ -511,87 +560,38 @@ function NewsMap({ onClose, liveFeed=[] }) {
     }
 
     return () => {
-      markersRef.current.forEach(m => m.remove());
-      markersRef.current = [];
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
       setMapReady(false);
     };
   }, []);
 
-  // Place markers when ready
+  // Update heatmap data when feed changes
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !window.maplibregl) return;
+    if (!mapReady || !mapRef.current) return;
+    const source = mapRef.current.getSource('news-heat');
+    if (source) source.setData(geojsonData);
+  }, [mapReady, geojsonData]);
+
+  // Pulsing animation — subtle breathing like Snap Map
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
-    const ML = window.maplibregl;
-
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
-
-    spots.forEach(spot => {
-      const size  = spot.heat >= 3 ? 44 : spot.heat >= 2 ? 34 : 24;
-      const count = spot.stories.length;
-      const color = spot.heat >= 3 ? '#B71C1C' : '#E53935';
-      const ringDelay = (spot.lat % 2).toFixed(2);
-
-      const el = document.createElement('div');
-      el.className = 'sada-map-marker';
-      el.style.cssText = 'position:absolute;width:0;height:0;';
-      el.innerHTML = `
-        <div style="
-          position:absolute;
-          width:${size*2.4}px; height:${size*2.4}px;
-          background:radial-gradient(circle, rgba(229,57,53,0.2) 0%, transparent 70%);
-          top:50%; left:50%;
-          animation: sadaPulse 2.5s ease-in-out ${ringDelay}s infinite;
-          border-radius:50%; pointer-events:none;
-        "></div>
-        <div style="
-          position:absolute;
-          width:${size*1.8}px; height:${size*1.8}px;
-          border:1.5px solid rgba(229,57,53,0.4);
-          top:50%; left:50%;
-          animation: sadaRing 2.5s ease-out ${ringDelay}s infinite;
-          border-radius:50%; pointer-events:none;
-        "></div>
-        <div class="sada-marker-core" style="
-          position:absolute;
-          width:${size}px; height:${size}px;
-          background:${color};
-          border:2px solid rgba(255,180,180,0.5);
-          border-radius:50%;
-          top:50%; left:50%;
-          transform:translate(-50%,-50%);
-          display:flex; align-items:center; justify-content:center;
-          color:#fff; font-weight:800;
-          font-size:${size>34?14:11}px;
-          font-family:-apple-system,sans-serif;
-          box-shadow:0 0 ${size/2}px rgba(229,57,53,0.65), 0 2px 10px rgba(0,0,0,0.6);
-          transition: transform 0.15s ease, box-shadow 0.15s ease;
-          z-index:2;
-        ">${count > 1 ? count : ''}</div>
-      `;
-
-      const marker = new ML.Marker({ element: el, anchor: 'center' })
-        .setLngLat([spot.lng, spot.lat])
-        .addTo(map);
-
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        playBlip();
-        setSel(spot);
-        map.flyTo({
-          center: [spot.lng, spot.lat - 1.5],
-          zoom: 5.8,
-          pitch: 50,
-          bearing: (Math.random() - 0.5) * 20,
-          duration: 1600,
-          easing: t => t < 0.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1,
-        });
-      });
-
-      markersRef.current.push(marker);
-    });
-  }, [mapReady, spots]);
+    let frame, last = 0;
+    const animate = (now) => {
+      if (now - last > 33) {
+        last = now;
+        const t = 0.5 + 0.5 * Math.sin((now / 2500) * Math.PI * 2);
+        try {
+          map.setPaintProperty('news-heatmap','heatmap-opacity', 0.7 + 0.15 * t);
+          map.setPaintProperty('news-heatmap','heatmap-intensity',
+            ['interpolate',['linear'],['zoom'], 0, 0.6*(0.85+0.15*t), 5, 1.2*(0.85+0.15*t), 9, 2.0*(0.85+0.15*t)]);
+        } catch(e) {}
+      }
+      frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [mapReady]);
 
   const handleClose = () => {
     setSel(null);

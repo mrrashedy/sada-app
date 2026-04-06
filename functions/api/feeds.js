@@ -10,10 +10,6 @@ const SOURCES = {
       "https://www.aljazeera.com/xml/rss/all.xml"
     ]
   },
-  alarabiya: {
-    name: "العربية", initial: "ع", tier: 1,
-    feeds: ["https://www.alarabiya.net/feed/rss2"]
-  },
   bbc: {
     name: "BBC عربي", initial: "B", tier: 1,
     feeds: ["https://feeds.bbci.co.uk/arabic/rss.xml"]
@@ -26,20 +22,32 @@ const SOURCES = {
     name: "فرانس ٢٤", initial: "F", tier: 1,
     feeds: ["https://www.france24.com/ar/rss"]
   },
-  rt: {
-    name: "RT عربي", initial: "R", tier: 1,
-    feeds: ["https://arabic.rt.com/rss/"]
-  },
   dw: {
     name: "دويتشه فيله", initial: "D", tier: 1,
     feeds: ["https://rss.dw.com/xml/rss-ar-all"]
   },
-  cnbc: {
-    name: "CNBC عربية", initial: "C", tier: 1,
-    feeds: ["https://www.cnbcarabia.com/feed"]
+  cnn_ar: {
+    name: "CNN عربية", initial: "C", tier: 1,
+    feeds: ["https://arabic.cnn.com/api/v1/rss/rss.xml"]
+  },
+  independent_ar: {
+    name: "إندبندنت عربية", initial: "إ", tier: 1,
+    feeds: ["https://www.independentarabia.com/rss.xml"]
+  },
+  aawsat: {
+    name: "الشرق الأوسط", initial: "ش", tier: 1,
+    feeds: ["https://aawsat.com/feed"]
+  },
+  alhurra: {
+    name: "الحرة", initial: "ح", tier: 1,
+    feeds: ["https://www.alhurra.com/rss"]
   },
 
   // ── Tier 2: Major regional newspapers ──
+  alaraby: {
+    name: "العربي الجديد", initial: "ع", tier: 2,
+    feeds: ["https://www.alaraby.co.uk/rss"]
+  },
   almasry: {
     name: "المصري اليوم", initial: "م", tier: 2,
     feeds: ["https://www.almasryalyoum.com/rss/rssfeed"]
@@ -49,7 +57,7 @@ const SOURCES = {
     feeds: ["https://www.okaz.com.sa/rssFeed/0"]
   },
   alsumaria: {
-    name: "السومرية", initial: "ي", tier: 2,
+    name: "السومرية", initial: "سم", tier: 2,
     feeds: ["https://www.alsumaria.tv/Rss/iraq-latest-news/ar"]
   },
   alkhaleej: {
@@ -61,16 +69,12 @@ const SOURCES = {
     feeds: ["https://24.ae/rss.aspx"]
   },
   alsharq: {
-    name: "الشرق", initial: "ش", tier: 2,
+    name: "الشرق", initial: "ق", tier: 2,
     feeds: ["https://al-sharq.com/rss/latestNews"]
   },
   dohanews: {
     name: "دوحة نيوز", initial: "ه", tier: 2,
     feeds: ["https://dohanews.co/feed/"]
-  },
-  albawaba: {
-    name: "البوابة", initial: "ب", tier: 2,
-    feeds: ["https://www.albawaba.com/rss/ar-all"]
   },
   arabnews: {
     name: "Arab News", initial: "A", tier: 2,
@@ -80,21 +84,17 @@ const SOURCES = {
     name: "اليوم", initial: "ل", tier: 2,
     feeds: ["https://www.alyaum.com/rssFeed/1005"]
   },
-  alayam: {
-    name: "الأيام", initial: "ي", tier: 2,
-    feeds: ["https://feeds.feedburner.com/alayam-online-international-news"]
+  alquds: {
+    name: "القدس العربي", initial: "ق", tier: 2,
+    feeds: ["https://www.alquds.co.uk/feed/"]
   },
-  dostor: {
-    name: "الدستور", initial: "د", tier: 2,
-    feeds: ["https://www.dostor.org/rss.aspx"]
+  noonpost: {
+    name: "نون بوست", initial: "ن", tier: 2,
+    feeds: ["https://www.noonpost.com/rss"]
   },
   lusail: {
-    name: "لوسيل", initial: "ل", tier: 2,
+    name: "لوسيل", initial: "لس", tier: 2,
     feeds: ["https://lusailnews.net/feed"]
-  },
-  alarabqa: {
-    name: "العرب قطر", initial: "ق", tier: 2,
-    feeds: ["https://alarab.qa/feed"]
   },
 };
 
@@ -214,13 +214,18 @@ export async function onRequest(context) {
         const source = SOURCES[id];
         return source.feeds.map(async (feedUrl) => {
           try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
             const res = await fetch(feedUrl, {
               headers: {
-                'User-Agent': 'Mozilla/5.0 Sada/1.1 RSS Reader',
+                'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/2.5; +https://sada-app.pages.dev)',
                 'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+                'Cache-Control': 'no-cache',
               },
-              cf: { cacheTtl: 120 }
+              signal: controller.signal,
+              cf: { cacheTtl: 30, cacheEverything: false }
             });
+            clearTimeout(timeout);
             if (!res.ok) return [];
             const xml = await res.text();
             return parseXML(xml).map(item => ({
@@ -237,8 +242,8 @@ export async function onRequest(context) {
         });
       });
 
-    const results = await Promise.all(fetches);
-    results.forEach(items => allItems.push(...items));
+    const results = await Promise.allSettled(fetches);
+    results.forEach(r => { if (r.status === 'fulfilled') allItems.push(...r.value); });
 
     // Sort: breaking first, then by recency
     allItems.sort((a, b) => {

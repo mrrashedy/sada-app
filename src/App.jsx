@@ -924,7 +924,7 @@ export default function Sada() {
   const userTopics = userPrefs.topics||[];
 
   const displayFeed = useMemo(() => {
-    if(feedTab==='now'){ const brk=sourcedFeed.filter(item=>item.brk||item.tag==='عاجل'||item.title?.includes('عاجل')); return brk.length>0?brk:sourcedFeed.slice(0,12); }
+    if(feedTab==='now'){ return [...sourcedFeed].sort((a,b)=>{ if(a.brk&&!b.brk) return -1; if(!a.brk&&b.brk) return 1; return 0; }); }
     if(feedTab==='context'){ const ctx=sourcedFeed.filter(item=>item.tag&&CONTEXT_TAGS.includes(item.tag)); return ctx.length>3?ctx:sourcedFeed.filter((_,i)=>i%2===1); }
     if(userTopics.length>0){ const scored=sourcedFeed.map(item=>({...item,_score:scoreByTopics(item,userTopics)})).sort((a,b)=>b._score-a._score); return scored.some(i=>i._score>0)?scored:sourcedFeed; }
     return [...sourcedFeed].sort((a,b)=>{ const pk=v=>{ if(!v) return 0; const n=parseFloat(v); return v.includes('K')?n*1000:n; }; return pk(b.lk)-pk(a.lk); });

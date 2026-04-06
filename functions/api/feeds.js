@@ -373,17 +373,37 @@ export async function onRequest(context) {
       }
     }
 
-    // Translate top 15 English items sequentially to avoid overwhelming AI
-    if (ai && aiTestResult && !aiTestResult.startsWith('ERROR')) {
-      const toTranslate = enIndices.slice(0, 15);
-      for (const idx of toTranslate) {
-        try {
-          const item = allItems[idx];
-          const result = await translateItem(item, ai, kv);
-          allItems[idx] = result;
-        } catch (e) {
-          debugErrors.push({ src: allItems[idx].sourceId, err: e.message });
-        }
+    // Translate English items — first try just ONE to verify pipeline
+    let singleTestResult = null;
+    if (ai && aiTestResult && !aiTestResult.startsWith('ERROR') && enIndices.length > 0) {
+      const firstIdx = enIndices[0];
+      const firstItem = allItems[firstIdx];
+      try {
+        singleTestResult = { before: firstItem.title };
+        const translated = await translateItem(firstItem, ai, kv);
+        singleTestResult.after = translated.title;
+        singleTestResult.translated = translated.translated;
+        singleTestResult.err = translated._err || null;
+        allItems[firstIdx] = translated;
+      } catch (e) {
+        singleTestResult.error = e.message;
+      }
+
+      // Now translate the rest (up to 14 more) in parallel batches of 5
+      const remaining = enIndices.slice(1, 15);
+      for (let batch = 0; batch < remaining.length; batch += 5) {
+        const chunk = remaining.slice(batch, batch + 5);
+        const results = await Promise.allSettled(
+          chunk.map(idx => translateItem(allItems[idx], ai, kv))
+        );
+        results.forEach((r, j) => {
+          if (r.status === 'fulfilled') {
+            allItems[chunk[j]] = r.value;
+            if (r.value._err) debugErrors.push({ src: r.value.sourceId, err: r.value._err });
+          } else {
+            debugErrors.push({ src: allItems[chunk[j]].sourceId, err: r.reason?.message });
+          }
+        });
       }
     }
 
@@ -443,6 +463,7 @@ export async function onRequest(context) {
         hasKV: !!kv,
         aiType: ai ? typeof ai.run : 'n/a',
         aiTest: aiTestResult,
+        singleTest: singleTestResult,
         englishFetched: enIndices.length,
         translatedCount: feed.filter(f => f.translated).length,
         translationErrors: debugErrors,

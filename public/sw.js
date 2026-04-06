@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sada-v1';
+const CACHE_NAME = 'sada-v2.6';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', (e) => {
@@ -19,6 +19,13 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+
+  // Never cache API calls or JS/CSS assets (Vite hashes them already)
+  const url = new URL(e.request.url);
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/assets/')) {
+    return;
+  }
+
   e.respondWith(
     fetch(e.request)
       .then((response) => {

@@ -278,8 +278,10 @@ function parseXML(xml) {
 function timeAgo(date) {
   const now = Date.now();
   const diff = now - new Date(date).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'الآن';
+  const secs = Math.floor(diff / 1000);
+  if (secs < 5) return 'الآن';
+  if (secs < 60) return `منذ ${secs} ث`;
+  const mins = Math.floor(secs / 60);
   if (mins < 60) return `منذ ${mins} د`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `منذ ${hours} س`;
@@ -411,11 +413,7 @@ export async function onRequest(context) {
     const arabicItems = allItems.filter(i => i.lang !== 'en');
     const translatedEn = allItems.filter(i => i.lang === 'en' && i.translated);
 
-    const sortByRecency = (a, b) => {
-      if (a.isBreaking && !b.isBreaking) return -1;
-      if (!a.isBreaking && b.isBreaking) return 1;
-      return b.timestamp - a.timestamp;
-    };
+    const sortByRecency = (a, b) => b.timestamp - a.timestamp;
     arabicItems.sort(sortByRecency);
     translatedEn.sort(sortByRecency);
 
@@ -432,18 +430,28 @@ export async function onRequest(context) {
     const dedupedAr = dedup(arabicItems);
     const dedupedEn = dedup(translatedEn);
 
-    // Mix: ~70% Arabic, ~30% translated English, interleaved
+    // Prioritize tier 1 sources, then tier 2, then translated English
+    const arTier1 = dedupedAr.filter(i => i.sourceTier === 1);
+    const arTier2 = dedupedAr.filter(i => i.sourceTier !== 1);
+
+    // Interleave: 3 tier1, 1 tier2, 1 English — big outlets dominate
     const mixed = [];
-    let ai2 = 0, ei = 0;
-    while (mixed.length < limit && (ai2 < dedupedAr.length || ei < dedupedEn.length)) {
-      // Add 3 Arabic then 1 English (roughly 75/25 mix)
-      for (let n = 0; n < 3 && ai2 < dedupedAr.length && mixed.length < limit; n++) {
-        mixed.push(dedupedAr[ai2++]);
+    let t1 = 0, t2 = 0, ei = 0;
+    while (mixed.length < limit && (t1 < arTier1.length || t2 < arTier2.length || ei < dedupedEn.length)) {
+      for (let n = 0; n < 3 && t1 < arTier1.length && mixed.length < limit; n++) {
+        mixed.push(arTier1[t1++]);
+      }
+      if (t2 < arTier2.length && mixed.length < limit) {
+        mixed.push(arTier2[t2++]);
       }
       if (ei < dedupedEn.length && mixed.length < limit) {
         mixed.push(dedupedEn[ei++]);
       }
     }
+    // Fill remaining slots with whatever is left
+    while (mixed.length < limit && t1 < arTier1.length) mixed.push(arTier1[t1++]);
+    while (mixed.length < limit && t2 < arTier2.length) mixed.push(arTier2[t2++]);
+    while (mixed.length < limit && ei < dedupedEn.length) mixed.push(dedupedEn[ei++]);
 
     // If no translated English yet, fill entirely with Arabic
     if (dedupedEn.length === 0) {

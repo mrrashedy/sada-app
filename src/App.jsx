@@ -102,6 +102,27 @@ const GEO_MAP = [
 
 // No hardcoded feed — all data comes from the live API via useNews()
 
+function liveTimeAgo(ts) {
+  if (!ts) return 'الآن';
+  const diff = Date.now() - ts;
+  const secs = Math.floor(diff / 1000);
+  if (secs < 5) return 'الآن';
+  if (secs < 60) return `منذ ${secs} ث`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `منذ ${mins} د`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `منذ ${hours} س`;
+  return `منذ ${Math.floor(hours / 24)} ي`;
+}
+
+function useTick(intervalMs = 1000) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick(v => v + 1), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+}
+
 const SPLASH_DOTS = Array.from({ length: 24 }, (_, i) => ({
   w: ((i * 13) % 3) + 1, l: (i * 37) % 100, t: (i * 53) % 100, o: (((i * 17) % 5) + 1) * 0.04,
 }));
@@ -221,6 +242,9 @@ html,body{background:#000;overflow:hidden;height:100%}
 .srch-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
 .srch-tag{padding:8px 16px;border-radius:20px;border:.5px solid var(--g1);font-size:13px;font-weight:500;color:var(--t2);cursor:pointer;font-family:var(--ft);background:none}
 .srch-tag:active{background:var(--bk);color:var(--bg);border-color:var(--bk)}
+.pull-indicator{text-align:center;padding:12px;font-size:12px;color:var(--t4);font-weight:600;transition:opacity .2s}
+.pull-indicator .spinner{width:20px;height:20px;border:2px solid var(--g2);border-top-color:var(--bk);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 4px}
+.load-more{text-align:center;padding:20px;font-size:12px;color:var(--t4)}
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;color:var(--t4);text-align:center;gap:12px}
 .empty-title{font-size:17px;font-weight:700;color:var(--t3)}
 .empty-sub{font-size:13px;line-height:1.6}
@@ -695,13 +719,14 @@ function NewsMap({ onClose, liveFeed=[] }) {
 // ═══════════════════════════════════════════
 
 function Post({ item, delay, onOpen, onSave, isSaved }) {
+  useTick(1000);
   const [exp, setExp]     = useState(false);
   const trunc = item.body && item.body.length>100 && !exp;
   return (
     <div className="post" style={{ animationDelay:`${delay}s` }}>
       <div className="ph">
         <div className="pav">{item.s.i}</div>
-        <div className="pinfo"><span className="pname">{item.s.n}</span><span className="ptime">{item.t}</span></div>
+        <div className="pinfo"><span className="pname">{item.s.n}</span><span className="ptime">{liveTimeAgo(item.pubTs)}</span></div>
         <button className="ib" style={{ color:'var(--t4)' }}>{I.more()}</button>
       </div>
       {item.tag && <div className={`ptag ${item.brk?'brk':''}`}>{item.tag}</div>}
@@ -899,8 +924,49 @@ export default function Sada() {
   useEffect(() => { try { const s=localStorage.getItem('sada-sources'); if(s) setSources(JSON.parse(s)); } catch {} }, []);
   const toggleSource = useCallback(i => { setSources(prev => { const next={...prev,[i]:prev[i]===false?true:false}; try { localStorage.setItem('sada-sources',JSON.stringify(next)); } catch {} return next; }); }, []);
   const { feed:liveFeed, loading, isLive, refresh } = useNews();
-  // useNews already refreshes every 45s + on tab visibility change
   useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
+
+  // Pull-to-refresh state
+  const [pulling, setPulling] = useState(false);
+  const [pullY, setPullY] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const contentRef = useRef(null);
+  const PULL_THRESHOLD = 80;
+
+  const onTouchStart = useCallback(e => {
+    if (contentRef.current && contentRef.current.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY;
+      setPulling(true);
+    }
+  }, []);
+  const onTouchMove = useCallback(e => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 0) { setPullY(Math.min(dy * 0.5, 120)); }
+    else { setPulling(false); setPullY(0); }
+  }, [pulling]);
+  const onTouchEnd = useCallback(() => {
+    if (pullY >= PULL_THRESHOLD && !refreshing) {
+      setRefreshing(true);
+      setPullY(50);
+      refresh();
+      setTimeout(() => { setRefreshing(false); setPullY(0); setPulling(false); }, 1500);
+    } else {
+      setPullY(0); setPulling(false);
+    }
+  }, [pullY, refreshing, refresh]);
+
+  // Infinite scroll — show more items as user scrolls
+  const [visibleCount, setVisibleCount] = useState(20);
+  const onScroll = useCallback(e => {
+    const el = e.target;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
+      setVisibleCount(prev => Math.min(prev + 15, 200));
+    }
+  }, []);
+  // Reset visible count on tab change
+  useEffect(() => { setVisibleCount(20); }, [feedTab]);
 
   const allFeed = liveFeed.map((item,i) => ({
     id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟' },
@@ -917,12 +983,7 @@ export default function Sada() {
 
   const displayFeed = useMemo(() => {
     const byTime = [...sourcedFeed].sort((a,b) => (b.pubTs||0) - (a.pubTs||0));
-    if(feedTab==='now'){
-      // Breaking news pinned to top, then chronological
-      const breaking = byTime.filter(i=>i.brk);
-      const rest = byTime.filter(i=>!i.brk);
-      return [...breaking, ...rest];
-    }
+    if(feedTab==='now') return byTime;
     if(feedTab==='context'){
       const ctx = byTime.filter(item=>item.tag&&CONTEXT_TAGS.includes(item.tag));
       return ctx.length>0 ? ctx : byTime;
@@ -965,17 +1026,25 @@ export default function Sada() {
         </div>
         {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>setFeedTab(t.id)}>{t.l}</button>))}</div>)}
         {nav!=='home'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}</div>)}
-        <div className="content">
+        <div className="content" ref={contentRef} onScroll={onScroll}
+          onTouchStart={nav==='home'?onTouchStart:undefined}
+          onTouchMove={nav==='home'?onTouchMove:undefined}
+          onTouchEnd={nav==='home'?onTouchEnd:undefined}>
           {nav==='home'&&(<>
-            {newCount>0&&(<div onClick={()=>setNewCount(0)} style={{ position:'sticky',top:0,zIndex:50,background:'#0A0A0A',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',cursor:'pointer' }}>↑ {newCount} خبر جديد</div>)}
+            {/* Pull-to-refresh indicator */}
+            {pullY>0&&(<div className="pull-indicator" style={{ height:pullY, opacity:pullY/PULL_THRESHOLD }}>
+              {refreshing ? <><div className="spinner"/> جاري التحديث…</> : pullY>=PULL_THRESHOLD ? '↓ أفلت للتحديث' : '↓ اسحب للتحديث'}
+            </div>)}
+            {newCount>0&&(<div onClick={()=>{setNewCount(0);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}} style={{ position:'sticky',top:0,zIndex:50,background:'#0A0A0A',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',cursor:'pointer' }}>↑ {newCount} خبر جديد</div>)}
             {isLive&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 0',fontSize:11,color:'var(--t4)' }}><div style={{ width:5,height:5,borderRadius:'50%',background:'#4CAF50' }}/>أخبار مباشرة · {allFeed.length} خبر</div>)}
             <div className="stories">{SOURCES.map((s,i)=>(<div className="story" key={i} onClick={()=>{setSources(prev=>({...prev,[i]:prev[i]===true?undefined:true}));setFeedTab('important');}}><div className={`s-ring ${sources[i]===true?'':'seen'}`}><div className="s-av">{s.i}</div></div><div className="s-nm">{s.n}</div></div>))}</div>
             {feedTab==='important'&&userTopics.length>0&&(<div className="topic-bar"><span style={{ fontSize:11,color:'var(--t4)',fontWeight:700,whiteSpace:'nowrap',flexShrink:0 }}>يُصفَّح حسب:</span>{userTopics.map(id=>{ const t=TOPICS.find(x=>x.id===id); return t?<span key={id} className="topic-pill on">{t.icon} {t.label}</span>:null; })}</div>)}
             {feedTab==='important'&&userTopics.length===0&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)',display:'flex',justifyContent:'space-between',alignItems:'center' }}><span>لم تختر اهتمامات بعد — يُرتَّب حسب التفاعل</span><button onClick={resetOnboarding} style={{ fontSize:11,fontWeight:700,color:'var(--bk)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>اضبط ▸</button></div>)}
             {feedTab==='context'&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)' }}>تحليلات ومقالات رأي وتقارير معمّقة</div>)}
-            {loading&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>جاري تحميل الأخبار…</div>}
+            {loading&&!refreshing&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>جاري تحميل الأخبار…</div>}
             {!loading&&displayFeed.length===0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار في هذا التصنيف</div>}
-            {!loading&&displayFeed.map((item,i)=>(<Post key={item.id} item={item} delay={i*.04} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)}/>))}
+            {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={item.id} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)}/>))}
+            {!loading&&visibleCount<displayFeed.length&&(<div className="load-more"><div className="spinner" style={{ width:18,height:18,border:'2px solid var(--g2)',borderTopColor:'var(--t3)',borderRadius:'50%',animation:'spin .6s linear infinite',margin:'0 auto' }}/></div>)}
             <div style={{ height:20 }}/>
           </>)}
           {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}

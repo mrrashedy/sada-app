@@ -2,20 +2,108 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { I } from '../shared/Icons';
 import { detectGeoFromText } from '../../data/geo';
 
-// ═══════════════════════════════════════════
-// CITY_TIMES — world clocks shown in map header
-// ═══════════════════════════════════════════
+const REGION_CLOCKS = {
+  default: [
+    { city:'الرياض', tz:'Asia/Riyadh' },
+    { city:'لندن',   tz:'Europe/London' },
+    { city:'نيويورك',tz:'America/New_York' },
+    { city:'طوكيو',  tz:'Asia/Tokyo' },
+  ],
+  gulf: [
+    { city:'الرياض', tz:'Asia/Riyadh' },
+    { city:'دبي',    tz:'Asia/Dubai' },
+    { city:'الدوحة', tz:'Asia/Qatar' },
+    { city:'الكويت', tz:'Asia/Kuwait' },
+  ],
+  levant: [
+    { city:'دمشق',   tz:'Asia/Damascus' },
+    { city:'بيروت',  tz:'Asia/Beirut' },
+    { city:'عمّان',  tz:'Asia/Amman' },
+    { city:'القدس',  tz:'Asia/Jerusalem' },
+  ],
+  iraq: [
+    { city:'بغداد',  tz:'Asia/Baghdad' },
+    { city:'طهران',  tz:'Asia/Tehran' },
+    { city:'الرياض', tz:'Asia/Riyadh' },
+    { city:'أنقرة',  tz:'Europe/Istanbul' },
+  ],
+  iran: [
+    { city:'طهران',  tz:'Asia/Tehran' },
+    { city:'بغداد',  tz:'Asia/Baghdad' },
+    { city:'كابل',   tz:'Asia/Kabul' },
+    { city:'موسكو',  tz:'Europe/Moscow' },
+  ],
+  northAfrica: [
+    { city:'القاهرة', tz:'Africa/Cairo' },
+    { city:'طرابلس', tz:'Africa/Tripoli' },
+    { city:'تونس',   tz:'Africa/Tunis' },
+    { city:'الجزائر', tz:'Africa/Algiers' },
+  ],
+  egypt: [
+    { city:'القاهرة', tz:'Africa/Cairo' },
+    { city:'الرياض', tz:'Asia/Riyadh' },
+    { city:'الخرطوم', tz:'Africa/Khartoum' },
+    { city:'لندن',   tz:'Europe/London' },
+  ],
+  turkey: [
+    { city:'أنقرة',   tz:'Europe/Istanbul' },
+    { city:'موسكو',  tz:'Europe/Moscow' },
+    { city:'القاهرة', tz:'Africa/Cairo' },
+    { city:'طهران',  tz:'Asia/Tehran' },
+  ],
+  europe: [
+    { city:'لندن',   tz:'Europe/London' },
+    { city:'باريس',  tz:'Europe/Paris' },
+    { city:'برلين',  tz:'Europe/Berlin' },
+    { city:'موسكو',  tz:'Europe/Moscow' },
+  ],
+  americas: [
+    { city:'واشنطن', tz:'America/New_York' },
+    { city:'شيكاغو', tz:'America/Chicago' },
+    { city:'لوس أنجلس', tz:'America/Los_Angeles' },
+    { city:'ساو باولو', tz:'America/Sao_Paulo' },
+  ],
+  eastAsia: [
+    { city:'طوكيو',  tz:'Asia/Tokyo' },
+    { city:'بكين',   tz:'Asia/Shanghai' },
+    { city:'سيول',   tz:'Asia/Seoul' },
+    { city:'نيودلهي', tz:'Asia/Kolkata' },
+  ],
+  africa: [
+    { city:'نيروبي',  tz:'Africa/Nairobi' },
+    { city:'القاهرة', tz:'Africa/Cairo' },
+    { city:'لاغوس',  tz:'Africa/Lagos' },
+    { city:'جوهانسبرغ', tz:'Africa/Johannesburg' },
+  ],
+  yemen: [
+    { city:'صنعاء',  tz:'Asia/Aden' },
+    { city:'الرياض', tz:'Asia/Riyadh' },
+    { city:'جيبوتي', tz:'Africa/Djibouti' },
+    { city:'القاهرة', tz:'Africa/Cairo' },
+  ],
+};
 
-const CITY_TIMES = [
-  { city:'الرياض', tz:'Asia/Riyadh' },
-  { city:'لندن',   tz:'Europe/London' },
-  { city:'نيويورك',tz:'America/New_York' },
-  { city:'طوكيو',  tz:'Asia/Tokyo' },
-];
-
-// ═══════════════════════════════════════════
-// buildMapSpots — group feed items by geo location
-// ═══════════════════════════════════════════
+function detectRegion(spot) {
+  if (!spot) return 'default';
+  const { lat, lng, country } = spot;
+  const c = (country || '').toLowerCase();
+  if (c.includes('إيران') || c.includes('iran')) return 'iran';
+  if (c.includes('عراق') || c.includes('iraq')) return 'iraq';
+  if (c.includes('تركيا') || c.includes('turkey') || c.includes('türk')) return 'turkey';
+  if (c.includes('مصر') || c.includes('egypt')) return 'egypt';
+  if (c.includes('يمن') || c.includes('yemen')) return 'yemen';
+  if (c.includes('سوري') || c.includes('لبنان') || c.includes('أردن') || c.includes('فلسطين')) return 'levant';
+  if (c.includes('ليبيا') || c.includes('تونس') || c.includes('جزائر') || c.includes('مغرب')) return 'northAfrica';
+  // Fallback by coordinates
+  if (lat > 20 && lat < 32 && lng > 43 && lng < 60) return 'gulf';
+  if (lat > 30 && lat < 38 && lng > 34 && lng < 43) return 'levant';
+  if (lat > 15 && lat < 35 && lng > -10 && lng < 20) return 'northAfrica';
+  if (lat > 35 && lat < 70 && lng > -12 && lng < 40) return 'europe';
+  if (lat > -60 && lat < 70 && lng > -130 && lng < -30) return 'americas';
+  if (lat > -10 && lat < 55 && lng > 70 && lng < 150) return 'eastAsia';
+  if (lat > -40 && lat < 15 && lng > 10 && lng < 55) return 'africa';
+  return 'default';
+}
 
 function buildMapSpots(feed) {
   const spots = {};
@@ -34,10 +122,6 @@ function buildMapSpots(feed) {
   return Object.values(spots).sort((a,b) => b.stories.length-a.stories.length);
 }
 
-// ═══════════════════════════════════════════
-// playBlip — short audio cue on spot selection
-// ═══════════════════════════════════════════
-
 function playBlip() {
   try {
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -52,10 +136,21 @@ function playBlip() {
   } catch(e){}
 }
 
-// ═══════════════════════════════════════════
-// NEWS MAP — MapLibre GL JS
-// WebGL, flyTo camera, pulsing markers, free
-// ═══════════════════════════════════════════
+// inject keyframes once
+if (typeof document !== 'undefined' && !document.getElementById('newsmap-css')) {
+  const s = document.createElement('style');
+  s.id = 'newsmap-css';
+  s.textContent = `
+    @keyframes nm-fade{0%{opacity:0}100%{opacity:1}}
+    @keyframes nm-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.85)}}
+    @keyframes nm-glow{0%,100%{box-shadow:0 0 4px rgba(229,57,53,.6)}50%{box-shadow:0 0 12px rgba(229,57,53,.9),0 0 24px rgba(229,57,53,.3)}}
+    @keyframes nm-slide{0%{transform:translateY(100%)}100%{transform:translateY(0)}}
+    @keyframes nm-line{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+    @keyframes nm-ticker{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+    @keyframes nm-ring{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.5);opacity:0}}
+  `;
+  document.head.appendChild(s);
+}
 
 export function NewsMap({ onClose, liveFeed=[] }) {
   const mapContainerRef = useRef(null);
@@ -63,6 +158,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
   const [sel, setSel]   = useState(null);
   const [time, setTime] = useState(new Date());
   const [mapReady, setMapReady] = useState(false);
+  const [entered, setEntered]   = useState(false);
   const spots = useMemo(() => buildMapSpots(liveFeed), [liveFeed.length]);
   const spotsRef = useRef(spots);
   useEffect(() => { spotsRef.current = spots; }, [spots]);
@@ -75,8 +171,13 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     })),
   }), [spots]);
 
+  const topSpot = spots[0];
+  const totalStories = spots.reduce((a,s)=>a+s.stories.length,0);
+
+  const activeClock = REGION_CLOCKS[detectRegion(sel)] || REGION_CLOCKS.default;
+
   const fmt = (tz) => {
-    try { return new Intl.DateTimeFormat('ar',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).format(time); }
+    try { return new Intl.DateTimeFormat('en-u-nu-latn',{timeZone:tz,hour:'numeric',minute:'2-digit',hour12:true}).format(time); }
     catch { return '--:--'; }
   };
 
@@ -85,11 +186,13 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     return () => clearInterval(t);
   }, []);
 
+  // Cinematic entrance
+  useEffect(() => { const t = setTimeout(()=>setEntered(true), 80); return ()=>clearTimeout(t); }, []);
+
   useEffect(() => {
     if (!document.getElementById('maplibre-css')) {
       const link = document.createElement('link');
-      link.id = 'maplibre-css';
-      link.rel = 'stylesheet';
+      link.id = 'maplibre-css'; link.rel = 'stylesheet';
       link.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css';
       document.head.appendChild(link);
     }
@@ -100,24 +203,63 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
       const map = new ML.Map({
         container: mapContainerRef.current,
-        style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-        center: [38, 28],
-        zoom: 3.2,
-        pitch: 30,
-        bearing: 0,
-        attributionControl: false,
-        maxPitch: 65,
+        style: {
+          version: 8,
+          sources: {
+            'satellite': {
+              type: 'raster',
+              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+              tileSize: 256, maxzoom: 18, attribution: '',
+            },
+            'labels': {
+              type: 'raster',
+              tiles: ['https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
+              tileSize: 256, maxzoom: 18,
+            },
+            'borders': {
+              type: 'raster',
+              tiles: ['https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}'],
+              tileSize: 256, maxzoom: 18,
+            },
+          },
+          layers: [
+            { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-brightness-max': 0.42, 'raster-brightness-min': 0.01, 'raster-contrast': 0.4, 'raster-saturation': -0.5 } },
+            { id: 'borders', type: 'raster', source: 'borders', paint: { 'raster-opacity': 0.4 } },
+            { id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.75 } },
+          ],
+        },
+        center: [38, 28], zoom: 3.2, pitch: 35, bearing: 0,
+        attributionControl: false, maxPitch: 65,
       });
 
       mapRef.current = map;
 
       map.on('load', () => {
         setMapReady(true);
-
-        // Heatmap GeoJSON source
         map.addSource('news-heat', { type: 'geojson', data: geojsonData });
 
-        // Snap Map-style heatmap layer
+        // Outer glow layer — softer, wider
+        map.addLayer({
+          id: 'news-glow',
+          type: 'heatmap',
+          source: 'news-heat',
+          paint: {
+            'heatmap-weight': ['get', 'weight'],
+            'heatmap-intensity': ['interpolate',['linear'],['zoom'], 0,0.3, 5,0.6, 9,1.0],
+            'heatmap-color': [
+              'interpolate',['linear'],['heatmap-density'],
+              0,    'rgba(0,0,0,0)',
+              0.15, 'rgba(255,140,0,0.08)',
+              0.4,  'rgba(255,80,0,0.15)',
+              0.7,  'rgba(255,40,0,0.2)',
+              1.0,  'rgba(255,20,0,0.25)',
+            ],
+            'heatmap-radius': ['interpolate',['linear'],['zoom'], 0,50, 3,80, 5,110, 8,150, 12,200],
+            'heatmap-opacity': 0.9,
+          },
+        });
+
+        // Core heatmap — intense, tight
         map.addLayer({
           id: 'news-heatmap',
           type: 'heatmap',
@@ -127,35 +269,28 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             'heatmap-intensity': ['interpolate',['linear'],['zoom'], 0,0.6, 5,1.2, 9,2.0],
             'heatmap-color': [
               'interpolate',['linear'],['heatmap-density'],
-              0,   'rgba(0,0,0,0)',
-              0.1, 'rgba(30,60,180,0.4)',
-              0.25,'rgba(0,180,220,0.55)',
-              0.4, 'rgba(0,220,120,0.6)',
-              0.55,'rgba(180,220,0,0.7)',
-              0.7, 'rgba(255,180,0,0.8)',
-              0.85,'rgba(255,100,0,0.85)',
-              1.0, 'rgba(230,40,30,0.9)',
+              0,    'rgba(0,0,0,0)',
+              0.08, 'rgba(255,200,50,0.2)',
+              0.2,  'rgba(255,160,0,0.4)',
+              0.35, 'rgba(255,120,0,0.55)',
+              0.5,  'rgba(255,80,0,0.65)',
+              0.65, 'rgba(255,50,0,0.75)',
+              0.8,  'rgba(240,35,0,0.85)',
+              1.0,  'rgba(255,60,20,0.95)',
             ],
-            'heatmap-radius': ['interpolate',['linear'],['zoom'], 0,30, 3,45, 5,65, 8,90, 12,120],
+            'heatmap-radius': ['interpolate',['linear'],['zoom'], 0,25, 3,40, 5,55, 8,75, 12,100],
             'heatmap-opacity': 0.85,
           },
         });
 
-        // Invisible circles for pointer cursor feedback
+        // Hit-test circles
         map.addLayer({
-          id: 'news-heat-circles',
-          type: 'circle',
-          source: 'news-heat',
-          paint: {
-            'circle-radius': ['interpolate',['linear'],['zoom'], 0,4, 5,8, 10,14],
-            'circle-color': 'rgba(255,255,255,0)',
-            'circle-stroke-width': 0,
-          },
+          id: 'news-heat-circles', type: 'circle', source: 'news-heat',
+          paint: { 'circle-radius': ['interpolate',['linear'],['zoom'], 0,4, 5,8, 10,14], 'circle-color': 'rgba(255,255,255,0)', 'circle-stroke-width': 0 },
         });
         map.on('mouseenter','news-heat-circles', () => { map.getCanvas().style.cursor='pointer'; });
         map.on('mouseleave','news-heat-circles', () => { map.getCanvas().style.cursor=''; });
 
-        // Click → find nearest spot → open drawer
         map.on('click', (e) => {
           const { lng: cLng, lat: cLat } = e.lngLat;
           const zoom = map.getZoom();
@@ -176,33 +311,25 @@ export function NewsMap({ onClose, liveFeed=[] }) {
           }
         });
       });
-
-      return map;
     };
 
-    if (window.maplibregl) {
-      initMap();
-    } else {
+    if (window.maplibregl) { initMap(); }
+    else {
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
       script.onload = initMap;
       document.head.appendChild(script);
     }
-
-    return () => {
-      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
-      setMapReady(false);
-    };
+    return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } setMapReady(false); };
   }, []);
 
-  // Update heatmap data when feed changes
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const source = mapRef.current.getSource('news-heat');
     if (source) source.setData(geojsonData);
   }, [mapReady, geojsonData]);
 
-  // Pulsing animation — subtle breathing like Snap Map
+  // Breathing pulse
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
@@ -210,11 +337,14 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     const animate = (now) => {
       if (now - last > 33) {
         last = now;
-        const t = 0.5 + 0.5 * Math.sin((now / 2500) * Math.PI * 2);
+        const t = 0.5 + 0.5 * Math.sin((now / 2200) * Math.PI * 2);
         try {
-          map.setPaintProperty('news-heatmap','heatmap-opacity', 0.7 + 0.15 * t);
-          map.setPaintProperty('news-heatmap','heatmap-intensity',
-            ['interpolate',['linear'],['zoom'], 0, 0.6*(0.85+0.15*t), 5, 1.2*(0.85+0.15*t), 9, 2.0*(0.85+0.15*t)]);
+          if (map.getLayer('news-heatmap')) {
+            map.setPaintProperty('news-heatmap','heatmap-opacity', 0.75 + 0.15 * t);
+          }
+          if (map.getLayer('news-glow')) {
+            map.setPaintProperty('news-glow','heatmap-opacity', 0.7 + 0.25 * t);
+          }
         } catch(e) {}
       }
       frame = requestAnimationFrame(animate);
@@ -225,93 +355,183 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
   const handleClose = () => {
     setSel(null);
-    if (mapRef.current) {
-      mapRef.current.flyTo({ center:[38,28], zoom:3.2, pitch:30, bearing:0, duration:1000 });
-    }
+    if (mapRef.current) mapRef.current.flyTo({ center:[38,28], zoom:3.2, pitch:35, bearing:0, duration:1000 });
     onClose();
   };
 
-  const totalStories = spots.reduce((a,s)=>a+s.stories.length,0);
-
   return (
-    <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, zIndex:50, display:'flex', flexDirection:'column', background:'#04080f', height:'100dvh' }}>
+    <div style={{
+      position:'fixed', top:0, left:0, right:0, bottom:0, zIndex:50,
+      display:'flex', flexDirection:'column', background:'#020408', height:'100dvh',
+      opacity: entered ? 1 : 0, transition:'opacity .5s ease',
+    }}>
 
-      {/* Gradient overlay header */}
+      {/* ─── CINEMATIC VIGNETTE ─── */}
+      <div style={{ position:'absolute', inset:0, zIndex:10, pointerEvents:'none',
+        background:'radial-gradient(ellipse 70% 60% at 50% 45%, transparent 0%, rgba(2,4,8,0.3) 60%, rgba(2,4,8,0.85) 100%)',
+      }}/>
+
+      {/* ─── TOP HEADER ─── */}
       <div style={{
         position:'absolute', top:0, left:0, right:0, zIndex:100,
-        padding:'max(44px, env(safe-area-inset-top, 44px)) 16px 16px',
-        background:'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
+        padding:'max(44px, env(safe-area-inset-top, 44px)) 16px 20px',
+        background:'linear-gradient(180deg, rgba(2,4,8,0.97) 0%, rgba(2,4,8,0.88) 50%, rgba(2,4,8,0.4) 80%, transparent 100%)',
         pointerEvents:'none',
       }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', pointerEvents:'auto' }}>
-          <div>
-            <div style={{ fontSize:18, fontWeight:800, color:'#fff', direction:'rtl' }}>خريطة الأخبار</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,.45)', direction:'rtl', marginTop:2 }}>
+        {/* Title row */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', pointerEvents:'auto' }}>
+          <div style={{ direction:'rtl' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ fontSize:20, fontWeight:900, color:'#fff', letterSpacing:'-0.02em' }}>خريطة الأخبار</div>
+              {/* LIVE badge */}
+              <div style={{
+                display:'flex', alignItems:'center', gap:4,
+                background:'rgba(229,57,53,0.15)', border:'1px solid rgba(229,57,53,0.3)',
+                borderRadius:6, padding:'2px 8px',
+              }}>
+                <div style={{
+                  width:6, height:6, borderRadius:'50%', background:'#E53935',
+                  animation:'nm-glow 1.5s ease-in-out infinite',
+                }}/>
+                <span style={{ fontSize:10, fontWeight:800, color:'#E53935', letterSpacing:'0.05em' }}>LIVE</span>
+              </div>
+            </div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,.4)', marginTop:3 }}>
               {spots.length} منطقة · {totalStories} خبر مباشر
             </div>
           </div>
           <button onClick={handleClose} style={{
-            background:'rgba(0,0,0,0.55)', backdropFilter:'blur(12px)',
-            border:'1px solid rgba(255,255,255,.18)', cursor:'pointer',
-            color:'#fff', padding:10, borderRadius:'50%', display:'flex',
-            pointerEvents:'auto',
+            background:'rgba(255,255,255,0.06)',
+            border:'1px solid rgba(255,255,255,.08)', cursor:'pointer',
+            color:'rgba(255,255,255,.6)', padding:10, borderRadius:'50%', display:'flex',
+            pointerEvents:'auto', transition:'all .2s',
           }}>{I.close()}</button>
         </div>
 
-        {/* World clocks */}
-        <div style={{ display:'flex', gap:6, marginTop:12, justifyContent:'center', pointerEvents:'auto' }}>
-          {CITY_TIMES.map((c,i) => (
-            <div key={i} style={{
-              background:'rgba(0,0,0,0.55)', backdropFilter:'blur(12px)',
-              borderRadius:10, padding:'5px 8px', border:'1px solid rgba(255,255,255,.12)',
-              textAlign:'center',
+        {/* Accent line */}
+        <div style={{
+          height:1, marginTop:12,
+          background:'linear-gradient(90deg, transparent 0%, rgba(229,57,53,0.5) 20%, rgba(255,140,0,0.3) 50%, rgba(229,57,53,0.5) 80%, transparent 100%)',
+          animation:'nm-line .8s ease-out forwards', transformOrigin:'center',
+        }}/>
+
+        {/* World clocks — change by region */}
+        <div style={{ display:'flex', gap:5, marginTop:10, justifyContent:'center', pointerEvents:'auto', transition:'all .3s ease' }}>
+          {activeClock.map((c,i) => (
+            <div key={c.tz} style={{
+              background:'rgba(255,255,255,0.04)',
+              borderRadius:8, padding:'6px 10px', border:'1px solid rgba(255,255,255,.06)',
+              textAlign:'center', minWidth:68, transition:'all .3s ease',
             }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,.95)', fontVariantNumeric:'tabular-nums' }}>{fmt(c.tz)}</div>
-              <div style={{ fontSize:9, color:'rgba(255,255,255,.35)', marginTop:1 }}>{c.city}</div>
+              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,.9)', fontVariantNumeric:'tabular-nums', fontFeatureSettings:'"tnum"', whiteSpace:'nowrap' }}>{fmt(c.tz)}</div>
+              <div style={{ fontSize:9, color:'rgba(255,255,255,.3)', marginTop:2, letterSpacing:'0.02em' }}>{c.city}</div>
             </div>
           ))}
         </div>
+
+        {/* Trending spot ticker */}
+        {topSpot && (
+          <div style={{
+            marginTop:10, display:'flex', alignItems:'center', gap:6,
+            direction:'rtl', overflow:'hidden',
+          }}>
+            <div style={{
+              fontSize:9, fontWeight:700, color:'#E53935', letterSpacing:'0.04em',
+              background:'rgba(229,57,53,0.1)', padding:'2px 6px', borderRadius:4, flexShrink:0,
+            }}>
+              الأكثر تغطية
+            </div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,.55)', fontWeight:600, whiteSpace:'nowrap' }}>
+              {topSpot.city} — {topSpot.stories.length} خبر
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* MapLibre GL container */}
+      {/* ─── MAP ─── */}
       <div ref={mapContainerRef} style={{ flex:1, width:'100%' }}/>
 
-      {/* Loading spinner */}
+      {/* ─── BOTTOM GRADIENT ─── */}
+      <div style={{
+        position:'absolute', bottom:0, left:0, right:0, height:120, zIndex:10, pointerEvents:'none',
+        background:'linear-gradient(to top, rgba(2,4,8,0.7) 0%, transparent 100%)',
+      }}/>
+
+      {/* ─── LOADING ─── */}
       {!mapReady && (
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'#04080f', zIndex:99 }}>
-          <div style={{ textAlign:'center', color:'rgba(255,255,255,.4)', fontSize:13 }}>
-            <div style={{ width:32, height:32, border:'2px solid rgba(255,255,255,.12)', borderTopColor:'#E53935', borderRadius:'50%', margin:'0 auto 12px', animation:'spin .8s linear infinite' }}/>
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'#020408', zIndex:99 }}>
+          <div style={{ textAlign:'center', color:'rgba(255,255,255,.35)', fontSize:13 }}>
+            <div style={{ width:36, height:36, border:'2px solid rgba(255,255,255,.08)', borderTopColor:'#E53935', borderRadius:'50%', margin:'0 auto 14px', animation:'spin .8s linear infinite' }}/>
             جاري تحميل الخريطة…
           </div>
         </div>
       )}
 
-      {/* Story drawer */}
+      {/* ─── STORY DRAWER ─── */}
       {sel && (
         <div onClick={()=>setSel(null)} style={{ position:'absolute', inset:0, zIndex:200 }}>
+          {/* Scrim */}
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.3)', animation:'nm-fade .2s ease' }}/>
+
           <div onClick={e=>e.stopPropagation()} style={{
             position:'absolute', bottom:0, left:0, right:0,
-            background:'#fff', borderRadius:'20px 20px 0 0',
-            maxHeight:'55%', display:'flex', flexDirection:'column',
-            boxShadow:'0 -8px 40px rgba(0,0,0,.5)',
-            animation:'cu .3s cubic-bezier(.32,.72,.24,1)',
+            background:'rgba(10,12,16,0.94)', backdropFilter:'blur(30px) saturate(1.8)',
+            WebkitBackdropFilter:'blur(30px) saturate(1.8)',
+            borderRadius:'24px 24px 0 0',
+            maxHeight:'58%', display:'flex', flexDirection:'column',
+            boxShadow:'0 -4px 60px rgba(0,0,0,.6)',
+            animation:'nm-slide .35s cubic-bezier(.32,.72,.24,1) forwards',
             direction:'rtl', fontFamily:'var(--ft)',
+            borderTop:'1px solid rgba(255,255,255,0.08)',
           }}>
-            <div style={{ width:36, height:4, background:'#E0E0E0', borderRadius:2, margin:'10px auto 0', flexShrink:0 }}/>
-            <div style={{ padding:'12px 20px 10px', borderBottom:'.5px solid #F0F0F0', flexShrink:0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
-                <span style={{ fontSize:18, fontWeight:800, color:'#0A0A0A' }}>{sel.city}</span>
-                <span style={{ fontSize:13, color:'#C0C0C0' }}>· {sel.country}</span>
+            {/* Handle */}
+            <div style={{ width:36, height:4, background:'rgba(255,255,255,0.12)', borderRadius:2, margin:'10px auto 0', flexShrink:0 }}/>
+
+            {/* Header */}
+            <div style={{ padding:'14px 20px 12px', flexShrink:0 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:20, fontWeight:900, color:'#fff' }}>{sel.city}</span>
+                  <span style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>{sel.country}</span>
+                </div>
+                {/* Story count badge */}
+                <div style={{
+                  background:'linear-gradient(135deg, #E53935 0%, #FF6F00 100%)',
+                  borderRadius:10, padding:'3px 10px', minWidth:28, textAlign:'center',
+                }}>
+                  <span style={{ fontSize:12, fontWeight:800, color:'#fff' }}>{sel.stories.length}</span>
+                </div>
               </div>
-              <div style={{ fontSize:11, color:'#C0C0C0' }}>{sel.stories.length} {sel.stories.length>1?'أخبار':'خبر'} الآن</div>
+              {/* Accent line */}
+              <div style={{
+                height:1, marginTop:12,
+                background:'linear-gradient(90deg, rgba(229,57,53,0.4) 0%, rgba(255,140,0,0.2) 50%, transparent 100%)',
+              }}/>
             </div>
+
+            {/* Stories list */}
             <div style={{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch' }}>
               {sel.stories.map((s,i) => (
                 <div key={i} onClick={()=>s.link&&s.link!=='#'&&window.open(s.link,'_blank')}
-                  style={{ padding:'14px 20px', borderBottom:i<sel.stories.length-1?'.5px solid #F0F0F0':'none', cursor:s.link?'pointer':'default' }}>
-                  {s.tag && <div style={{ display:'inline-block', fontSize:10, fontWeight:600, color:s.brk||s.tag==='عاجل'?'#B71C1C':'#999', border:`1px solid ${s.brk||s.tag==='عاجل'?'rgba(183,28,28,.15)':'#F0F0F0'}`, padding:'1px 8px', borderRadius:3, marginBottom:6 }}>{s.tag}</div>}
-                  <div style={{ fontSize:15, fontWeight:700, lineHeight:1.7, color:'#0A0A0A', marginBottom:4 }}>{s.title}</div>
-                  <div style={{ fontSize:11, color:'#C0C0C0' }}>{s.src} · {s.t}</div>
+                  style={{
+                    padding:'14px 20px', cursor:s.link?'pointer':'default',
+                    borderBottom:i<sel.stories.length-1?'1px solid rgba(255,255,255,0.04)':'none',
+                    transition:'background .15s',
+                  }}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+                >
+                  {s.tag && (
+                    <div style={{
+                      display:'inline-block', fontSize:10, fontWeight:700, marginBottom:6,
+                      color: s.brk||s.tag==='عاجل' ? '#E53935' : 'rgba(255,255,255,0.4)',
+                      background: s.brk||s.tag==='عاجل' ? 'rgba(229,57,53,0.1)' : 'rgba(255,255,255,0.04)',
+                      border:`1px solid ${s.brk||s.tag==='عاجل'?'rgba(229,57,53,.2)':'rgba(255,255,255,0.06)'}`,
+                      padding:'2px 8px', borderRadius:4,
+                    }}>{s.tag}</div>
+                  )}
+                  <div style={{ fontSize:15, fontWeight:700, lineHeight:1.75, color:'rgba(255,255,255,0.9)', marginBottom:4 }}>{s.title}</div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)' }}>{s.src} · {s.t}</div>
                 </div>
               ))}
             </div>

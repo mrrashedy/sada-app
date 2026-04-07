@@ -11,7 +11,8 @@ import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { useInfiniteScroll } from './hooks/useInfiniteScroll';
 
 // Lib
-import { scoreByTopics, isOpinionOrSentimental, CONTEXT_TAGS } from './lib/filters';
+import { scoreByTopics, isOpinionOrSentimental, isContextOrAnalysis } from './lib/filters';
+import { Sound } from './lib/sounds';
 
 // Components
 import { I } from './components/shared/Icons';
@@ -34,6 +35,7 @@ export default function Sada() {
   const [notifs, setNotifs]     = useState(false);
   const [seenTs, setSeenTs]     = useState(() => { try { return parseInt(localStorage.getItem('sada-seen-ts'))||0; } catch { return 0; } });
   const [sources, setSources]   = useState({});
+  const [activeSource, setActiveSource] = useState(null);
   const [newCount, setNewCount] = useState(0);
   const prevLen                 = useRef(0);
   const contentRef              = useRef(null);
@@ -48,7 +50,7 @@ export default function Sada() {
 
   // Live feed
   const { feed:liveFeed, loading, isLive, refresh } = useNews();
-  useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
+  useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); Sound.notify(); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
 
   // Pull-to-refresh & infinite scroll
   const { pullY, refreshing, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD } = usePullToRefresh(contentRef, refresh);
@@ -78,20 +80,23 @@ export default function Sada() {
   const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
   const userTopics = userPrefs.topics||[];
 
-  // Build display feed based on active tab
+  // Build display feed based on active tab — each tab shows genuinely different content
   const displayFeed = useMemo(() => {
-    const byTime = [...sourcedFeed].sort((a,b) => (b.pubTs||0) - (a.pubTs||0));
-    if(feedTab==='now') return byTime.filter(item => !isOpinionOrSentimental(item));
+    let pool = [...sourcedFeed].sort((a,b) => (b.pubTs||0) - (a.pubTs||0));
+    // Source filter overrides tab logic — show all articles from that source
+    if(activeSource) return pool.filter(item => item.s?.n === activeSource);
+    if(feedTab==='now'){
+      return pool.filter(item => !isOpinionOrSentimental(item) && !isContextOrAnalysis(item));
+    }
+    if(feedTab==='important'){
+      if(userTopics.length===0) return [];
+      return pool.map(item=>({...item,_score:scoreByTopics(item,userTopics)})).filter(i=>i._score>0).sort((a,b)=>b._score-a._score||(b.pubTs||0)-(a.pubTs||0));
+    }
     if(feedTab==='context'){
-      const ctx = byTime.filter(item=>item.tag&&CONTEXT_TAGS.includes(item.tag));
-      return ctx.length>0 ? ctx : byTime;
+      return pool.filter(item => isContextOrAnalysis(item));
     }
-    if(userTopics.length>0){
-      const scored = byTime.map(item=>({...item,_score:scoreByTopics(item,userTopics)})).sort((a,b)=>b._score-a._score||(b.pubTs||0)-(a.pubTs||0));
-      return scored.some(i=>i._score>0)?scored:byTime;
-    }
-    return byTime;
-  }, [feedTab, sourcedFeed, userTopics.join(',')]);
+    return pool;
+  }, [feedTab, sourcedFeed, userTopics.join(','), activeSource]);
 
   // Navigation
   const navItems = [
@@ -111,14 +116,14 @@ export default function Sada() {
       <div className="hdr">
         <div className="logo">صَدى</div>
         <div className="hdr-r">
-          <button className="ib" onClick={()=>setSrch(true)}>{I.search()}</button>
-          <button className={`ib ${loading?'spinning':''}`} onClick={refresh}>{I.globe()}</button>
-          <button className={`ib ${allFeed.some(f=>f.pubTs>seenTs)?'ndot':''}`} onClick={()=>{ setNotifs(true); const now=Date.now(); setSeenTs(now); try{localStorage.setItem('sada-seen-ts',String(now));}catch{}; }}>{I.bell()}</button>
+          <button className="ib" onClick={()=>{Sound.tap();setSrch(true);}}>{I.search()}</button>
+          <button className={`ib ${loading?'spinning':''}`} onClick={()=>{Sound.refresh();refresh();}}>{I.globe()}</button>
+          <button className={`ib ${allFeed.some(f=>f.pubTs>seenTs)?'ndot':''}`} onClick={()=>{Sound.tap();setNotifs(true); const now=Date.now(); setSeenTs(now); try{localStorage.setItem('sada-seen-ts',String(now));}catch{}; }}>{I.bell()}</button>
         </div>
       </div>
 
       {/* Tabs */}
-      {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>setFeedTab(t.id)}>{t.l}</button>))}</div>)}
+      {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>{Sound.tap();setFeedTab(t.id);setActiveSource(null);}}>{t.l}</button>))}</div>)}
       {nav!=='home'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}</div>)}
 
       {/* Main content */}
@@ -134,13 +139,14 @@ export default function Sada() {
           </div>)}
 
           {/* New articles banner */}
-          {newCount>0&&(<div onClick={()=>{setNewCount(0);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}} style={{ position:'sticky',top:0,zIndex:50,background:'#0A0A0A',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',cursor:'pointer' }}>↑ {newCount} خبر جديد</div>)}
+          {newCount>0&&(<div onClick={()=>{Sound.notify();setNewCount(0);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}} style={{ position:'sticky',top:0,zIndex:50,background:'#0A0A0A',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',cursor:'pointer' }}>↑ {newCount} خبر جديد</div>)}
 
           {/* Live indicator */}
           {isLive&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 0',fontSize:11,color:'var(--t4)' }}><div style={{ width:5,height:5,borderRadius:'50%',background:'#4CAF50' }}/>أخبار مباشرة · {allFeed.length} خبر</div>)}
 
           {/* Source stories */}
-          <div className="stories">{SOURCES.map((s,i)=>(<div className="story" key={i} onClick={()=>{setSources(prev=>({...prev,[i]:prev[i]===true?undefined:true}));setFeedTab('important');}}><div className={`s-ring ${sources[i]===true?'':'seen'}`}><div className="s-av">{s.i}</div></div><div className="s-nm">{s.n}</div></div>))}</div>
+          <div className="stories">{SOURCES.map((s,i)=>(<div className="story" key={i} onClick={()=>{Sound.tap();setActiveSource(prev=>prev===s.n?null:s.n);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}}><div className={`s-ring ${activeSource===s.n?'':'seen'}`}><div className="s-av">{s.i}</div></div><div className="s-nm">{s.n}</div></div>))}</div>
+          {activeSource&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',background:'var(--f1)',borderBottom:'.5px solid var(--g1)' }}><span style={{ fontSize:13,fontWeight:700,color:'var(--t1)' }}>أخبار {activeSource}</span><button onClick={()=>setActiveSource(null)} style={{ fontSize:12,fontWeight:600,color:'var(--t3)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>عرض الكل ✕</button></div>)}
 
           {/* Tab-specific headers */}
           {feedTab==='important'&&userTopics.length>0&&(<div className="topic-bar"><span style={{ fontSize:11,color:'var(--t4)',fontWeight:700,whiteSpace:'nowrap',flexShrink:0 }}>يُصفَّح حسب:</span>{userTopics.map(id=>{ const t=TOPICS.find(x=>x.id===id); return t?<span key={id} className="topic-pill on">{t.icon} {t.label}</span>:null; })}</div>)}
@@ -149,7 +155,10 @@ export default function Sada() {
 
           {/* Feed */}
           {loading&&!refreshing&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>جاري تحميل الأخبار…</div>}
-          {!loading&&displayFeed.length===0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار في هذا التصنيف</div>}
+          {!loading&&displayFeed.length===0&&feedTab==='important'&&userTopics.length===0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>اختر اهتماماتك لعرض الأخبار المهمة لك</div>}
+          {!loading&&displayFeed.length===0&&feedTab==='important'&&userTopics.length>0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار تطابق اهتماماتك حالياً</div>}
+          {!loading&&displayFeed.length===0&&feedTab==='context'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد تحليلات أو تقارير حالياً</div>}
+          {!loading&&displayFeed.length===0&&feedTab==='now'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار عاجلة حالياً</div>}
           {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={item.id} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} showImg={i%3===0}/>))}
           {!loading&&visibleCount<displayFeed.length&&(<div className="load-more"><div className="spinner" style={{ width:18,height:18,border:'2px solid var(--g2)',borderTopColor:'var(--t3)',borderRadius:'50%',animation:'spin .6s linear infinite',margin:'0 auto' }}/></div>)}
           <div style={{ height:20 }}/>
@@ -161,12 +170,12 @@ export default function Sada() {
       </div>
 
       {/* Bottom nav */}
-      <div className="bnav">{navItems.map(item=>(<button key={item.id} className={`bnav-item ${nav===item.id?'on':''}`} onClick={()=>setNav(item.id)}>{item.icon(nav===item.id)}<span>{item.label}</span></button>))}</div>
+      <div className="bnav">{navItems.map(item=>(<button key={item.id} className={`bnav-item ${nav===item.id?'on':''}`} onClick={()=>{Sound.tap();setNav(item.id);}}>{item.icon(nav===item.id)}<span>{item.label}</span></button>))}</div>
 
       {/* Overlays */}
-      {article&&<ArticleDetail article={article} onClose={()=>setArticle(null)} onSave={toggleSave} isSaved={savedIds.has(article.id)}/>}
-      {srch&&<SearchView onClose={()=>setSrch(false)} feed={allFeed} onOpen={setArticle}/>}
-      {notifs&&<NotificationPanel allFeed={allFeed} onClose={()=>setNotifs(false)} onOpen={setArticle}/>}
+      {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)}/>}
+      {srch&&<SearchView onClose={()=>{Sound.close();setSrch(false);}} feed={allFeed} onOpen={setArticle}/>}
+      {notifs&&<NotificationPanel allFeed={allFeed} onClose={()=>{Sound.close();setNotifs(false);}} onOpen={setArticle}/>}
     </div>
   );
 }

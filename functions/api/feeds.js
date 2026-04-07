@@ -13,15 +13,26 @@ const SOURCES = {
   },
   bbc: {
     name: "BBC عربي", initial: "B", tier: 1,
-    feeds: ["https://feeds.bbci.co.uk/arabic/rss.xml"]
+    feeds: [
+      "https://feeds.bbci.co.uk/arabic/rss.xml",
+      "https://feeds.bbci.co.uk/arabic/middleeast/rss.xml",
+      "https://feeds.bbci.co.uk/arabic/worldnews/rss.xml",
+    ]
   },
   skynews: {
     name: "سكاي نيوز", initial: "S", tier: 1,
-    feeds: ["https://www.skynewsarabia.com/rss.xml"]
+    feeds: [
+      "https://www.skynewsarabia.com/rss.xml",
+      "https://www.skynewsarabia.com/rss/middle-east.xml",
+      "https://www.skynewsarabia.com/rss/world.xml",
+    ]
   },
   france24: {
     name: "فرانس ٢٤", initial: "F", tier: 1,
-    feeds: ["https://www.france24.com/ar/rss"]
+    feeds: [
+      "https://www.france24.com/ar/rss",
+      "https://www.france24.com/ar/الشرق-الأوسط/rss",
+    ]
   },
   dw: {
     name: "دويتشه فيله", initial: "D", tier: 1,
@@ -263,7 +274,7 @@ function parseXML(xml) {
       items.push({
         title,
         link,
-        description: description.slice(0, 220),
+        description: description.slice(0, 400),
         pubDate,
         image,
         categories,
@@ -306,7 +317,7 @@ export async function onRequest(context) {
     const requestedSources = url.searchParams.get('sources')
       ? url.searchParams.get('sources').split(',')
       : Object.keys(SOURCES);
-    const limit = parseInt(url.searchParams.get('limit')) || 80;
+    const limit = parseInt(url.searchParams.get('limit')) || 200;
     const tier = parseInt(url.searchParams.get('tier')) || 3;
 
     // Bindings (set up in Cloudflare dashboard)
@@ -322,7 +333,7 @@ export async function onRequest(context) {
         return source.feeds.map(async (feedUrl) => {
           try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 8000);
+            const timeout = setTimeout(() => controller.abort(), 12000);
             const res = await fetch(feedUrl, {
               headers: {
                 'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/2.6; +https://sada-app.pages.dev)',
@@ -391,10 +402,10 @@ export async function onRequest(context) {
         singleTestResult.error = e.message;
       }
 
-      // Now translate the rest (up to 14 more) in parallel batches of 5
-      const remaining = enIndices.slice(1, 15);
-      for (let batch = 0; batch < remaining.length; batch += 5) {
-        const chunk = remaining.slice(batch, batch + 5);
+      // Now translate the rest (up to 39 more) in parallel batches of 8
+      const remaining = enIndices.slice(1, 40);
+      for (let batch = 0; batch < remaining.length; batch += 8) {
+        const chunk = remaining.slice(batch, batch + 8);
         const results = await Promise.allSettled(
           chunk.map(idx => translateItem(allItems[idx], ai, kv))
         );
@@ -421,7 +432,7 @@ export async function onRequest(context) {
     const dedup = (items) => {
       const seen = new Set();
       return items.filter(item => {
-        const key = item.title.slice(0, 30).trim();
+        const key = item.title.slice(0, 50).trim();
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -509,7 +520,7 @@ export async function onRequest(context) {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
       }
     });
 

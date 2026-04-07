@@ -21,8 +21,8 @@ export function useNews(sources = []) {
 
     try {
       const params = new URLSearchParams({
-        limit: '80',
-        t: Math.floor(Date.now() / 30000), // cache-bust every 30s
+        limit: '200',
+        t: Math.floor(Date.now() / 15000), // cache-bust every 15s
       });
       if (sources.length > 0) params.set('sources', sources.join(','));
 
@@ -36,10 +36,10 @@ export function useNews(sources = []) {
       const data = await res.json();
       if (data.ok && Array.isArray(data.feed) && data.feed.length > 0) {
         setFeed(prev => {
-          // Merge: new items replace old, keep up to 120
+          // Merge: new items replace old, accumulate up to 500
           const newIds = new Set(data.feed.map(f => f.id));
           const kept = prev.filter(p => !newIds.has(p.id));
-          return [...data.feed, ...kept].slice(0, 120);
+          return [...data.feed, ...kept].slice(0, 500);
         });
         setIsLive(true);
       } else {
@@ -59,8 +59,8 @@ export function useNews(sources = []) {
   useEffect(() => {
     fetchNews(false);
 
-    // Refresh every 45 seconds
-    const interval = setInterval(() => fetchNews(true), 45000);
+    // Refresh every 20 seconds for more coverage
+    const interval = setInterval(() => fetchNews(true), 20000);
 
     // Also refresh when tab becomes visible
     const onVisible = () => {

@@ -1,6 +1,7 @@
 import { I } from '../shared/Icons';
 import { useTick } from '../../hooks/useTick';
 import { liveTimeAgo } from '../../lib/timeAgo';
+import { Sound } from '../../lib/sounds';
 
 export function Post({ item, delay, onOpen, onSave, isSaved, showImg }) {
   useTick(1000);
@@ -12,7 +13,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, showImg }) {
         <button className="ib" style={{ color:'var(--t4)' }}>{I.more()}</button>
       </div>
       {item.brk && <div className="ptag brk" style={{ marginBottom:6 }}>عاجل</div>}
-      <div className="ptitle" onClick={()=>onOpen(item)} style={{ cursor:'pointer' }}>{item.title}</div>
+      <div className="ptitle" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{item.title}</div>
       {item.body && <div className="pbody">{item.body}</div>}
       {item.tags&&item.tags.length>0 && (
         <div style={{ display:'flex',gap:6,flexWrap:'wrap',marginTop:8 }}>
@@ -25,9 +26,9 @@ export function Post({ item, delay, onOpen, onSave, isSaved, showImg }) {
         </div>
       )}
       <div className="pactions">
-        <button className="act" onClick={()=>onOpen(item)}>{I.link()} اقرأ المقال</button>
-        <button className="act" onClick={()=>{ if(navigator.share) navigator.share({title:item.title,url:item.link}).catch(()=>{}); else if(item.link) navigator.clipboard?.copyText(item.link); }}>{I.share()} مشاركة</button>
-        <button className={`act ${isSaved?'saved':''}`} onClick={()=>onSave(item.id)}>{I.bookmark(isSaved)}</button>
+        <button className="act" onClick={()=>{Sound.open();onOpen(item);}}>{I.link()} اقرأ المقال</button>
+        <button className="act" onClick={()=>{Sound.share();if(navigator.share) navigator.share({title:item.title,url:item.link}).catch(()=>{}); else if(item.link) navigator.clipboard?.copyText(item.link); }}>{I.share()} مشاركة</button>
+        <button className={`act ${isSaved?'saved':''}`} onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>{I.bookmark(isSaved)}</button>
       </div>
     </div>
   );

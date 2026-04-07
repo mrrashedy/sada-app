@@ -8,6 +8,11 @@ const SOURCES = {
     name: "الجزيرة", initial: "ج", tier: 1,
     feeds: [
       "https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9",
+    ]
+  },
+  aljazeera_en: {
+    name: "الجزيرة EN", initial: "ج", tier: 3, lang: "en",
+    feeds: [
       "https://www.aljazeera.com/xml/rss/all.xml"
     ]
   },
@@ -274,7 +279,7 @@ function parseXML(xml) {
       items.push({
         title,
         link,
-        description: description.slice(0, 400),
+        description: description.slice(0, 800),
         pubDate,
         image,
         categories,
@@ -402,8 +407,8 @@ export async function onRequest(context) {
         singleTestResult.error = e.message;
       }
 
-      // Now translate the rest (up to 39 more) in parallel batches of 8
-      const remaining = enIndices.slice(1, 40);
+      // Now translate the rest in parallel batches of 8
+      const remaining = enIndices.slice(1, 80);
       for (let batch = 0; batch < remaining.length; batch += 8) {
         const chunk = remaining.slice(batch, batch + 8);
         const results = await Promise.allSettled(
@@ -420,7 +425,7 @@ export async function onRequest(context) {
       }
     }
 
-    // Split into Arabic and translated English, sort each by recency
+    // Split into Arabic and translated English — drop untranslated English entirely
     const arabicItems = allItems.filter(i => i.lang !== 'en');
     const translatedEn = allItems.filter(i => i.lang === 'en' && i.translated);
 
@@ -464,10 +469,10 @@ export async function onRequest(context) {
     while (mixed.length < limit && t2 < arTier2.length) mixed.push(arTier2[t2++]);
     while (mixed.length < limit && ei < dedupedEn.length) mixed.push(dedupedEn[ei++]);
 
-    // If no translated English yet, fill entirely with Arabic
+    // If no translated English yet, fill entirely with Arabic (exclude raw English)
     if (dedupedEn.length === 0) {
       mixed.length = 0;
-      mixed.push(...dedup(allItems.sort(sortByRecency)).slice(0, limit));
+      mixed.push(...dedup(allItems.filter(i => i.lang !== 'en').sort(sortByRecency)).slice(0, limit));
     }
 
     const feed = mixed.map((item, i) => ({

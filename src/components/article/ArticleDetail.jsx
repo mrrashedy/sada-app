@@ -1,6 +1,54 @@
 import { useState, useEffect } from 'react';
 import { I } from '../shared/Icons';
 
+const PROXIES = [
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+const SELECTORS = [
+  'article', '.article-body', '.article-content', '.article__body',
+  '.story-body', '.content-body', '.post-content', '.entry-content',
+  '[itemprop="articleBody"]', '.wysiwyg', '.article-text', '.body-content',
+  '.article_body', '.td-post-content', '.c-article-body', '.article-detail',
+  '.main-article', '.news-article', '.single-post-content',
+];
+
+async function fetchFullText(link) {
+  for (const makeUrl of PROXIES) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(makeUrl(link), { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) continue;
+
+      const data = await res.json().catch(() => null);
+      const html = data?.contents || data || '';
+      if (typeof html !== 'string' || html.length < 200) continue;
+
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+
+      // Try structured selectors first
+      for (const sel of SELECTORS) {
+        const el = doc.querySelector(sel);
+        if (el) {
+          const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+          if (text.length > 200) return text.slice(0, 5000);
+        }
+      }
+
+      // Fallback: collect all paragraphs
+      const paras = Array.from(doc.querySelectorAll('p'))
+        .map(p => p.textContent.trim())
+        .filter(t => t.length > 30 && !t.includes('cookie') && !t.includes('©') && !t.match(/https?:\/\//));
+
+      if (paras.length >= 2) return paras.join('\n\n').slice(0, 5000);
+    } catch {}
+  }
+  return null;
+}
+
 export function ArticleDetail({ article, onClose, onSave, isSaved }) {
   const [fullText, setFullText] = useState(null);
   const [fetching, setFetching] = useState(false);
@@ -8,28 +56,8 @@ export function ArticleDetail({ article, onClose, onSave, isSaved }) {
   useEffect(() => {
     if (!article.link || article.link === '#') return;
     setFetching(true);
-    fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(article.link)}`)
-      .then(r => r.json())
-      .then(data => {
-        const doc = new DOMParser().parseFromString(data.contents || '', 'text/html');
-        const selectors = ['article', '.article-body', '.article-content', '.story-body', '.content-body', '.post-content', '.entry-content'];
-        let text = '';
-        for (const s of selectors) {
-          const el = doc.querySelector(s);
-          if (el) {
-            text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
-            if (text.length > 200) break;
-          }
-        }
-        if (text.length < 200) {
-          text = Array.from(doc.querySelectorAll('p'))
-            .map(p => p.textContent.trim())
-            .filter(t => t.length > 40 && !t.includes('cookie') && !t.match(/https?:\/\//))
-            .join('\n\n');
-        }
-        if (text.length > 100) setFullText(text.slice(0, 4000));
-      })
-      .catch(() => {})
+    fetchFullText(article.link)
+      .then(text => { if (text) setFullText(text); })
       .finally(() => setFetching(false));
   }, [article.id]);
 

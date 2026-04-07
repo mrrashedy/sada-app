@@ -718,7 +718,7 @@ function NewsMap({ onClose, liveFeed=[] }) {
 // NEWSROOM COMPONENTS
 // ═══════════════════════════════════════════
 
-function Post({ item, delay, onOpen, onSave, isSaved }) {
+function Post({ item, delay, onOpen, onSave, isSaved, showImg }) {
   useTick(1000);
   return (
     <div className="post" style={{ animationDelay:`${delay}s` }}>
@@ -730,7 +730,7 @@ function Post({ item, delay, onOpen, onSave, isSaved }) {
       {item.tag && <div className={`ptag ${item.brk?'brk':''}`}>{item.tag}</div>}
       <div className="ptitle" onClick={()=>onOpen(item)} style={{ cursor:'pointer' }}>{item.title}</div>
       {item.body && <div className="pbody">{item.body}</div>}
-      {item.realImg && (
+      {showImg && item.realImg && (
         <div className="strap" onClick={()=>onOpen(item)}>
           <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3) contrast(1.05)' }} onError={e=>{e.target.style.display='none';}}/>
         </div>
@@ -1043,7 +1043,7 @@ export default function Sada() {
             {feedTab==='context'&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)' }}>تحليلات ومقالات رأي وتقارير معمّقة</div>)}
             {loading&&!refreshing&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>جاري تحميل الأخبار…</div>}
             {!loading&&displayFeed.length===0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار في هذا التصنيف</div>}
-            {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={item.id} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)}/>))}
+            {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={item.id} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} showImg={i%3===0}/>))}
             {!loading&&visibleCount<displayFeed.length&&(<div className="load-more"><div className="spinner" style={{ width:18,height:18,border:'2px solid var(--g2)',borderTopColor:'var(--t3)',borderRadius:'50%',animation:'spin .6s linear infinite',margin:'0 auto' }}/></div>)}
             <div style={{ height:20 }}/>
           </>)}

@@ -11,7 +11,7 @@ import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { useInfiniteScroll } from './hooks/useInfiniteScroll';
 
 // Lib
-import { scoreByTopics, isOpinionOrSentimental, isContextOrAnalysis } from './lib/filters';
+import { scoreByTopics, isOpinionOrSentimental, isDeepInvestigative } from './lib/filters';
 import { Sound } from './lib/sounds';
 
 // Components
@@ -86,14 +86,14 @@ export default function Sada() {
     // Source filter overrides tab logic — show all articles from that source
     if(activeSource) return pool.filter(item => item.s?.n === activeSource);
     if(feedTab==='now'){
-      return pool.filter(item => !isOpinionOrSentimental(item) && !isContextOrAnalysis(item));
+      return pool.filter(item => !isOpinionOrSentimental(item));
     }
     if(feedTab==='important'){
       if(userTopics.length===0) return [];
       return pool.map(item=>({...item,_score:scoreByTopics(item,userTopics)})).filter(i=>i._score>0).sort((a,b)=>b._score-a._score||(b.pubTs||0)-(a.pubTs||0));
     }
     if(feedTab==='context'){
-      return pool.filter(item => isContextOrAnalysis(item));
+      return pool.filter(item => isDeepInvestigative(item));
     }
     return pool;
   }, [feedTab, sourcedFeed, userTopics.join(','), activeSource]);
@@ -151,7 +151,7 @@ export default function Sada() {
           {/* Tab-specific headers */}
           {feedTab==='important'&&userTopics.length>0&&(<div className="topic-bar"><span style={{ fontSize:11,color:'var(--t4)',fontWeight:700,whiteSpace:'nowrap',flexShrink:0 }}>يُصفَّح حسب:</span>{userTopics.map(id=>{ const t=TOPICS.find(x=>x.id===id); return t?<span key={id} className="topic-pill on">{t.icon} {t.label}</span>:null; })}</div>)}
           {feedTab==='important'&&userTopics.length===0&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)',display:'flex',justifyContent:'space-between',alignItems:'center' }}><span>لم تختر اهتمامات بعد — يُرتَّب حسب التفاعل</span><button onClick={resetOnboarding} style={{ fontSize:11,fontWeight:700,color:'var(--bk)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>اضبط ▸</button></div>)}
-          {feedTab==='context'&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)' }}>تحليلات ومقالات رأي وتقارير معمّقة</div>)}
+          {feedTab==='context'&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)' }}>تحقيقات · تحليلات · تقارير معمّقة</div>)}
 
           {/* Feed */}
           {loading&&!refreshing&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>جاري تحميل الأخبار…</div>}

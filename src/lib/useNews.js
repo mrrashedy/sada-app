@@ -75,5 +75,5 @@ export function useNews(sources = []) {
     };
   }, [fetchNews]);
 
-  return { feed, loading, error, isLive, refresh: () => fetchNews(false) };
+  return { feed, loading, error, isLive, refresh: () => fetchNews(false), silentRefresh: () => fetchNews(true) };
 }

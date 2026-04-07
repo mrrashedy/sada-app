@@ -210,7 +210,7 @@ html,body{background:#000;overflow:hidden;height:100%}
 .ptitle{font-size:16px;font-weight:700;line-height:1.7;color:var(--t1);margin-bottom:3px}
 .pbody{font-size:13px;line-height:1.7;color:var(--t2)}
 .pmore-t{color:var(--t4);font-weight:500;cursor:pointer}
-.strap{margin-top:12px;border-radius:8px;overflow:hidden;position:relative;height:100px}
+.strap{margin-top:10px;border-radius:6px;overflow:hidden;position:relative;height:56px}
 .strap-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(255,255,255,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15)}
 .strap-dur{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);color:white;font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px}
 .pactions{display:flex;align-items:center;margin-top:12px}
@@ -720,8 +720,6 @@ function NewsMap({ onClose, liveFeed=[] }) {
 
 function Post({ item, delay, onOpen, onSave, isSaved }) {
   useTick(1000);
-  const [exp, setExp]     = useState(false);
-  const trunc = item.body && item.body.length>100 && !exp;
   return (
     <div className="post" style={{ animationDelay:`${delay}s` }}>
       <div className="ph">
@@ -731,8 +729,7 @@ function Post({ item, delay, onOpen, onSave, isSaved }) {
       </div>
       {item.tag && <div className={`ptag ${item.brk?'brk':''}`}>{item.tag}</div>}
       <div className="ptitle" onClick={()=>onOpen(item)} style={{ cursor:'pointer' }}>{item.title}</div>
-      {item.body && !trunc && <div className="pbody">{item.body}</div>}
-      {trunc && <div className="pbody">{item.body.slice(0,100)}… <span className="pmore-t" onClick={()=>setExp(true)}>المزيد</span></div>}
+      {item.body && <div className="pbody">{item.body}</div>}
       {item.realImg && (
         <div className="strap" onClick={()=>onOpen(item)}>
           <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3) contrast(1.05)' }} onError={e=>{e.target.style.display='none';}}/>
@@ -916,6 +913,8 @@ export default function Sada() {
   const [feedTab, setFeedTab]   = useState('now');
   const [article, setArticle]   = useState(null);
   const [srch, setSrch]         = useState(false);
+  const [notifs, setNotifs]     = useState(false);
+  const [seenTs, setSeenTs]     = useState(() => { try { return parseInt(localStorage.getItem('sada-seen-ts'))||0; } catch { return 0; } });
   const [sources, setSources]   = useState({});
   const [newCount, setNewCount] = useState(0);
   const prevLen                 = useRef(0);
@@ -923,7 +922,7 @@ export default function Sada() {
   const toggleSave = useCallback(id => { setSavedIds(prev => { const next=new Set(prev); next.has(id)?next.delete(id):next.add(id); try { localStorage.setItem('sada-bookmarks',JSON.stringify([...next])); } catch {} return next; }); }, []);
   useEffect(() => { try { const s=localStorage.getItem('sada-sources'); if(s) setSources(JSON.parse(s)); } catch {} }, []);
   const toggleSource = useCallback(i => { setSources(prev => { const next={...prev,[i]:prev[i]===false?true:false}; try { localStorage.setItem('sada-sources',JSON.stringify(next)); } catch {} return next; }); }, []);
-  const { feed:liveFeed, loading, isLive, refresh } = useNews();
+  const { feed:liveFeed, loading, isLive, refresh, silentRefresh } = useNews();
   useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
 
   // Pull-to-refresh state
@@ -946,12 +945,13 @@ export default function Sada() {
     if (dy > 0) { setPullY(Math.min(dy * 0.5, 120)); }
     else { setPulling(false); setPullY(0); }
   }, [pulling]);
-  const onTouchEnd = useCallback(() => {
+  const onTouchEnd = useCallback(async () => {
     if (pullY >= PULL_THRESHOLD && !refreshing) {
       setRefreshing(true);
       setPullY(50);
-      refresh();
-      setTimeout(() => { setRefreshing(false); setPullY(0); setPulling(false); }, 1500);
+      try { await refresh(); } catch {}
+      setRefreshing(false); setPullY(0); setPulling(false);
+      contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       setPullY(0); setPulling(false);
     }
@@ -972,7 +972,7 @@ export default function Sada() {
     id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟' },
     t: item.time||'الآن', pubTs: item.timestamp || (Date.now() - i*60000),
     title: item.title,
-    body: (item.body||'').replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,200)||null,
+    body: (item.body||'').replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,300)||null,
     realImg: item.image||null, link: item.link, tag: item.categories?.[0]||null,
     brk: item.categories?.[0]==='عاجل'||!!item.title?.includes('عاجل'),
   }));
@@ -1021,7 +1021,7 @@ export default function Sada() {
           <div className="hdr-r">
             <button className="ib" onClick={()=>setSrch(true)}>{I.search()}</button>
             <button className={`ib ${loading?'spinning':''}`} onClick={refresh}>{I.globe()}</button>
-            <button className="ib ndot">{I.bell()}</button>
+            <button className={`ib ${allFeed.some(f=>f.pubTs>seenTs)?'ndot':''}`} onClick={()=>{ setNotifs(true); const now=Date.now(); setSeenTs(now); try{localStorage.setItem('sada-seen-ts',String(now));}catch{}; }}>{I.bell()}</button>
           </div>
         </div>
         {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>setFeedTab(t.id)}>{t.l}</button>))}</div>)}
@@ -1054,6 +1054,28 @@ export default function Sada() {
         <div className="bnav">{navItems.map(item=>(<button key={item.id} className={`bnav-item ${nav===item.id?'on':''}`} onClick={()=>setNav(item.id)}>{item.icon(nav===item.id)}<span>{item.label}</span></button>))}</div>
         {article&&<ArticleDetail article={article} onClose={()=>setArticle(null)} onSave={toggleSave} isSaved={savedIds.has(article.id)}/>}
         {srch   &&<SearchView onClose={()=>setSrch(false)} feed={allFeed} onOpen={setArticle}/>}
+        {notifs &&(
+          <div className="srch" style={{ direction:'rtl' }}>
+            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'.5px solid var(--g1)',paddingBottom:12,marginBottom:16 }}>
+              <span style={{ fontSize:18,fontWeight:800,color:'var(--t1)' }}>التحديثات</span>
+              <button className="srch-c" onClick={()=>setNotifs(false)}>إغلاق</button>
+            </div>
+            {allFeed.length===0&&<div className="empty"><div className="empty-title">لا توجد تحديثات</div></div>}
+            {allFeed.slice(0,30).map((item,i)=>(
+              <div key={item.id} style={{ padding:'12px 0',borderBottom:'.5px solid var(--g1)',cursor:'pointer',display:'flex',gap:10,alignItems:'flex-start' }} onClick={()=>{setArticle(item);setNotifs(false);}}>
+                <div className="pav" style={{ width:32,height:32,fontSize:11,flexShrink:0,marginTop:2 }}>{item.s.i}</div>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:3 }}>
+                    <span style={{ fontSize:12,fontWeight:700,color:'var(--t1)' }}>{item.s.n}</span>
+                    <span style={{ fontSize:11,color:'var(--t4)' }}>{liveTimeAgo(item.pubTs)}</span>
+                    {item.brk&&<span style={{ fontSize:9,fontWeight:700,color:'var(--rd)',border:'1px solid rgba(183,28,28,.15)',padding:'1px 6px',borderRadius:3 }}>عاجل</span>}
+                  </div>
+                  <div style={{ fontSize:14,fontWeight:600,lineHeight:1.6,color:'var(--t1)' }}>{item.title}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );

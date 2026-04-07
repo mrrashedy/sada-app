@@ -727,14 +727,14 @@ function Post({ item, delay, onOpen, onSave, isSaved, showImg }) {
         <div className="pinfo"><span className="pname">{item.s.n}</span><span className="ptime">{liveTimeAgo(item.pubTs)}</span></div>
         <button className="ib" style={{ color:'var(--t4)' }}>{I.more()}</button>
       </div>
-      {(item.brk || (item.tags&&item.tags.length>0)) && (
-        <div style={{ display:'flex',gap:6,flexWrap:'wrap',marginBottom:6 }}>
-          {item.brk && <span className="ptag brk">عاجل</span>}
-          {(item.tags||[]).map((t,i) => <span key={i} className="ptag">{t}</span>)}
-        </div>
-      )}
+      {item.brk && <div className="ptag brk" style={{ marginBottom:6 }}>عاجل</div>}
       <div className="ptitle" onClick={()=>onOpen(item)} style={{ cursor:'pointer' }}>{item.title}</div>
       {item.body && <div className="pbody">{item.body}</div>}
+      {item.tags&&item.tags.length>0 && (
+        <div style={{ display:'flex',gap:6,flexWrap:'wrap',marginTop:8 }}>
+          {item.tags.map((t,i) => <span key={i} className="ptag">{t}</span>)}
+        </div>
+      )}
       {showImg && item.realImg && (
         <div className="strap" onClick={()=>onOpen(item)}>
           <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:'saturate(1.3) contrast(1.05)' }} onError={e=>{e.target.style.display='none';}}/>

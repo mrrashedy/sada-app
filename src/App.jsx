@@ -727,7 +727,12 @@ function Post({ item, delay, onOpen, onSave, isSaved, showImg }) {
         <div className="pinfo"><span className="pname">{item.s.n}</span><span className="ptime">{liveTimeAgo(item.pubTs)}</span></div>
         <button className="ib" style={{ color:'var(--t4)' }}>{I.more()}</button>
       </div>
-      {item.tag && <div className={`ptag ${item.brk?'brk':''}`}>{item.tag}</div>}
+      {(item.brk || (item.tags&&item.tags.length>0)) && (
+        <div style={{ display:'flex',gap:6,flexWrap:'wrap',marginBottom:6 }}>
+          {item.brk && <span className="ptag brk">عاجل</span>}
+          {(item.tags||[]).map((t,i) => <span key={i} className="ptag">{t}</span>)}
+        </div>
+      )}
       <div className="ptitle" onClick={()=>onOpen(item)} style={{ cursor:'pointer' }}>{item.title}</div>
       {item.body && <div className="pbody">{item.body}</div>}
       {showImg && item.realImg && (
@@ -968,14 +973,26 @@ export default function Sada() {
   // Reset visible count on tab change
   useEffect(() => { setVisibleCount(20); }, [feedTab]);
 
-  const allFeed = liveFeed.map((item,i) => ({
-    id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟' },
-    t: item.time||'الآن', pubTs: item.timestamp || (Date.now() - i*60000),
-    title: item.title,
-    body: (item.body||'').replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,300)||null,
-    realImg: item.image||null, link: item.link, tag: item.categories?.[0]||null,
-    brk: item.categories?.[0]==='عاجل'||!!item.title?.includes('عاجل'),
-  }));
+  const allFeed = liveFeed.map((item,i) => {
+    const text = ((item.title||'')+' '+(item.body||'')).toLowerCase();
+    // Auto-detect topic tags from content
+    const detectedTopics = TOPICS.filter(t =>
+      (TOPIC_KEYWORDS[t.id]||[]).some(kw => text.includes(kw))
+    ).slice(0,2).map(t => t.label);
+    // Combine API categories + detected topics, dedupe, limit to 3-4
+    const apiCats = (item.categories||[]).filter(c => c && c !== 'عاجل');
+    const allTags = [...new Set([...apiCats, ...detectedTopics])].slice(0,4);
+
+    return {
+      id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟' },
+      t: item.time||'الآن', pubTs: item.timestamp || (Date.now() - i*60000),
+      title: item.title,
+      body: (item.body||'').replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,300)||null,
+      realImg: item.image||null, link: item.link,
+      tag: item.categories?.[0]||null, tags: allTags,
+      brk: item.categories?.[0]==='عاجل'||!!item.title?.includes('عاجل'),
+    };
+  });
 
   const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
   const CONTEXT_TAGS = ['تحليل','رأي','تقرير','حصري','ملف'];

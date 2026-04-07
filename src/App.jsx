@@ -996,11 +996,21 @@ export default function Sada() {
 
   const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
   const CONTEXT_TAGS = ['تحليل','رأي','تقرير','حصري','ملف'];
+  const OPINION_TAGS = ['آراء','رأي','زوايا','مقال رأي','opinion','تعليق','عمود'];
+  const SENTIMENTAL_WORDS = ['زواج','عقد قران','أفراح','يحتفلون','زفاف','خطوبة','تهنئة','عزاء','وفاة صاحب'];
   const userTopics = userPrefs.topics||[];
+
+  const isOpinionOrSentimental = (item) => {
+    const cats = [item.tag, ...(item.tags||[])].filter(Boolean);
+    if (cats.some(c => OPINION_TAGS.includes(c))) return true;
+    const text = ((item.title||'')+' '+(item.body||'')).toLowerCase();
+    if (SENTIMENTAL_WORDS.some(w => text.includes(w))) return true;
+    return false;
+  };
 
   const displayFeed = useMemo(() => {
     const byTime = [...sourcedFeed].sort((a,b) => (b.pubTs||0) - (a.pubTs||0));
-    if(feedTab==='now') return byTime;
+    if(feedTab==='now') return byTime.filter(item => !isOpinionOrSentimental(item));
     if(feedTab==='context'){
       const ctx = byTime.filter(item=>item.tag&&CONTEXT_TAGS.includes(item.tag));
       return ctx.length>0 ? ctx : byTime;

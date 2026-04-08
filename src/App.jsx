@@ -13,6 +13,8 @@ import { useInfiniteScroll } from './hooks/useInfiniteScroll';
 // Lib
 import { scoreByTopics, isOpinionOrSentimental, isDeepInvestigative } from './lib/filters';
 import { Sound } from './lib/sounds';
+import { extractTrending } from './lib/trending';
+import { shareArticle } from './lib/shareCard';
 
 // Components
 import { I } from './components/shared/Icons';
@@ -24,8 +26,13 @@ import { SettingsView } from './components/settings/SettingsView';
 import { NewsMap } from './components/map/NewsMap';
 import { NotificationPanel } from './components/notifications/NotificationPanel';
 import { Onboarding } from './components/onboarding/Onboarding';
+import { TrendingRadar, RadarView } from './components/trending/TrendingRadar';
 
 export default function Sada() {
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem('sada-theme')||'light'; } catch { return 'light'; } });
+  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); try { localStorage.setItem('sada-theme', theme); } catch {} }, [theme]);
+  const toggleTheme = useCallback(() => setTheme(p => p === 'dark' ? 'light' : 'dark'), []);
+
   const [obDone, setObDone] = useState(() => { try { return localStorage.getItem('sada-ob-done')==='1'; } catch { return false; } });
   const [userPrefs, setUserPrefs] = useState(() => { try { return JSON.parse(localStorage.getItem('sada-prefs')||'{}'); } catch { return {}; } });
   const [nav, setNav]           = useState('home');
@@ -36,6 +43,7 @@ export default function Sada() {
   const [seenTs, setSeenTs]     = useState(() => { try { return parseInt(localStorage.getItem('sada-seen-ts'))||0; } catch { return 0; } });
   const [sources, setSources]   = useState({});
   const [activeSource, setActiveSource] = useState(null);
+  const [trendFilter, setTrendFilter] = useState(null);
   const [newCount, setNewCount] = useState(0);
   const prevLen                 = useRef(0);
   const contentRef              = useRef(null);
@@ -76,6 +84,9 @@ export default function Sada() {
     };
   });
 
+  // Trending topics
+  const trending = useMemo(() => extractTrending(allFeed), [allFeed.length]);
+
   // Filter by enabled sources
   const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
   const userTopics = userPrefs.topics||[];
@@ -85,6 +96,7 @@ export default function Sada() {
     let pool = [...sourcedFeed].sort((a,b) => (b.pubTs||0) - (a.pubTs||0));
     // Source filter overrides tab logic — show all articles from that source
     if(activeSource) return pool.filter(item => item.s?.n === activeSource);
+    if(trendFilter) return pool.filter(item => (item.title||'').includes(trendFilter));
     if(feedTab==='now'){
       return pool.filter(item => !isOpinionOrSentimental(item));
     }
@@ -96,11 +108,12 @@ export default function Sada() {
       return pool.filter(item => isDeepInvestigative(item));
     }
     return pool;
-  }, [feedTab, sourcedFeed, userTopics.join(','), activeSource]);
+  }, [feedTab, sourcedFeed, userTopics.join(','), activeSource, trendFilter]);
 
   // Navigation
   const navItems = [
     { id:'home', label:'الرئيسية', icon:f=>I.home(f) },
+    { id:'radar',label:'رادار',    icon:f=>I.radar(f) },
     { id:'map',  label:'خريطة',    icon:f=>I.map(f)  },
     { id:'saved',label:'المحفوظات',icon:f=>I.saved(f)},
     { id:'settings',label:'الإعدادات',icon:()=>I.user()},
@@ -124,7 +137,7 @@ export default function Sada() {
 
       {/* Tabs */}
       {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>{Sound.tap();setFeedTab(t.id);setActiveSource(null);}}>{t.l}</button>))}</div>)}
-      {nav!=='home'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}</div>)}
+      {nav!=='home'&&nav!=='radar'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}</div>)}
 
       {/* Main content */}
       <div className="content" ref={contentRef} onScroll={onScroll}
@@ -148,6 +161,7 @@ export default function Sada() {
           <div className="stories">{SOURCES.map((s,i)=>(<div className="story" key={i} onClick={()=>{Sound.tap();setActiveSource(prev=>prev===s.n?null:s.n);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}}><div className={`s-ring ${activeSource===s.n?'':'seen'}`}><div className="s-av">{s.i}</div></div><div className="s-nm">{s.n}</div></div>))}</div>
           {activeSource&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',background:'var(--f1)',borderBottom:'.5px solid var(--g1)' }}><span style={{ fontSize:13,fontWeight:700,color:'var(--t1)' }}>أخبار {activeSource}</span><button onClick={()=>setActiveSource(null)} style={{ fontSize:12,fontWeight:600,color:'var(--t3)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>عرض الكل ✕</button></div>)}
 
+
           {/* Tab-specific headers */}
           {feedTab==='important'&&userTopics.length>0&&(<div className="topic-bar"><span style={{ fontSize:11,color:'var(--t4)',fontWeight:700,whiteSpace:'nowrap',flexShrink:0 }}>يُصفَّح حسب:</span>{userTopics.map(id=>{ const t=TOPICS.find(x=>x.id===id); return t?<span key={id} className="topic-pill on">{t.icon} {t.label}</span>:null; })}</div>)}
           {feedTab==='important'&&userTopics.length===0&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)',display:'flex',justifyContent:'space-between',alignItems:'center' }}><span>لم تختر اهتمامات بعد — يُرتَّب حسب التفاعل</span><button onClick={resetOnboarding} style={{ fontSize:11,fontWeight:700,color:'var(--bk)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>اضبط ▸</button></div>)}
@@ -164,9 +178,10 @@ export default function Sada() {
           <div style={{ height:20 }}/>
         </>)}
 
+        {nav==='radar'   && <RadarView trending={trending} allFeed={allFeed} onOpenArticle={setArticle}/>}
         {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}
         {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}
-        {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onResetOnboarding={resetOnboarding}/>}
+        {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onResetOnboarding={resetOnboarding} theme={theme} toggleTheme={toggleTheme}/>}
       </div>
 
       {/* Bottom nav */}

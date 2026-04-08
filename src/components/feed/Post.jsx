@@ -2,6 +2,7 @@ import { I } from '../shared/Icons';
 import { useTick } from '../../hooks/useTick';
 import { liveTimeAgo } from '../../lib/timeAgo';
 import { Sound } from '../../lib/sounds';
+import { shareArticle } from '../../lib/shareCard';
 
 export function Post({ item, delay, onOpen, onSave, isSaved, showImg }) {
   useTick(1000);
@@ -27,7 +28,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, showImg }) {
       )}
       <div className="pactions">
         <button className="act" onClick={()=>{Sound.open();onOpen(item);}}>{I.link()} اقرأ المقال</button>
-        <button className="act" onClick={()=>{Sound.share();if(navigator.share) navigator.share({title:item.title,url:item.link}).catch(()=>{}); else if(item.link) navigator.clipboard?.copyText(item.link); }}>{I.share()} مشاركة</button>
+        <button className="act" onClick={()=>{Sound.share();shareArticle(item);}}>{I.share()} مشاركة</button>
         <button className={`act ${isSaved?'saved':''}`} onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>{I.bookmark(isSaved)}</button>
       </div>
     </div>

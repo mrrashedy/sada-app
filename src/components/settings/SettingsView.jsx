@@ -1,7 +1,7 @@
 import { SOURCES } from '../../data/sources';
 import { TOPICS } from '../../data/topics';
 
-export function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding }) {
+export function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding, theme, toggleTheme }) {
   const topicLabels=(userPrefs.topics||[]).map(id=>TOPICS.find(t=>t.id===id)?.label).filter(Boolean);
   return (
     <>
@@ -28,7 +28,7 @@ export function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboa
       <div className="set-sec">
         <div className="set-sec-title">التفضيلات</div>
         <div className="set-row"><span className="set-name">إشعارات الأخبار العاجلة</span><button className="toggle on"/></div>
-        <div className="set-row"><span className="set-name">الوضع الداكن</span><button className="toggle"/></div>
+        <div className="set-row"><span className="set-name">الوضع الداكن</span><button className={`toggle ${theme==='dark'?'on':''}`} onClick={toggleTheme}/></div>
         <div className="set-row"><span className="set-name">تشغيل الفيديو تلقائياً</span><button className="toggle"/></div>
       </div>
       <div className="set-sec">

@@ -206,30 +206,31 @@ export function NewsMap({ onClose, liveFeed=[] }) {
         style: {
           version: 8,
           sources: {
-            'satellite': {
+            'dark': {
               type: 'raster',
-              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256, maxzoom: 18, attribution: '',
+              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+              tileSize: 256, maxzoom: 16, attribution: '',
             },
-            'labels': {
+            'ref': {
               type: 'raster',
-              tiles: ['https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256, maxzoom: 18,
+              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
+              tileSize: 256, maxzoom: 16,
             },
-            'borders': {
-              type: 'raster',
-              tiles: ['https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256, maxzoom: 18,
+            'hillshade-src': {
+              type: 'raster-dem',
+              tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+              tileSize: 256, maxzoom: 14, encoding: 'terrarium',
             },
           },
+          terrain: { source: 'hillshade-src', exaggeration: 3.0 },
           layers: [
-            { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-brightness-max': 0.42, 'raster-brightness-min': 0.01, 'raster-contrast': 0.4, 'raster-saturation': -0.5 } },
-            { id: 'borders', type: 'raster', source: 'borders', paint: { 'raster-opacity': 0.4 } },
-            { id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.75 } },
+            { id: 'dark', type: 'raster', source: 'dark', paint: { 'raster-saturation': 0.4, 'raster-contrast': 0.15, 'raster-brightness-min': 0.25, 'raster-brightness-max': 0.9 } },
+            { id: 'hillshade', type: 'hillshade', source: 'hillshade-src', paint: { 'hillshade-exaggeration': 0.5, 'hillshade-shadow-color': 'rgba(0,15,0,0.25)', 'hillshade-highlight-color': 'rgba(0,255,100,0.15)', 'hillshade-illumination-direction': 315 } },
+            { id: 'ref', type: 'raster', source: 'ref', paint: { 'raster-opacity': 0.95 } },
           ],
         },
-        center: [38, 28], zoom: 3.2, pitch: 35, bearing: 0,
-        attributionControl: false, maxPitch: 65,
+        center: [38, 28], zoom: 3.2, pitch: 50, bearing: -15,
+        attributionControl: false, maxPitch: 75,
       });
 
       mapRef.current = map;
@@ -304,8 +305,8 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             playBlip();
             setSel(nearest);
             map.flyTo({
-              center: [nearest.lng, nearest.lat-1.5], zoom:5.8, pitch:50,
-              bearing: (Math.random()-0.5)*20, duration:1600,
+              center: [nearest.lng, nearest.lat-1.5], zoom:5.8, pitch:58,
+              bearing: (Math.random()-0.5)*25, duration:1600,
               easing: t => t<0.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1,
             });
           }
@@ -355,7 +356,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
   const handleClose = () => {
     setSel(null);
-    if (mapRef.current) mapRef.current.flyTo({ center:[38,28], zoom:3.2, pitch:35, bearing:0, duration:1000 });
+    if (mapRef.current) mapRef.current.flyTo({ center:[38,28], zoom:3.2, pitch:50, bearing:-15, duration:1000 });
     onClose();
   };
 

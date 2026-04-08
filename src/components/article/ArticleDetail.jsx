@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { I } from '../shared/Icons';
+import { shareArticle } from '../../lib/shareCard';
+import { Sound } from '../../lib/sounds';
 
 const PROXIES = [
   url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
@@ -69,7 +71,7 @@ export function ArticleDetail({ article, onClose, onSave, isSaved }) {
         <button className="ib" onClick={onClose}>{I.back()}</button>
         <div style={{ display: 'flex', gap: 14 }}>
           <button className="ib" style={isSaved ? { color: 'var(--bk)' } : {}} onClick={() => onSave(article.id)}>{I.bookmark(isSaved)}</button>
-          <button className="ib">{I.share()}</button>
+          <button className="ib" onClick={()=>{Sound.share();shareArticle(article);}}>{I.share()}</button>
         </div>
       </div>
       {article.realImg && (

@@ -159,7 +159,8 @@ export function NewsMap({ onClose, liveFeed=[] }) {
   const [time, setTime] = useState(new Date());
   const [mapReady, setMapReady] = useState(false);
   const [entered, setEntered]   = useState(false);
-  const spots = useMemo(() => buildMapSpots(liveFeed), [liveFeed.length]);
+  const spotsKey = useMemo(() => liveFeed.map(f => f.id).join(','), [liveFeed]);
+  const spots = useMemo(() => buildMapSpots(liveFeed), [spotsKey]);
   const spotsRef = useRef(spots);
   useEffect(() => { spotsRef.current = spots; }, [spots]);
   const geojsonData = useMemo(() => ({

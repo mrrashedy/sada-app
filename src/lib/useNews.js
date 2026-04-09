@@ -10,6 +10,9 @@ export function useNews(sources = []) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLive, setIsLive] = useState(false);
+  const [serverTrending, setServerTrending] = useState([]);
+  const [serverBreaking, setServerBreaking] = useState([]);
+  const [cacheAge, setCacheAge] = useState(null);
   const abortRef = useRef(null);
 
   const fetchNews = useCallback(async (silent = false) => {
@@ -21,48 +24,57 @@ export function useNews(sources = []) {
 
     try {
       const params = new URLSearchParams({
-        limit: '200',
-        t: Math.floor(Date.now() / 15000), // cache-bust every 15s
+        limit: '500',
+        t: silent ? Math.floor(Date.now() / 15000) : Date.now(),
       });
       if (sources.length > 0) params.set('sources', sources.join(','));
 
       const res = await fetch(`${API_URL}?${params}`, {
         signal: abortRef.current.signal,
-        headers: { 'Cache-Control': 'no-cache' },
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
       if (data.ok && Array.isArray(data.feed) && data.feed.length > 0) {
+        let newCount = 0;
         setFeed(prev => {
-          // Merge: new items replace old, accumulate up to 500
+          const oldIds = new Set(prev.map(f => f.id));
+          newCount = data.feed.filter(f => !oldIds.has(f.id)).length;
           const newIds = new Set(data.feed.map(f => f.id));
           const kept = prev.filter(p => !newIds.has(p.id));
           return [...data.feed, ...kept].slice(0, 500);
         });
         setIsLive(true);
+        setLoading(false);
+
+        // Server-side trending + breaking (from KV cache)
+        if (data.trending) setServerTrending(data.trending);
+        if (data.breaking) setServerBreaking(data.breaking);
+        if (data._cache) setCacheAge(data._cache.age);
+
+        return newCount;
       } else {
         throw new Error('Empty feed');
       }
     } catch (e) {
-      if (e.name === 'AbortError') return;
+      if (e.name === 'AbortError') return 0;
       console.warn('[useNews] fetch failed:', e.message);
-      // No fallback — show empty state if API fails
       setIsLive(false);
       setError(e.message);
     }
 
     setLoading(false);
+    return 0;
   }, [sources.join(',')]);
 
   useEffect(() => {
     fetchNews(false);
 
-    // Refresh every 20 seconds for more coverage
-    const interval = setInterval(() => fetchNews(true), 20000);
+    // Poll every 60 seconds (server handles caching, so we can be less aggressive)
+    const interval = setInterval(() => fetchNews(true), 60000);
 
-    // Also refresh when tab becomes visible
+    // Refresh when tab becomes visible
     const onVisible = () => {
       if (document.visibilityState === 'visible') fetchNews(true);
     };
@@ -75,5 +87,10 @@ export function useNews(sources = []) {
     };
   }, [fetchNews]);
 
-  return { feed, loading, error, isLive, refresh: () => fetchNews(false), silentRefresh: () => fetchNews(true) };
+  return {
+    feed, loading, error, isLive,
+    serverTrending, serverBreaking, cacheAge,
+    refresh: () => fetchNews(false),
+    silentRefresh: () => fetchNews(true),
+  };
 }

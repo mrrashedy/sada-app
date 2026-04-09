@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { I } from '../shared/Icons';
 import { shareArticle } from '../../lib/shareCard';
 import { Sound } from '../../lib/sounds';
+import { useSummary } from '../../hooks/useSummary';
+import { ReactionBar } from '../social/ReactionBar';
 
 const PROXIES = [
   url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
@@ -51,9 +53,12 @@ async function fetchFullText(link) {
   return null;
 }
 
-export function ArticleDetail({ article, onClose, onSave, isSaved }) {
+export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCounts, userReactions, onToggleReaction, commentCount, onComment, relatedArticles = [] }) {
   const [fullText, setFullText] = useState(null);
   const [fetching, setFetching] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const { summaries, fetchSummary } = useSummary();
+  const summary = summaries[article.id];
 
   useEffect(() => {
     if (!article.link || article.link === '#') return;
@@ -63,7 +68,28 @@ export function ArticleDetail({ article, onClose, onSave, isSaved }) {
       .finally(() => setFetching(false));
   }, [article.id]);
 
+  const handleSummary = () => {
+    setShowSummary(true);
+    if (!summary?.text && !summary?.loading) {
+      fetchSummary(article.id, article.title, article.body || fullText || '');
+    }
+  };
+
   const paragraphs = fullText ? fullText.split('\n').filter(p => p.trim().length > 20) : null;
+
+  // Find related stories by matching tags/keywords
+  const related = useMemo(() => {
+    if (!relatedArticles.length) return [];
+    const keywords = [article.tag, ...(article.tags || [])].filter(Boolean);
+    if (!keywords.length) return [];
+    return relatedArticles
+      .filter(a => a.id !== article.id)
+      .filter(a => {
+        const aTags = [a.tag, ...(a.tags || [])].filter(Boolean);
+        return keywords.some(k => aTags.includes(k)) || (a.title && article.title && a.title.split(' ').filter(w => w.length > 3).some(w => article.title.includes(w)));
+      })
+      .slice(0, 5);
+  }, [article.id, relatedArticles]);
 
   return (
     <div className="detail">
@@ -91,6 +117,26 @@ export function ArticleDetail({ article, onClose, onSave, isSaved }) {
         </div>
         <div className="det-meta"><span>{article.t}</span></div>
         <div className="det-title">{article.title}</div>
+
+        {/* AI Summary */}
+        <div style={{ marginBottom: 16 }}>
+          {!showSummary ? (
+            <button onClick={handleSummary} className="ai-summary-btn">
+              ✨ ملخص ذكي
+            </button>
+          ) : (
+            <div className="ai-summary-box">
+              <div className="ai-summary-hdr">
+                <span>✨ ملخص ذكي</span>
+                <button onClick={() => setShowSummary(false)} style={{ background: 'none', border: 'none', color: 'var(--t4)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--ft)' }}>إخفاء</button>
+              </div>
+              {summary?.loading && <div style={{ color: 'var(--t4)', fontSize: 13 }}>جاري التلخيص بالذكاء الاصطناعي…</div>}
+              {summary?.text && <div style={{ fontSize: 14, lineHeight: 1.9, color: 'var(--t1)' }}>{summary.text}</div>}
+              {summary?.error && <div style={{ fontSize: 13, color: 'var(--t3)' }}>التلخيص غير متاح حالياً</div>}
+            </div>
+          )}
+        </div>
+
         {article.body && <div className="det-sub">{article.body}</div>}
         {fetching && (
           <div style={{ color: 'var(--t4)', fontSize: 13, padding: '16px 0', textAlign: 'center' }}>
@@ -113,6 +159,27 @@ export function ArticleDetail({ article, onClose, onSave, isSaved }) {
             >
               {I.link()} اقرأ من {article.s.n}
             </a>
+          </div>
+        )}
+
+        {/* Reactions + Comments */}
+        <div style={{ marginTop: 24 }}>
+          <ReactionBar articleId={article.id} counts={reactionCounts} userReactions={userReactions} onToggle={onToggleReaction} commentCount={commentCount || 0} onComment={() => onComment?.(article)} />
+        </div>
+
+        {/* Related stories */}
+        {related.length > 0 && (
+          <div style={{ marginTop: 24, paddingTop: 16, borderTop: '.5px solid var(--g1)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t3)', marginBottom: 12, letterSpacing: '.5px' }}>قصص ذات صلة</div>
+            {related.map(r => (
+              <div key={r.id} onClick={() => { Sound.open(); onClose(); setTimeout(() => onComment?.__openArticle?.(r), 100); }} style={{ padding: '10px 0', borderBottom: '.5px solid var(--g1)', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)' }}>{r.s?.n}</span>
+                  <span style={{ fontSize: 10, color: 'var(--t4)' }}>{r.t}</span>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.6, color: 'var(--t1)' }}>{r.title}</div>
+              </div>
+            ))}
           </div>
         )}
       </div>

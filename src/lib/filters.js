@@ -33,9 +33,16 @@ export function isDeepInvestigative(item) {
   return false;
 }
 
-export function scoreByTopics(item, topicIds) {
-  if (!topicIds || topicIds.length === 0) return 0;
-  const allTags = [item.tag, ...(item.tags || [])].filter(Boolean).join(' ');
-  const text = ((item.title || '') + ' ' + (item.body || '') + ' ' + allTags).toLowerCase();
-  return topicIds.flatMap(id => TOPIC_KEYWORDS[id] || []).filter(kw => text.includes(kw)).length;
+export function scoreByTopics(item, topicIds, learnedInterests) {
+  let score = 0;
+  const allTags = [item.tag, ...(item.tags || [])].filter(Boolean);
+  const text = ((item.title || '') + ' ' + (item.body || '') + ' ' + allTags.join(' ')).toLowerCase();
+  if (topicIds && topicIds.length > 0) {
+    score += topicIds.flatMap(id => TOPIC_KEYWORDS[id] || []).filter(kw => text.includes(kw)).length;
+  }
+  // Boost from learned interests (tag weights)
+  if (learnedInterests) {
+    allTags.forEach(t => { if (learnedInterests[t]) score += learnedInterests[t] * 2; });
+  }
+  return score;
 }

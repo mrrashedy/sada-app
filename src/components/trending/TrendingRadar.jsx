@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Sound } from '../../lib/sounds';
 
 if (typeof document !== 'undefined' && !document.getElementById('radar-css')) {
@@ -9,6 +9,12 @@ if (typeof document !== 'undefined' && !document.getElementById('radar-css')) {
     @keyframes radar-ping{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
     @keyframes radar-fade{0%{opacity:0;transform:scale(.8)}100%{opacity:1;transform:scale(1)}}
     @keyframes radar-line-fade{0%{opacity:.5}100%{opacity:0}}
+    @keyframes radar-boot{0%{transform:scale(0);opacity:0}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1);opacity:1}}
+    @keyframes radar-ring-expand{0%{transform:scale(0);opacity:0}70%{opacity:.6}100%{transform:scale(1);opacity:1}}
+    @keyframes radar-blip-drop{0%{opacity:0;transform:translateY(-20px) scale(0)}60%{opacity:1;transform:translateY(2px) scale(1.05)}100%{transform:translateY(0) scale(1);opacity:1}}
+    @keyframes radar-detect{0%{box-shadow:0 0 6px rgba(229,57,53,.4)}30%{box-shadow:0 0 24px rgba(229,57,53,1),0 0 48px rgba(229,57,53,.4)}100%{box-shadow:0 0 6px rgba(229,57,53,.4)}}
+    @keyframes radar-ripple{0%{transform:translate(-50%,-50%) scale(0);opacity:.6}100%{transform:translate(-50%,-50%) scale(3);opacity:0}}
+    @keyframes radar-scanline{0%{opacity:0;transform:scaleX(0)}50%{opacity:.4}100%{opacity:0;transform:scaleX(1)}}
 
     /* Inline mini radar */
     .radar{position:relative;width:100%;height:220px;overflow:hidden;background:radial-gradient(circle at 50% 110%,rgba(229,57,53,.06) 0%,transparent 60%);border-bottom:.5px solid var(--g1)}
@@ -145,76 +151,164 @@ function placeBig(topics) {
 }
 
 // Full-screen radar view (own nav tab)
-export function RadarView({ trending, allFeed, onOpenArticle }) {
+export function RadarView({ trending, allFeed, onOpenArticle, onClose }) {
   const [filter, setFilter] = useState(null);
+  const [booted, setBooted] = useState(false);
+  const [activeBlip, setActiveBlip] = useState(-1);
+  const [ripple, setRipple] = useState(null);
+  const intervalRef = useRef(null);
   const placed = useMemo(() => placeBig(trending.slice(0, 14)), [trending]);
+  const placedRef = useRef(placed);
+  useEffect(() => { placedRef.current = placed; }, [placed]);
 
   const filtered = filter ? allFeed.filter(item => (item.title || '').includes(filter)) : [];
+
+  // Boot sequence — entrance animation + sound
+  useEffect(() => {
+    Sound.radarOpen();
+    const t = setTimeout(() => setBooted(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Periodic blip highlights + ambient sounds
+  useEffect(() => {
+    if (!placed.length) return;
+    let scanCount = 0;
+
+    intervalRef.current = setInterval(() => {
+      const cur = placedRef.current;
+      if (!cur.length) return;
+      const idx = Math.floor(Math.random() * cur.length);
+      setActiveBlip(idx);
+      Sound.radarBlip();
+
+      // Ripple effect at the blip's position
+      const p = cur[idx];
+      if (p) setRipple({ x: p.x, y: p.y, id: Date.now() });
+
+      setTimeout(() => setActiveBlip(-1), 800);
+      setTimeout(() => setRipple(null), 1000);
+
+      // Every 3rd cycle, play a scan sweep
+      scanCount++;
+      if (scanCount % 3 === 0) {
+        setTimeout(() => Sound.radarScan(), 400);
+      }
+    }, 4000 + Math.random() * 3000);
+
+    return () => clearInterval(intervalRef.current);
+  }, [placed]);
 
   return (
     <div style={{ background:'#080810', minHeight:'100%', fontFamily:'var(--ft)', direction:'rtl' }}>
       {/* Header */}
-      <div style={{ padding:'16px 20px 8px', display:'flex', alignItems:'center', gap:8 }}>
-        <div style={{ width:8, height:8, borderRadius:'50%', background:'#E53935', animation:'radar-ping 2s ease infinite', boxShadow:'0 0 8px rgba(229,57,53,.6)' }}/>
-        <span style={{ fontSize:20, fontWeight:800, color:'#fff' }}>رادار الأخبار</span>
+      <div style={{
+        padding:'16px 20px 8px', display:'flex', alignItems:'center', gap:8,
+        opacity: booted ? 1 : 0, transition:'opacity .6s ease .2s',
+      }}>
+        <div style={{ flex:1, display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'#E53935', animation:'radar-ping 2s ease infinite', boxShadow:'0 0 8px rgba(229,57,53,.6)' }}/>
+          <span style={{ fontSize:20, fontWeight:800, color:'#fff' }}>رادار الأخبار</span>
+        </div>
+        {onClose && <button onClick={onClose} style={{ background:'rgba(255,255,255,.08)', border:'none', borderRadius:'50%', width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>}
       </div>
-      <div style={{ padding:'0 20px 12px', fontSize:12, color:'rgba(255,255,255,.35)' }}>
-        رصد مباشر · {allFeed.length} خبر · {trending.length} موضوع
+      <div style={{
+        padding:'0 20px 12px', fontSize:12, color:'rgba(255,255,255,.35)',
+        opacity: booted ? 1 : 0, transition:'opacity .6s ease .4s',
+      }}>
+        تحديث كل ١٠ دقائق · {allFeed.length} خبر · {trending.length} موضوع
       </div>
 
       {/* Big radar disc */}
       <div style={{ position:'relative', width:'100%', height:400, display:'flex', alignItems:'center', justifyContent:'center' }}>
         {/* Glow behind disc */}
-        <div style={{ position:'absolute', width:300, height:300, borderRadius:'50%', background:'radial-gradient(circle, rgba(229,57,53,.08) 0%, transparent 70%)', pointerEvents:'none' }}/>
+        <div style={{
+          position:'absolute', width:300, height:300, borderRadius:'50%',
+          background:'radial-gradient(circle, rgba(229,57,53,.08) 0%, transparent 70%)',
+          pointerEvents:'none',
+          animation: booted ? 'radar-boot .8s cubic-bezier(.34,1.56,.64,1) both' : 'none',
+        }}/>
 
-        <div style={{ position:'relative', width:370, height:370, borderRadius:'50%', border:'1px solid rgba(255,255,255,.08)' }}>
-          {/* Rings */}
-          <div style={{ position:'absolute', inset:50, borderRadius:'50%', border:'1px solid rgba(255,255,255,.06)' }}/>
-          <div style={{ position:'absolute', inset:100, borderRadius:'50%', border:'1px solid rgba(255,255,255,.04)' }}/>
-          <div style={{ position:'absolute', inset:145, borderRadius:'50%', border:'1px solid rgba(255,255,255,.03)' }}/>
+        <div style={{
+          position:'relative', width:370, height:370, borderRadius:'50%',
+          border:'1px solid rgba(255,255,255,.08)',
+          animation: booted ? 'radar-boot .7s cubic-bezier(.34,1.56,.64,1) both' : 'none',
+        }}>
+          {/* Rings — staggered expansion */}
+          <div style={{ position:'absolute', inset:50, borderRadius:'50%', border:'1px solid rgba(255,255,255,.06)', animation: booted ? 'radar-ring-expand .6s ease .3s both' : 'none' }}/>
+          <div style={{ position:'absolute', inset:100, borderRadius:'50%', border:'1px solid rgba(255,255,255,.04)', animation: booted ? 'radar-ring-expand .6s ease .45s both' : 'none' }}/>
+          <div style={{ position:'absolute', inset:145, borderRadius:'50%', border:'1px solid rgba(255,255,255,.03)', animation: booted ? 'radar-ring-expand .6s ease .6s both' : 'none' }}/>
           {/* Cross */}
-          <div style={{ position:'absolute', top:'50%', left:0, right:0, height:1, background:'rgba(255,255,255,.05)' }}/>
-          <div style={{ position:'absolute', left:'50%', top:0, bottom:0, width:1, background:'rgba(255,255,255,.05)' }}/>
+          <div style={{ position:'absolute', top:'50%', left:0, right:0, height:1, background:'rgba(255,255,255,.05)', animation: booted ? 'radar-scanline .5s ease .5s both' : 'none' }}/>
+          <div style={{ position:'absolute', left:'50%', top:0, bottom:0, width:1, background:'rgba(255,255,255,.05)', animation: booted ? 'radar-scanline .5s ease .55s both' : 'none' }}/>
           {/* Diagonals */}
-          <div style={{ position:'absolute', inset:0, background:'linear-gradient(45deg,transparent 49.5%,rgba(255,255,255,.03) 49.5%,rgba(255,255,255,.03) 50.5%,transparent 50.5%)' }}/>
-          <div style={{ position:'absolute', inset:0, background:'linear-gradient(-45deg,transparent 49.5%,rgba(255,255,255,.03) 49.5%,rgba(255,255,255,.03) 50.5%,transparent 50.5%)' }}/>
-          {/* Sweep */}
-          <div className="rf-sweep"/>
+          <div style={{ position:'absolute', inset:0, background:'linear-gradient(45deg,transparent 49.5%,rgba(255,255,255,.03) 49.5%,rgba(255,255,255,.03) 50.5%,transparent 50.5%)', opacity: booted ? 1 : 0, transition:'opacity .5s ease .6s' }}/>
+          <div style={{ position:'absolute', inset:0, background:'linear-gradient(-45deg,transparent 49.5%,rgba(255,255,255,.03) 49.5%,rgba(255,255,255,.03) 50.5%,transparent 50.5%)', opacity: booted ? 1 : 0, transition:'opacity .5s ease .65s' }}/>
+          {/* Sweep — delayed start */}
+          <div className="rf-sweep" style={{ opacity: booted ? 1 : 0, transition:'opacity .3s ease .7s' }}/>
           {/* Center */}
-          <div style={{ position:'absolute', top:'50%', left:'50%', width:10, height:10, borderRadius:'50%', background:'#E53935', transform:'translate(-50%,-50%)', boxShadow:'0 0 16px rgba(229,57,53,.8), 0 0 40px rgba(229,57,53,.3)' }}/>
+          <div style={{
+            position:'absolute', top:'50%', left:'50%', width:10, height:10, borderRadius:'50%',
+            background:'#E53935', transform:'translate(-50%,-50%)',
+            boxShadow:'0 0 16px rgba(229,57,53,.8), 0 0 40px rgba(229,57,53,.3)',
+            animation: booted ? 'radar-boot .5s cubic-bezier(.34,1.56,.64,1) .2s both' : 'none',
+          }}/>
 
-          {/* Blips */}
-          {placed.map((t, i) => (
-            <div key={t.word}
-              style={{
-                position:'absolute', left:t.x-28, top:t.y-28, width:56, textAlign:'center',
-                cursor:'pointer', animation:`radar-fade .5s ease ${i*0.1}s both`, transition:'all .2s',
-              }}
-              onClick={() => { Sound.tap(); setFilter(prev => prev === t.word ? null : t.word); }}>
-              {/* Dot */}
-              <div style={{
-                width: t.hot ? 14 : 10,
-                height: t.hot ? 14 : 10,
-                borderRadius: '50%',
-                background: filter === t.word ? '#ff4444' : '#E53935',
-                margin: '0 auto 4px',
-                boxShadow: filter === t.word
-                  ? '0 0 20px rgba(229,57,53,1), 0 0 40px rgba(229,57,53,.5)'
-                  : t.hot ? '0 0 12px rgba(229,57,53,.7)' : '0 0 6px rgba(229,57,53,.4)',
-                animation: t.hot ? 'radar-ping 2s ease infinite' : 'none',
-              }}/>
-              {/* Label */}
-              <div style={{
-                fontSize: t.hot ? 14 : 12,
-                fontWeight: 800,
-                color: filter === t.word ? '#E53935' : '#fff',
-                whiteSpace: 'nowrap',
-                textShadow: '0 1px 6px rgba(0,0,0,.8)',
-              }}>{t.word}</div>
-              {/* Count */}
-              <div style={{ fontSize:10, color:'rgba(255,255,255,.4)', fontWeight:600 }}>{t.count}</div>
-            </div>
-          ))}
+          {/* Ripple effect on random blip detection */}
+          {ripple && (
+            <div key={ripple.id} style={{
+              position:'absolute', left:ripple.x, top:ripple.y,
+              width:20, height:20, borderRadius:'50%',
+              border:'1.5px solid rgba(229,57,53,.5)',
+              animation:'radar-ripple .8s ease-out forwards',
+              pointerEvents:'none',
+            }}/>
+          )}
+
+          {/* Blips — staggered drop-in */}
+          {placed.map((t, i) => {
+            const isDetected = activeBlip === i;
+            return (
+              <div key={t.word}
+                style={{
+                  position:'absolute', left:t.x-28, top:t.y-28, width:56, textAlign:'center',
+                  cursor:'pointer',
+                  animation: booted ? `radar-blip-drop .5s cubic-bezier(.34,1.56,.64,1) ${0.8 + i*0.08}s both` : 'none',
+                  transition:'transform .2s',
+                  transform: isDetected ? 'scale(1.15)' : 'scale(1)',
+                }}
+                onClick={() => { Sound.tap(); setFilter(prev => prev === t.word ? null : t.word); }}>
+                {/* Dot */}
+                <div style={{
+                  width: t.hot ? 14 : 10,
+                  height: t.hot ? 14 : 10,
+                  borderRadius: '50%',
+                  background: filter === t.word ? '#ff4444' : '#E53935',
+                  margin: '0 auto 4px',
+                  boxShadow: isDetected
+                    ? '0 0 24px rgba(229,57,53,1), 0 0 48px rgba(229,57,53,.5)'
+                    : filter === t.word
+                      ? '0 0 20px rgba(229,57,53,1), 0 0 40px rgba(229,57,53,.5)'
+                      : t.hot ? '0 0 12px rgba(229,57,53,.7)' : '0 0 6px rgba(229,57,53,.4)',
+                  animation: isDetected ? 'radar-detect .8s ease' : t.hot ? 'radar-ping 2s ease infinite' : 'none',
+                  transition:'box-shadow .3s',
+                }}/>
+                {/* Label */}
+                <div style={{
+                  fontSize: t.hot ? 14 : 12,
+                  fontWeight: 800,
+                  color: isDetected ? '#ff6659' : filter === t.word ? '#E53935' : '#fff',
+                  whiteSpace: 'nowrap',
+                  textShadow: isDetected ? '0 0 12px rgba(229,57,53,.6)' : '0 1px 6px rgba(0,0,0,.8)',
+                  transition:'color .3s, text-shadow .3s',
+                }}>{t.word}</div>
+                {/* Count */}
+                <div style={{ fontSize:10, color: isDetected ? 'rgba(229,57,53,.7)' : 'rgba(255,255,255,.4)', fontWeight:600, transition:'color .3s' }}>{t.count}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -242,7 +336,7 @@ export function RadarView({ trending, allFeed, onOpenArticle }) {
 
       {/* Empty state when no filter */}
       {!filter && (
-        <div style={{ textAlign:'center', padding:'20px', color:'rgba(255,255,255,.2)', fontSize:12 }}>
+        <div style={{ textAlign:'center', padding:'20px', color:'rgba(255,255,255,.2)', fontSize:12, opacity: booted ? 1 : 0, transition:'opacity .5s ease 1.5s' }}>
           اضغط على أي موضوع لعرض الأخبار المتعلقة
         </div>
       )}

@@ -91,7 +91,7 @@ export async function generateShareCard(article) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 22px system-ui, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('صَدى', W - 40, H - 24);
+  ctx.fillText('غرفة الأخبار', W - 40, H - 24);
 
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
   ctx.font = '400 13px system-ui, sans-serif';
@@ -104,7 +104,7 @@ export async function generateShareCard(article) {
 export async function shareArticle(article) {
   try {
     const blob = await generateShareCard(article);
-    const file = new File([blob], 'sada-news.png', { type: 'image/png' });
+    const file = new File([blob], 'newsroom-share.png', { type: 'image/png' });
 
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({

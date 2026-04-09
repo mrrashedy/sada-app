@@ -19,7 +19,10 @@ function ObSplash({ onNext }) {
       <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none' }}>
         {SPLASH_DOTS.map((d,i) => <div key={i} style={{ position:'absolute', width:d.w+'px', height:d.w+'px', borderRadius:'50%', background:`rgba(255,255,255,${d.o})`, left:d.l+'%', top:d.t+'%' }}/>)}
       </div>
-      <div style={{ fontSize:76, fontWeight:800, color:'#fff', letterSpacing:'-3px', transition:'all 1s cubic-bezier(.175,.885,.32,1.275)', opacity:vis?1:0, transform:vis?'scale(1)':'scale(0.8)', animation:vis?'logoPulse 4s ease infinite':'none' }}>صَدى</div>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, transition:'all 1s cubic-bezier(.175,.885,.32,1.275)', opacity:vis?1:0, transform:vis?'scale(1)':'scale(0.8)' }}>
+        <div style={{ width:64, height:64, background:'#fff', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', fontSize:32, fontWeight:900, color:'#000' }}>غ</div>
+        <div style={{ fontSize:42, fontWeight:800, color:'#fff', letterSpacing:'-1px', animation:vis?'logoPulse 4s ease infinite':'none' }}>غرفة الأخبار</div>
+      </div>
       <div style={{ fontSize:15, color:'rgba(255,255,255,.35)', marginTop:14, fontWeight:300, letterSpacing:'.5px', opacity:vis?1:0, transition:'opacity 1s ease .5s' }}>أخبار العالم، بنبضٍ عربي</div>
       <div style={{ marginTop:64, width:'100%', maxWidth:320, padding:'0 32px', opacity:vis?1:0, transform:vis?'translateY(0)':'translateY(24px)', transition:'all .8s ease 1s' }}>
         <button className="ob-btn" onClick={onNext}>ابدأ الآن</button>
@@ -109,8 +112,11 @@ function ObReady({ selSources, selTopics, onDone }) {
         <div style={{ fontSize:48, marginBottom:16 }}>✓</div>
         <div style={{ fontSize:28, fontWeight:800, color:'#fff', marginBottom:10 }}>غرفتك جاهزة</div>
         <div style={{ fontSize:14, color:'rgba(255,255,255,.35)', lineHeight:1.8, marginBottom:10 }}>{selSources.size} مصدر مختار</div>
-        {topicLabels.length>0 && <div style={{ fontSize:13, color:'rgba(255,255,255,.25)', marginBottom:48 }}>يتابع: {topicLabels.join(' · ')}{selTopics.size>3?` +${selTopics.size-3}`:''}</div>}
-        <button className="ob-btn" onClick={onDone} style={{ maxWidth:300 }}>ادخل إلى صَدى</button>
+        {topicLabels.length>0 && <div style={{ fontSize:13, color:'rgba(255,255,255,.25)', marginBottom:32 }}>يتابع: {topicLabels.join(' · ')}{selTopics.size>3?` +${selTopics.size-3}`:''}</div>}
+        <button className="ob-btn" onClick={onDone} style={{ maxWidth:300 }}>ادخل إلى غرفة الأخبار</button>
+        <div style={{ fontSize:11, color:'rgba(255,255,255,.2)', marginTop:16 }}>
+          يمكنك إنشاء حساب لاحقاً من الإعدادات
+        </div>
       </div>
     </div>
   );

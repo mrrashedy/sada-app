@@ -6,6 +6,7 @@ export function usePullToRefresh(contentRef, refreshFn) {
   const [pulling, setPulling] = useState(false);
   const [pullY, setPullY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState(null);
   const touchStartY = useRef(0);
 
   const onTouchStart = useCallback(e => {
@@ -26,13 +27,19 @@ export function usePullToRefresh(contentRef, refreshFn) {
     if (pullY >= PULL_THRESHOLD && !refreshing) {
       setRefreshing(true);
       setPullY(50);
-      try { await refreshFn(); } catch {}
+      let count = 0;
+      try { count = (await refreshFn()) || 0; } catch {}
       setRefreshing(false); setPullY(0); setPulling(false);
-      contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      if (count > 0) {
+        setRefreshMsg(`${count} خبر جديد`);
+      } else {
+        setRefreshMsg('أخبارك محدّثة');
+      }
+      setTimeout(() => setRefreshMsg(null), 2500);
     } else {
       setPullY(0); setPulling(false);
     }
-  }, [pullY, refreshing, refreshFn, contentRef]);
+  }, [pullY, refreshing, refreshFn]);
 
-  return { pulling, pullY, refreshing, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD };
+  return { pulling, pullY, refreshing, refreshMsg, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD };
 }

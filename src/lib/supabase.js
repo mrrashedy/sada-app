@@ -92,34 +92,180 @@ export async function savePreferences(userId, prefs) {
   });
 }
 
-// ─── SQL to create tables (run in Supabase SQL editor) ───
-/*
+// ─── Profiles ───
 
--- Bookmarks table
-CREATE TABLE bookmarks (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  article_id TEXT NOT NULL,
-  article_data JSONB,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_id, article_id)
-);
+export async function getProfile(userId) {
+  if (!supabase || !userId) return null;
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  return data;
+}
 
-ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own bookmarks" ON bookmarks
-  FOR ALL USING (auth.uid() = user_id);
+export async function updateProfile(userId, updates) {
+  if (!supabase || !userId) return;
+  await supabase.from('profiles').upsert({ id: userId, ...updates });
+}
 
--- Preferences table
-CREATE TABLE preferences (
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  sources JSONB DEFAULT '{}',
-  notifications BOOLEAN DEFAULT true,
-  dark_mode BOOLEAN DEFAULT false,
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+export async function checkUsername(username) {
+  if (!supabase || !username) return false;
+  const { data } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .maybeSingle();
+  return !data; // true = available
+}
 
-ALTER TABLE preferences ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own prefs" ON preferences
-  FOR ALL USING (auth.uid() = user_id);
+// ─── Cloud Sync ───
 
-*/
+export async function syncBookmarksToCloud(userId, localIds, allFeed) {
+  if (!supabase || !userId || !localIds.size) return;
+  const existing = await getBookmarks(userId);
+  const existingIds = new Set(existing.map(b => b.article_id));
+  const toAdd = [...localIds].filter(id => !existingIds.has(id));
+  if (toAdd.length === 0) return;
+  const rows = toAdd.map(id => {
+    const item = allFeed.find(f => f.id === id);
+    return { user_id: userId, article_id: id, article_data: item || null };
+  });
+  await supabase.from('bookmarks').upsert(rows);
+}
+
+export async function syncPreferencesToCloud(userId, prefs) {
+  if (!supabase || !userId) return;
+  await supabase.from('preferences').upsert({
+    user_id: userId,
+    sources: prefs.sources || {},
+    dark_mode: prefs.dark_mode || false,
+    interests: prefs.interests || {},
+    topics: prefs.topics || [],
+  });
+}
+
+export async function loadCloudData(userId) {
+  if (!supabase || !userId) return null;
+  const [bookmarks, prefs, profile] = await Promise.all([
+    getBookmarks(userId),
+    getPreferences(userId),
+    getProfile(userId),
+  ]);
+  return { bookmarks, prefs, profile };
+}
+
+// ─── Reactions ───
+
+export async function addReaction(userId, articleId, type = 'like') {
+  if (!supabase || !userId) return;
+  await supabase.from('reactions').upsert({ user_id: userId, article_id: articleId, reaction_type: type });
+}
+
+export async function removeReaction(userId, articleId, type = 'like') {
+  if (!supabase || !userId) return;
+  await supabase.from('reactions').delete()
+    .eq('user_id', userId).eq('article_id', articleId).eq('reaction_type', type);
+}
+
+export async function getUserReactions(userId, articleIds) {
+  if (!supabase || !userId || !articleIds.length) return [];
+  const { data } = await supabase.from('reactions')
+    .select('article_id, reaction_type')
+    .eq('user_id', userId)
+    .in('article_id', articleIds);
+  return data || [];
+}
+
+export async function getReactionCounts(articleIds) {
+  if (!supabase || !articleIds.length) return [];
+  const { data } = await supabase.from('reaction_counts')
+    .select('*')
+    .in('article_id', articleIds);
+  return data || [];
+}
+
+// ─── Comments ───
+
+export async function getComments(articleId, { limit = 30, offset = 0 } = {}) {
+  if (!supabase || !articleId) return [];
+  const { data } = await supabase.from('comments')
+    .select('*, profiles:user_id(display_name, username, avatar_url)')
+    .eq('article_id', articleId)
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1);
+  return data || [];
+}
+
+export async function addComment(userId, articleId, body, parentId = null) {
+  if (!supabase || !userId) return null;
+  const { data } = await supabase.from('comments')
+    .insert({ user_id: userId, article_id: articleId, body, parent_id: parentId })
+    .select('*, profiles:user_id(display_name, username, avatar_url)')
+    .single();
+  return data;
+}
+
+export async function deleteComment(commentId) {
+  if (!supabase || !commentId) return;
+  await supabase.from('comments').delete().eq('id', commentId);
+}
+
+export async function getCommentCount(articleIds) {
+  if (!supabase || !articleIds.length) return {};
+  const { data } = await supabase.from('reaction_counts')
+    .select('article_id, comment_count')
+    .in('article_id', articleIds);
+  const map = {};
+  (data || []).forEach(d => { map[d.article_id] = d.comment_count || 0; });
+  return map;
+}
+
+// ─── Follows ───
+
+export async function followUser(followerId, followingId) {
+  if (!supabase || !followerId || !followingId) return;
+  await supabase.from('follows').insert({ follower_id: followerId, following_id: followingId });
+}
+
+export async function unfollowUser(followerId, followingId) {
+  if (!supabase || !followerId || !followingId) return;
+  await supabase.from('follows').delete()
+    .eq('follower_id', followerId).eq('following_id', followingId);
+}
+
+export async function getFollowers(userId, { limit = 30, offset = 0 } = {}) {
+  if (!supabase || !userId) return [];
+  const { data } = await supabase.from('follows')
+    .select('follower_id, profiles:follower_id(id, display_name, username, avatar_url)')
+    .eq('following_id', userId)
+    .range(offset, offset + limit - 1);
+  return data || [];
+}
+
+export async function getFollowing(userId, { limit = 30, offset = 0 } = {}) {
+  if (!supabase || !userId) return [];
+  const { data } = await supabase.from('follows')
+    .select('following_id, profiles:following_id(id, display_name, username, avatar_url)')
+    .eq('follower_id', userId)
+    .range(offset, offset + limit - 1);
+  return data || [];
+}
+
+export async function isFollowing(followerId, followingId) {
+  if (!supabase || !followerId || !followingId) return false;
+  const { data } = await supabase.from('follows')
+    .select('follower_id')
+    .eq('follower_id', followerId).eq('following_id', followingId)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function searchProfiles(query, { limit = 10 } = {}) {
+  if (!supabase || !query) return [];
+  const { data } = await supabase.from('profiles')
+    .select('id, display_name, username, avatar_url, bio, follower_count, following_count')
+    .or(`display_name.ilike.%${query}%,username.ilike.%${query}%`)
+    .limit(limit);
+  return data || [];
+}

@@ -2,7 +2,7 @@
   "name": "sada-app",
   "private": true,
   "version": "1.0.0",
-  "description": "صَدى — Arabic news platform",
+  "description": "غرفة الأخبار — Arabic news platform",
   "type": "module",
   "scripts": {
     "dev": "vite",

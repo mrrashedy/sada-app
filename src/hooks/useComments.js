@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { supabase, getComments, addComment, deleteComment } from '../lib/supabase';
+import { supabase, getComments } from '../lib/supabase';
 
 export function useComments(articleId) {
   const [comments, setComments] = useState([]);
@@ -34,7 +34,7 @@ export function useComments(articleId) {
           // Fetch with profile join
           supabase
             .from('comments')
-            .select('*, profiles:user_id(display_name, username, avatar_url)')
+            .select('*, profiles!comments_user_profiles_fk(display_name, username, avatar_url)')
             .eq('id', payload.new.id)
             .single()
             .then(({ data }) => {
@@ -59,7 +59,8 @@ export function useComments(articleId) {
   const add = useCallback(async (userId, body, parentId = null, profile = null) => {
     if (!articleId || !userId || !body.trim()) return null;
 
-    // Optimistic: add a temporary comment
+    // Optimistic: add a temporary comment so the UI feels instant. We replace
+    // it with the server's row when the request resolves.
     const tempId = 'temp-' + Date.now();
     const tempComment = {
       id: tempId,
@@ -74,29 +75,52 @@ export function useComments(articleId) {
     setComments(prev => [...prev, tempComment]);
 
     try {
-      const real = await addComment(userId, articleId, body.trim(), parentId);
-      if (real) {
-        setComments(prev => prev.map(c => c.id === tempId ? real : c));
-        // Background moderation — non-blocking
-        fetch('/api/moderate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: body.trim(), commentId: real.id }),
-        }).catch(() => {});
-        return real;
+      // Get a valid Supabase JWT to authenticate the user with /api/comments.
+      // The endpoint runs moderation BEFORE inserting.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setComments(prev => prev.filter(c => c.id !== tempId));
+        return { error: 'sign_in_required' };
       }
-    } catch {
-      // Remove optimistic on failure
+
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ articleId, body: body.trim(), parentId }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        // Remove optimistic and surface the rejection reason.
+        setComments(prev => prev.filter(c => c.id !== tempId));
+        return { error: data.error || 'submit_failed' };
+      }
+
+      // Replace optimistic with the real row (already includes profile join)
+      setComments(prev => prev.map(c => c.id === tempId ? data.comment : c));
+      return data.comment;
+    } catch (e) {
       setComments(prev => prev.filter(c => c.id !== tempId));
+      return { error: 'network_error' };
     }
-    return null;
   }, [articleId]);
 
   const remove = useCallback(async (commentId) => {
     const removed = comments.find(c => c.id === commentId);
     setComments(prev => prev.filter(c => c.id !== commentId));
     try {
-      await deleteComment(commentId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('not_signed_in');
+      const res = await fetch(`/api/comments?id=${encodeURIComponent(commentId)}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('delete_failed');
     } catch {
       if (removed) setComments(prev => [...prev, removed]);
     }

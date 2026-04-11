@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 
 export function useSummary() {
   const [summaries, setSummaries] = useState({}); // { articleId: { text, loading, error } }
@@ -9,9 +10,25 @@ export function useSummary() {
     setSummaries(prev => ({ ...prev, [articleId]: { text: null, loading: true, error: null } }));
 
     try {
+      // /api/summarize requires a Supabase JWT. Anonymous users see a
+      // "sign in to read summary" prompt instead. The JWT is obtained from
+      // the active Supabase session if any.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setSummaries(prev => ({
+          ...prev,
+          [articleId]: { text: null, loading: false, error: 'sign_in_required' },
+        }));
+        return;
+      }
+
       const res = await fetch('/api/summarize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ articleId, title, body }),
       });
       const data = await res.json();

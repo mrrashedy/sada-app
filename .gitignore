@@ -5,3 +5,5 @@ dist
 .env
 .env.local
 package-lock.json
+.wrangler/
+.claude/

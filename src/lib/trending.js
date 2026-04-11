@@ -46,7 +46,9 @@ function clean(w) {
     .trim();
 }
 
-// Known bigrams — common meaningful two-word phrases in Arabic news
+// Known bigrams — common meaningful two-word phrases in Arabic news.
+// Spelling variants (آ vs أ vs ا) are handled automatically by alef
+// normalization at lookup time, so list each phrase only once.
 const KNOWN_BIGRAMS = new Set([
   'إطلاق النار', 'وقف إطلاق', 'الأمم المتحدة', 'مجلس الأمن',
   'حقوق الإنسان', 'الشرق الأوسط', 'البيت الأبيض', 'قطاع غزة',
@@ -58,122 +60,252 @@ const KNOWN_BIGRAMS = new Set([
   'الطاقة النووية', 'أسعار النفط', 'سوق الأسهم', 'الاتحاد الأوروبي',
   'الولايات المتحدة', 'المملكة المتحدة', 'كوريا الشمالية', 'كوريا الجنوبية',
   'السعودية العربية', 'الإمارات العربية',
+  // Compound capital/city names that would otherwise fragment
+  'إسلام آباد', 'أبو ظبي', 'نيو دلهي',
+  'هونغ كونغ', 'أديس أبابا', 'سان فرانسيسكو', 'لوس أنجلوس',
 ]);
 
-export function extractTrending(feed, limit = 12) {
-  const bigramFreq = {};
-  const unigramFreq = {};
-  const bigramWords = new Set(); // track words consumed by bigrams
+// Normalize alef variants for matching: آ، أ، إ، ٱ → ا.
+// Arabic news sources spell place names like "إسلام آباد" and "إسلام أباد"
+// inconsistently — collapse them so both forms hit the same bigram entry.
+function normalizeAlef(s) {
+  return s.replace(/[آأإٱ]/g, 'ا');
+}
 
-  const titles = feed.map(item => item.title || '');
+// Pre-compute the normalized → canonical lookup so the bigram pass can do
+// a single Map.get instead of trying every spelling variant.
+const KNOWN_BIGRAMS_NORM = new Map();
+for (const phrase of KNOWN_BIGRAMS) {
+  KNOWN_BIGRAMS_NORM.set(normalizeAlef(phrase), phrase);
+}
+
+// Time-decay weighting — articles older than ~15 min contribute less.
+// At 15 min, weight = ~0.37; at 30 min, ~0.14; at 60 min, ~0.02.
+function recencyWeight(ageMin) {
+  return Math.exp(-ageMin / 15);
+}
+
+// Velocity weight — same as recency but with a sharper falloff for the "rising"
+// signal. We compare last 30 min vs prior 90 min mention rate.
+function inWindow(ageMin, max) { return ageMin <= max; }
+
+// Adaptive window: try the smallest window first; if we don't get enough
+// topics, expand. This guarantees the radar is always as fresh as possible
+// while never being empty.
+function _extractWithWindow(feed, limit, now, MAX_AGE_MIN) {
+  const NOW_WINDOW = 10;     // last 10 minutes — rising signal
+  const BEFORE_WINDOW = 60;  // 10–60 minutes ago — comparison baseline
+
+  const items = feed
+    .map(item => {
+      const ts = item.pubTs || item.timestamp || 0;
+      const ageMin = ts ? Math.max(0, (now - ts) / 60000) : MAX_AGE_MIN + 1;
+      return { title: item.title || '', ageMin, weight: recencyWeight(ageMin) };
+    })
+    .filter(it => it.ageMin <= MAX_AGE_MIN);
+
+  if (!items.length) return { results: [], itemCount: 0 };
+  return { results: _runExtraction(items, limit, NOW_WINDOW, BEFORE_WINDOW), itemCount: items.length };
+}
+
+export function extractTrending(feed, limit = 16, opts = {}) {
+  const now = opts.now || Date.now();
+  // Adaptive: start at 30 min, expand if not enough topics surface.
+  const windows = opts.windows || [30, 60, 90, 180, 360];
+  const minTopics = opts.minTopics || 8;
+
+  for (const w of windows) {
+    const { results } = _extractWithWindow(feed, limit, now, w);
+    if (results.length >= minTopics || w === windows[windows.length - 1]) {
+      return results;
+    }
+  }
+  return [];
+}
+
+function _runExtraction(items, limit, NOW_WINDOW, BEFORE_WINDOW) {
+  const bigramFreq = {};       // weighted score
+  const bigramRaw = {};        // raw count for display
+  const bigramNow = {};        // raw count in NOW window
+  const bigramBefore = {};     // raw count in BEFORE window
+  const unigramFreq = {};
+  const unigramRaw = {};
+  const unigramNow = {};
+  const unigramBefore = {};
+  const bigramWords = new Set();
 
   // Pass 1: Extract bigrams
-  titles.forEach(title => {
-    const words = title.split(/\s+/).map(clean).filter(w => w.length >= 2);
+  items.forEach(it => {
+    const w = it.weight;
+    const isNow = inWindow(it.ageMin, NOW_WINDOW);
+    const isBefore = !isNow && inWindow(it.ageMin, BEFORE_WINDOW);
+    const words = it.title.split(/\s+/).map(clean).filter(x => x.length >= 2);
+
     for (let i = 0; i < words.length - 1; i++) {
-      const pair = words[i] + ' ' + words[i + 1];
-      // Check exact known bigrams
-      if (KNOWN_BIGRAMS.has(pair)) {
-        bigramFreq[pair] = (bigramFreq[pair] || 0) + 1;
-        bigramWords.add(words[i]);
-        bigramWords.add(words[i + 1]);
-        continue;
+      let pair = null;
+      const rawPair = words[i] + ' ' + words[i + 1];
+      if (KNOWN_BIGRAMS.has(rawPair)) {
+        pair = rawPair;
+      } else {
+        // Try alef-normalized form: catches "إسلام أباد" → "إسلام آباد"
+        const normPair = KNOWN_BIGRAMS_NORM.get(normalizeAlef(rawPair));
+        if (normPair) {
+          pair = normPair;
+        } else {
+          const stripped = stripPrefix(words[i]) + ' ' + words[i + 1];
+          if (KNOWN_BIGRAMS.has(stripped)) {
+            pair = stripped;
+          } else {
+            const normStripped = KNOWN_BIGRAMS_NORM.get(normalizeAlef(stripped));
+            if (normStripped) pair = normStripped;
+          }
+        }
       }
-      // Check with prefix stripping
-      const stripped = stripPrefix(words[i]) + ' ' + words[i + 1];
-      if (KNOWN_BIGRAMS.has(stripped)) {
-        bigramFreq[stripped] = (bigramFreq[stripped] || 0) + 1;
+      if (pair) {
+        bigramFreq[pair] = (bigramFreq[pair] || 0) + w;
+        bigramRaw[pair] = (bigramRaw[pair] || 0) + 1;
+        if (isNow) bigramNow[pair] = (bigramNow[pair] || 0) + 1;
+        if (isBefore) bigramBefore[pair] = (bigramBefore[pair] || 0) + 1;
         bigramWords.add(words[i]);
         bigramWords.add(words[i + 1]);
-        continue;
       }
     }
 
-    // Also detect repeated natural bigrams (appear 3+ times)
+    // Also detect repeated natural bigrams (appear 3+ times, weighted)
     for (let i = 0; i < words.length - 1; i++) {
       const w1 = words[i], w2 = words[i + 1];
       if (STOP.has(w1) || STOP.has(w2) || w1.length < 3 || w2.length < 3) continue;
       const pair = w1 + ' ' + w2;
       if (!KNOWN_BIGRAMS.has(pair)) {
-        bigramFreq[pair] = (bigramFreq[pair] || 0) + 1;
+        bigramFreq[pair] = (bigramFreq[pair] || 0) + w;
+        bigramRaw[pair] = (bigramRaw[pair] || 0) + 1;
+        if (isNow) bigramNow[pair] = (bigramNow[pair] || 0) + 1;
+        if (isBefore) bigramBefore[pair] = (bigramBefore[pair] || 0) + 1;
       }
     }
   });
 
-  // Filter bigrams: known ones need 2+, discovered ones need 3+
+  // Filter bigrams: known ones need raw 2+, discovered ones need raw 3+
   const validBigrams = {};
-  for (const [phrase, count] of Object.entries(bigramFreq)) {
+  for (const [phrase, score] of Object.entries(bigramFreq)) {
+    const raw = bigramRaw[phrase] || 0;
     const minCount = KNOWN_BIGRAMS.has(phrase) ? 2 : 3;
-    if (count >= minCount) {
-      validBigrams[phrase] = count;
+    if (raw >= minCount) {
+      validBigrams[phrase] = score;
       phrase.split(' ').forEach(w => bigramWords.add(w));
     }
   }
 
-  // Pass 2: Extract unigrams, merging variants via light stemming
-  const normalized = {}; // map stemmed form → canonical form
-  titles.forEach(title => {
-    const words = title.split(/\s+/).map(clean).filter(w => w.length >= 3);
-    const seen = new Set(); // dedupe within same title
-    words.forEach(w => {
-      if (STOP.has(w)) return;
-      const base = stem(w);
+  // Pass 2: Extract unigrams (weighted)
+  const normalized = {};
+  items.forEach(it => {
+    const w = it.weight;
+    const isNow = inWindow(it.ageMin, NOW_WINDOW);
+    const isBefore = !isNow && inWindow(it.ageMin, BEFORE_WINDOW);
+    const words = it.title.split(/\s+/).map(clean).filter(x => x.length >= 3);
+    const seen = new Set();
+    words.forEach(word => {
+      if (STOP.has(word)) return;
+      const base = stem(word);
       if (STOP.has(base) || base.length < 3) return;
       if (seen.has(base)) return;
       seen.add(base);
 
-      // Use the most common form as canonical
       if (!normalized[base]) normalized[base] = {};
-      normalized[base][w] = (normalized[base][w] || 0) + 1;
-      unigramFreq[base] = (unigramFreq[base] || 0) + 1;
+      normalized[base][word] = (normalized[base][word] || 0) + 1;
+      unigramFreq[base] = (unigramFreq[base] || 0) + w;
+      unigramRaw[base] = (unigramRaw[base] || 0) + 1;
+      if (isNow) unigramNow[base] = (unigramNow[base] || 0) + 1;
+      if (isBefore) unigramBefore[base] = (unigramBefore[base] || 0) + 1;
     });
   });
 
-  // Pick canonical form for each base
   const canonical = {};
   for (const [base, forms] of Object.entries(normalized)) {
-    canonical[base] = Object.entries(forms).sort((a, b) => b[1] - a[1])[0][0];
+    // Rule: prefer noun forms over adjective forms (ـية suffix), with two
+    // guards. Picks "إيران" over "الإيرانية" — but NOT "سعود" over "السعودية",
+    // because "سعود" alone is a person-name fragment, not the country.
+    //
+    // Guard 1 (length): only prefer the bare form if it's at least 5 chars.
+    //   إيران (5) ✓, إسرائيل (7) ✓, لبنان (5) ✓, but سعود (4) ✗.
+    // Guard 2 (frequency): only prefer the bare form if it appears at least
+    //   half as often as the ـية form. Catches cases where the bare stem is
+    //   a coincidental match from a different word.
+    const sorted = Object.entries(forms).sort((a, b) => {
+      const aAdj = a[0].endsWith('ية') ? 1 : 0;
+      const bAdj = b[0].endsWith('ية') ? 1 : 0;
+      if (aAdj !== bAdj) {
+        const nonAdj = aAdj === 0 ? a : b;
+        const adjForm = aAdj === 1 ? a : b;
+        const longEnough = nonAdj[0].length >= 5;
+        const frequentEnough = nonAdj[1] * 2 >= adjForm[1];
+        if (longEnough && frequentEnough) {
+          return aAdj - bAdj; // prefer non-adj
+        }
+        return aAdj === 1 ? -1 : 1; // prefer adj
+      }
+      return b[1] - a[1];
+    });
+    let chosen = sorted[0][0];
+    // Rule: strip و/ف conjunction prefix only when the rest starts with a hamza
+    // (إ، آ، أ) — that's a strong proper-noun signal. Catches "وإسرائيل" → "إسرائيل",
+    // "وأمريكا" → "أمريكا". Plain alif (ا) is excluded so we don't break "واشنطن" or "وزير".
+    if ((chosen.startsWith('و') || chosen.startsWith('ف')) && chosen.length >= 5) {
+      const stripped = chosen.slice(1);
+      if (stripped.length >= 4 && /^[إآأ]/.test(stripped)) {
+        chosen = stripped;
+      }
+    }
+    canonical[base] = chosen;
   }
 
-  // Build results: bigrams first, then unigrams not already covered
+  // Velocity helper — rate per minute "now" vs "before"
+  function velocity(nowCount, beforeCount) {
+    const nowRate = nowCount / NOW_WINDOW;
+    const beforeRate = beforeCount / (BEFORE_WINDOW - NOW_WINDOW);
+    if (beforeRate === 0 && nowRate > 0) return 999; // brand new
+    if (beforeRate === 0) return 0;
+    return nowRate / beforeRate;
+  }
+
+  // Build results
   const results = [];
-
-  // Add bigrams
-  for (const [phrase, count] of Object.entries(validBigrams)) {
-    results.push({ word: phrase, count });
+  for (const [phrase, score] of Object.entries(validBigrams)) {
+    const raw = bigramRaw[phrase] || 0;
+    const v = velocity(bigramNow[phrase] || 0, bigramBefore[phrase] || 0);
+    results.push({ word: phrase, count: raw, score, velocity: v });
   }
-
-  // Add unigrams, skipping words that are part of a strong bigram
-  for (const [base, count] of Object.entries(unigramFreq)) {
-    if (count < 2) continue;
+  for (const [base, score] of Object.entries(unigramFreq)) {
+    const raw = unigramRaw[base] || 0;
+    // Rule: unigram must appear in at least 3 articles (was 2). Filters one-off junk.
+    if (raw < 3) continue;
     const form = canonical[base];
-    // Skip if this word is a component of a qualifying bigram with similar or higher count
-    const inBigram = Object.entries(validBigrams).some(([phrase, bCount]) => {
+    // Rule: if the unigram's stem appears in ANY valid bigram, suppress it.
+    // Catches fragments like "الله" when "حزب الله" exists, regardless of relative score.
+    const inBigram = Object.entries(validBigrams).some(([phrase]) => {
       const parts = phrase.split(' ');
       const stemParts = parts.map(stem);
-      return (parts.includes(base) || parts.includes(form) || stemParts.includes(base)) && bCount >= count * 0.4;
+      return parts.includes(base) || parts.includes(form) || stemParts.includes(base);
     });
     if (inBigram) continue;
-    results.push({ word: form, count });
+    const v = velocity(unigramNow[base] || 0, unigramBefore[base] || 0);
+    results.push({ word: form, count: raw, score, velocity: v });
   }
 
-  // Sort by count, dedupe overlaps, return top N
-  results.sort((a, b) => b.count - a.count);
+  // Sort by weighted score (recency-aware) instead of raw count
+  results.sort((a, b) => b.score - a.score);
 
-  // Remove near-duplicates: if a unigram is substring of a bigram already in top results
+  // Dedupe overlaps
   const final = [];
-  const taken = new Set();
   for (const r of results) {
     if (final.length >= limit) break;
     const words = r.word.split(' ');
-    // Check if this single word is already covered by a bigram in final
     if (words.length === 1) {
       const covered = final.some(f =>
         f.word.split(' ').length > 1 && f.word.includes(r.word)
       );
       if (covered) continue;
     }
-    // Check if this bigram's words overlap too much with another bigram
     if (words.length > 1) {
       const overlap = final.some(f => {
         if (f.word.split(' ').length === 1) return false;
@@ -183,7 +315,6 @@ export function extractTrending(feed, limit = 12) {
       if (overlap) continue;
     }
     final.push(r);
-    taken.add(r.word);
   }
 
   return final;

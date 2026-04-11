@@ -40,7 +40,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
           )}
         </div>
         {isPerson && (
-          <div onClick={()=>onOpen(item)} style={{ width:72,height:96,borderRadius:12,overflow:'hidden',border:'2px solid var(--g1)',flexShrink:0,cursor:'pointer' }}>
+          <div onClick={()=>onOpen(item)} style={{ width:72,height:96,borderRadius:10,overflow:'hidden',border:'2px solid var(--g1)',flexShrink:0,cursor:'pointer' }}>
             <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 15%',display:'block' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
           </div>
         )}
@@ -48,7 +48,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
       {showImg && item.realImg && !isPerson && (() => {
         const v = (item.id||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0) % 2;
         const shapes = [
-          { h:90, r:12 },
+          { h:90, r:10 },
           { h:72, r:10 },
         ];
         const s = shapes[v];

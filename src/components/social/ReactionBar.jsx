@@ -24,7 +24,8 @@ const ImportantIcon = ({ filled }) => (
   </svg>
 );
 
-export function ReactionBar({ articleId, counts = {}, userReactions = new Set(), onToggle, commentCount = 0, onComment, compact = false }) {
+export function ReactionBar({ articleId, counts = {}, userReactions: rawUR, onToggle, commentCount = 0, onComment, compact = false }) {
+  const userReactions = rawUR instanceof Set ? rawUR : new Set();
   const total = (counts.like || 0) + (counts.insightful || 0) + (counts.important || 0);
 
   const handleReaction = (type) => {

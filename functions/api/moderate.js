@@ -1,37 +1,64 @@
 // Cloudflare Pages Function — /api/moderate
-// AI-powered content moderation for comments
-// Uses Workers AI to classify comment text as safe/toxic
+//
+// Internal endpoint. Classifies comment text as safe/toxic via Workers AI.
+// NOT to be called from the client directly — /api/comments calls this with
+// `x-internal-key` before inserting any comment into Supabase. Anonymous
+// callers get 401.
+//
+// Returns: { ok, safe: bool, verdict: 'safe'|'toxic', reason }
+
+import { authenticate, corsPreflight } from '../_lib/auth.js';
+
+const CORS = { 'access-control-allow-origin': '*' };
+
+export async function onRequestOptions() {
+  return corsPreflight();
+}
 
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type' },
-    });
+  // Internal-only — must come from a trusted server (cron-worker or
+  // /api/comments inside the same Pages project).
+  const auth = await authenticate(context);
+  if (auth.kind !== 'internal') {
+    return Response.json(
+      { ok: false, error: 'forbidden' },
+      { status: 403, headers: CORS },
+    );
   }
 
-  const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
-
+  let text;
   try {
-    const { text, commentId } = await request.json();
-    if (!text || text.length < 2) {
-      return Response.json({ ok: true, safe: true, reason: 'too_short' }, { headers: CORS });
-    }
+    ({ text } = await request.json());
+  } catch {
+    return Response.json({ ok: false, error: 'invalid_json' }, { status: 400, headers: CORS });
+  }
 
-    const ai = env?.AI;
-    if (!ai) {
-      // No AI binding — allow by default (moderation is best-effort)
-      return Response.json({ ok: true, safe: true, reason: 'no_ai' }, { headers: CORS });
-    }
+  if (!text || typeof text !== 'string') {
+    return Response.json({ ok: false, error: 'missing_text' }, { status: 400, headers: CORS });
+  }
 
-    // Use Workers AI text classification
-    const prompt = `You are a content moderator for an Arabic news discussion platform. Analyze this comment and respond with ONLY "safe" or "toxic". A comment is toxic if it contains: hate speech, personal attacks, threats, spam, or sexually explicit content. Constructive criticism and strong political opinions are allowed.
+  // Trivially short — pass through. Saves an AI call.
+  const trimmed = text.trim();
+  if (trimmed.length < 2) {
+    return Response.json({ ok: true, safe: true, verdict: 'safe', reason: 'too_short' }, { headers: CORS });
+  }
 
-Comment: "${text.slice(0, 500)}"
+  const ai = env?.AI;
+  if (!ai) {
+    // Fail open — moderation is best-effort. Comment will still be flagged
+    // for review by a separate background job.
+    return Response.json({ ok: true, safe: true, verdict: 'safe', reason: 'no_ai' }, { headers: CORS });
+  }
+
+  const prompt = `You are a content moderator for an Arabic news discussion platform. Analyze this comment and respond with ONLY "safe" or "toxic". A comment is toxic if it contains: hate speech, personal attacks, threats, doxxing, spam, or sexually explicit content. Constructive criticism and strong political opinions are allowed.
+
+Comment: "${trimmed.slice(0, 800)}"
 
 Verdict:`;
 
+  try {
     const result = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
       messages: [
         { role: 'system', content: 'You are a content moderator. Respond with only "safe" or "toxic".' },
@@ -44,25 +71,16 @@ Verdict:`;
     const verdict = (result?.response || '').toLowerCase().trim();
     const isSafe = !verdict.includes('toxic');
 
-    // If toxic and we have Supabase, flag the comment
-    if (!isSafe && commentId && env?.SUPABASE_URL && env?.SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        await fetch(`${env.SUPABASE_URL}/rest/v1/comments?id=eq.${commentId}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ flagged: true }),
-        });
-      } catch {}
-    }
-
-    return Response.json({ ok: true, safe: isSafe, verdict }, { headers: CORS });
-
+    return Response.json(
+      { ok: true, safe: isSafe, verdict: isSafe ? 'safe' : 'toxic' },
+      { headers: CORS },
+    );
   } catch (e) {
-    // On error, allow the comment (don't block users due to AI failures)
-    return Response.json({ ok: true, safe: true, reason: 'error', error: e.message }, { headers: CORS });
+    // AI errored — fail open. Better to allow a few bad comments than block
+    // every user during a model outage.
+    return Response.json(
+      { ok: true, safe: true, verdict: 'safe', reason: 'ai_error', detail: e.message },
+      { headers: CORS },
+    );
   }
 }

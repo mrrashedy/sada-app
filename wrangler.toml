@@ -7,28 +7,44 @@ compatibility_date = "2024-09-01"
 pages_build_output_dir = "dist"
 
 # ── KV Namespaces ──
-# Set up via CLI then uncomment and fill IDs:
-#   npx wrangler kv namespace create TRANSLATIONS
-#   npx wrangler kv namespace create FEED_CACHE
-#
-# [[kv_namespaces]]
-# binding = "TRANSLATIONS"
-# id = "<your-translations-kv-id>"
-#
-# [[kv_namespaces]]
-# binding = "FEED_CACHE"
-# id = "<your-feed-cache-kv-id>"
+[[kv_namespaces]]
+binding = "TRANSLATIONS"
+id = "7e963fba29844fc09418abec605e91ac"
+
+[[kv_namespaces]]
+binding = "FEED_CACHE"
+id = "93f7764f40314ae19feaaaea7a7a090e"
 
 # ── Workers AI ──
 [ai]
 binding = "AI"
 
 # ── Environment Variables ──
-# Set via Cloudflare Dashboard > Pages > Settings > Environment Variables:
-#   SUPABASE_URL = https://your-project.supabase.co
-#   SUPABASE_SERVICE_ROLE_KEY = eyJ...
-#   CRON_SECRET = <random-secret-for-cron-endpoint>
+# Set via Cloudflare Dashboard > Pages > Settings > Environment Variables.
+# All of these should be set for BOTH "Production" and "Preview" environments.
 #
-# Client-side (prefixed VITE_):
-#   VITE_SUPABASE_URL = https://your-project.supabase.co
-#   VITE_SUPABASE_ANON_KEY = eyJ...
+# ── Server-side (Pages Functions) ───────────────────────────────
+#   SUPABASE_URL                = https://<project>.supabase.co
+#   SUPABASE_ANON_KEY           = eyJ...   # used to verify user JWTs
+#   SUPABASE_SERVICE_ROLE_KEY   = eyJ...   # used for server-side writes (comments insert)
+#
+#   INTERNAL_API_KEY            = <openssl rand -hex 32>
+#       Shared secret between trusted server callers (cron-worker, middleware,
+#       /api/comments → /api/moderate). Required for:
+#         - /api/moderate           (rejects everything else)
+#         - /api/comments           (passes to /api/moderate internally)
+#         - bypass rate limits on /api/cluster, /api/summarize
+#       The cron-worker also has this — set there via:
+#         cd cron-worker && wrangler secret put INTERNAL_API_KEY
+#
+#   CRON_SECRET                 = <random>
+#       Legacy auth for /api/cron and POST /api/alerts. Will be merged into
+#       INTERNAL_API_KEY post-launch — keep set for now.
+#
+#   VITE_SENTRY_DSN             = https://...@sentry.io/...
+#       Optional client-side error tracking.
+#
+# ── Client-side (Vite, must be VITE_-prefixed) ─────────────────
+#   VITE_SUPABASE_URL           = https://<project>.supabase.co
+#   VITE_SUPABASE_ANON_KEY      = eyJ...
+#   VITE_SENTRY_DSN             = https://...@sentry.io/...

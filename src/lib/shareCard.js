@@ -96,12 +96,13 @@ export async function generateShareCard(article) {
   ctx.fillStyle = 'rgba(255,255,255,0.3)';
   ctx.font = '400 13px system-ui, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('sada-app.pages.dev', 40, H - 24);
+  ctx.fillText('101n.app', 40, H - 24);
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
 
 export async function shareArticle(article) {
+  const appUrl = `https://101n.app/?article=${encodeURIComponent(article.id)}`;
   try {
     const blob = await generateShareCard(article);
     const file = new File([blob], 'newsroom-share.png', { type: 'image/png' });
@@ -110,24 +111,22 @@ export async function shareArticle(article) {
       await navigator.share({
         title: article.title,
         text: article.title,
-        url: article.link,
+        url: appUrl,
         files: [file],
       });
       return;
     }
 
     if (navigator.share) {
-      await navigator.share({ title: article.title, url: article.link });
+      await navigator.share({ title: article.title, url: appUrl });
       return;
     }
 
     // Fallback: copy link
-    if (article.link) {
-      await navigator.clipboard?.writeText(article.link);
-    }
+    await navigator.clipboard?.writeText(appUrl);
   } catch (e) {
     if (e.name !== 'AbortError') {
-      if (article.link) navigator.clipboard?.writeText(article.link).catch(() => {});
+      navigator.clipboard?.writeText(appUrl).catch(() => {});
     }
   }
 }

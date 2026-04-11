@@ -1,8 +1,22 @@
 import { SOURCES } from '../../data/sources';
 import { TOPICS } from '../../data/topics';
 
-export function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding, theme, toggleTheme, auth={}, onOpenAuth, onOpenProfile }) {
+// Admin allowlist — comma-separated Supabase user IDs in env var.
+// Empty list means open access (handy during initial setup).
+const ADMIN_IDS = (import.meta.env.VITE_ADMIN_USER_IDS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+function isAdmin(user) {
+  if (!user) return false;
+  if (ADMIN_IDS.length === 0) return true;
+  return ADMIN_IDS.includes(user.id);
+}
+
+export function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboarding, theme, toggleTheme, auth={}, onOpenAuth, onOpenProfile, onOpenAdmin }) {
   const topicLabels=(userPrefs.topics||[]).map(id=>TOPICS.find(t=>t.id===id)?.label).filter(Boolean);
+  const showAdmin = auth.isLoggedIn && isAdmin(auth.user) && onOpenAdmin;
   return (
     <>
       {/* Account section */}
@@ -76,6 +90,21 @@ export function SettingsView({ sources, toggleSource, userPrefs={}, onResetOnboa
           إعادة ضبط التفضيلات
         </button>
       </div>
+      {showAdmin && (
+        <div className="set-sec">
+          <div className="set-sec-title">المسؤول</div>
+          <button onClick={onOpenAdmin} style={{
+            width:'100%', background:'var(--bk)', color:'var(--bg)',
+            border:'none', borderRadius:12, padding:'13px',
+            fontSize:13, fontWeight:700, cursor:'pointer',
+            fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+            letterSpacing:'.5px',
+          }}>OPEN ADMIN PANEL</button>
+          <div style={{ fontSize:10, color:'var(--t4)', marginTop:8, lineHeight:1.6, textAlign:'center' }}>
+            {ADMIN_IDS.length === 0 ? '⚠ open access — set VITE_ADMIN_USER_IDS to lock' : 'صلاحية مخوّلة'}
+          </div>
+        </div>
+      )}
       <div style={{ padding:20,textAlign:'center' }}>
         <div style={{ fontSize:11,color:'var(--t4)',marginBottom:4 }}>غرفة الأخبار v4.0</div>
         <div style={{ fontSize:11,color:'var(--t4)' }}>أخبار العالم في مكانٍ واحد</div>

@@ -189,21 +189,28 @@ export async function getReactionCounts(articleIds) {
 
 export async function getComments(articleId, { limit = 30, offset = 0 } = {}) {
   if (!supabase || !articleId) return [];
-  const { data } = await supabase.from('comments')
-    .select('*, profiles:user_id(display_name, username, avatar_url)')
+  const { data, error } = await supabase.from('comments')
+    .select('*, profiles!comments_user_profiles_fk(display_name, username, avatar_url)')
     .eq('article_id', articleId)
     .order('created_at', { ascending: true })
     .range(offset, offset + limit - 1);
+  if (error) console.error('[getComments] error:', error.message);
   return data || [];
 }
 
 export async function addComment(userId, articleId, body, parentId = null) {
   if (!supabase || !userId) return null;
-  const { data } = await supabase.from('comments')
+  const { data: inserted, error } = await supabase.from('comments')
     .insert({ user_id: userId, article_id: articleId, body, parent_id: parentId })
-    .select('*, profiles:user_id(display_name, username, avatar_url)')
+    .select()
     .single();
-  return data;
+  if (error) { console.error('[addComment] insert error:', error.message); return null; }
+  // Fetch with profile join separately
+  const { data } = await supabase.from('comments')
+    .select('*, profiles!comments_user_profiles_fk(display_name, username, avatar_url)')
+    .eq('id', inserted.id)
+    .single();
+  return data || inserted;
 }
 
 export async function deleteComment(commentId) {

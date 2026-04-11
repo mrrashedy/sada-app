@@ -12,7 +12,7 @@ function timeAgo(ts) {
   return `منذ ${Math.floor(d / 86400000)} ي`;
 }
 
-export function CommentSheet({ articleId, onClose, onOpenAuth }) {
+export function CommentSheet({ articleId, onClose, onOpenAuth, onCommentAdded, onCommentRemoved }) {
   const { user, profile, isLoggedIn } = useAuth();
   const { comments, loading, loaded, load, add, remove } = useComments(articleId);
   const [text, setText] = useState('');
@@ -28,10 +28,11 @@ export function CommentSheet({ articleId, onClose, onOpenAuth }) {
     if (!isLoggedIn) { onOpenAuth?.(); return; }
     setSending(true);
     Sound.tap();
-    await add(user.id, text.trim(), replyTo?.id || null, profile);
+    const result = await add(user.id, text.trim(), replyTo?.id || null, profile);
     setText('');
     setReplyTo(null);
     setSending(false);
+    if (result) onCommentAdded?.();
     // Scroll to bottom
     setTimeout(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }), 100);
   };
@@ -69,14 +70,14 @@ export function CommentSheet({ articleId, onClose, onOpenAuth }) {
               comment={c}
               isOwn={user?.id === c.user_id}
               onReply={() => { setReplyTo(c); inputRef.current?.focus(); }}
-              onDelete={() => { Sound.tap(); remove(c.id); }}
+              onDelete={() => { Sound.tap(); remove(c.id); onCommentRemoved?.(); }}
             />
             {(repliesMap[c.id] || []).map(r => (
               <div key={r.id} style={{ paddingRight: 36 }}>
                 <CommentItem
                   comment={r}
                   isOwn={user?.id === r.user_id}
-                  onDelete={() => { Sound.tap(); remove(r.id); }}
+                  onDelete={() => { Sound.tap(); remove(r.id); onCommentRemoved?.(); }}
                   isReply
                 />
               </div>

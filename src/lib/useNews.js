@@ -19,14 +19,34 @@ export function useNews(sources = []) {
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
 
+    const startTime = Date.now();
+    // User-visible refreshes get a minimum loading duration so the radar
+    // spectrum animation is actually observable. The DO keeps the cache warm,
+    // so the network round-trip is typically ~150ms — too fast to see.
+    const MIN_LOADING_MS = 1500;
+
     if (!silent) setLoading(true);
     setError(null);
+
+    // Helper that holds setLoading(false) until min duration has elapsed
+    // (visible refreshes only). Silent polls bypass this.
+    const finishLoading = async () => {
+      if (silent) { setLoading(false); return; }
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_LOADING_MS) {
+        await new Promise(r => setTimeout(r, MIN_LOADING_MS - elapsed));
+      }
+      setLoading(false);
+    };
 
     try {
       const params = new URLSearchParams({
         limit: '500',
         t: silent ? Math.floor(Date.now() / 15000) : Date.now(),
       });
+      // Don't pass ?refresh=1 — that blocks for 5-15s while the server
+      // re-aggregates 40+ RSS feeds. Instead, the cron-worker warms the KV
+      // every minute, so reading the cache is always near-fresh and instant.
       if (sources.length > 0) params.set('sources', sources.join(','));
 
       const res = await fetch(`${API_URL}?${params}`, {
@@ -46,13 +66,13 @@ export function useNews(sources = []) {
           return [...data.feed, ...kept].slice(0, 500);
         });
         setIsLive(true);
-        setLoading(false);
 
         // Server-side trending + breaking (from KV cache)
         if (data.trending) setServerTrending(data.trending);
         if (data.breaking) setServerBreaking(data.breaking);
         if (data._cache) setCacheAge(data._cache.age);
 
+        await finishLoading();
         return newCount;
       } else {
         throw new Error('Empty feed');
@@ -64,15 +84,16 @@ export function useNews(sources = []) {
       setError(e.message);
     }
 
-    setLoading(false);
+    await finishLoading();
     return 0;
   }, [sources.join(',')]);
 
   useEffect(() => {
     fetchNews(false);
 
-    // Poll every 60 seconds (server handles caching, so we can be less aggressive)
-    const interval = setInterval(() => fetchNews(true), 60000);
+    // Poll every 30s — the DO refresher keeps server cache ≤20s stale,
+    // so clients don't need to be more aggressive than that.
+    const interval = setInterval(() => fetchNews(true), 30000);
 
     // Refresh when tab becomes visible
     const onVisible = () => {

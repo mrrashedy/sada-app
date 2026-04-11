@@ -5,9 +5,30 @@ import { Sound } from '../../lib/sounds';
 import { useSummary } from '../../hooks/useSummary';
 import { ReactionBar } from '../social/ReactionBar';
 
+// Order matters: try our own proxy first (whitelisted hosts only, instant
+// edge cache, under our control), then fall back to public proxies for the
+// long tail of sources we don't whitelist yet. Each entry returns either
+// `{ url, parse }` where `parse(rawText) → htmlString`.
 const PROXIES = [
-  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  {
+    name: 'self',
+    url: link => `/api/proxy?url=${encodeURIComponent(link)}`,
+    // /api/proxy returns the raw HTML body directly
+    parse: text => text,
+  },
+  {
+    name: 'allorigins',
+    url: link => `https://api.allorigins.win/get?url=${encodeURIComponent(link)}`,
+    // allorigins wraps the body in JSON: { contents, status }
+    parse: text => {
+      try { return JSON.parse(text)?.contents || ''; } catch { return ''; }
+    },
+  },
+  {
+    name: 'codetabs',
+    url: link => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(link)}`,
+    parse: text => text,
+  },
 ];
 
 const SELECTORS = [
@@ -19,16 +40,18 @@ const SELECTORS = [
 ];
 
 async function fetchFullText(link) {
-  for (const makeUrl of PROXIES) {
+  for (const proxy of PROXIES) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
-      const res = await fetch(makeUrl(link), { signal: controller.signal });
+      const res = await fetch(proxy.url(link), { signal: controller.signal });
       clearTimeout(timeout);
+      // Skip on any non-2xx — including 403/404 from /api/proxy when the
+      // host isn't on our whitelist (we'll fall through to public proxies).
       if (!res.ok) continue;
 
-      const data = await res.json().catch(() => null);
-      const html = data?.contents || data || '';
+      const raw = await res.text();
+      const html = proxy.parse(raw);
       if (typeof html !== 'string' || html.length < 200) continue;
 
       const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -53,7 +76,7 @@ async function fetchFullText(link) {
   return null;
 }
 
-export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCounts, userReactions, onToggleReaction, commentCount, onComment, relatedArticles = [] }) {
+export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCounts, userReactions, onToggleReaction, commentCount, onComment, onOpenRelated, relatedArticles = [] }) {
   const [fullText, setFullText] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
@@ -172,7 +195,7 @@ export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCount
           <div style={{ marginTop: 24, paddingTop: 16, borderTop: '.5px solid var(--g1)' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t3)', marginBottom: 12, letterSpacing: '.5px' }}>قصص ذات صلة</div>
             {related.map(r => (
-              <div key={r.id} onClick={() => { Sound.open(); onClose(); setTimeout(() => onComment?.__openArticle?.(r), 100); }} style={{ padding: '10px 0', borderBottom: '.5px solid var(--g1)', cursor: 'pointer' }}>
+              <div key={r.id} onClick={() => { Sound.open(); onOpenRelated?.(r); }} style={{ padding: '10px 0', borderBottom: '.5px solid var(--g1)', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)' }}>{r.s?.n}</span>
                   <span style={{ fontSize: 10, color: 'var(--t4)' }}>{r.t}</span>

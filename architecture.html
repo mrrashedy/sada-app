@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>غرفة الأخبار — Architecture Map</title>
+<style>
+  :root{
+    --bg:#0a0a0f;
+    --bg2:#13131c;
+    --ink:#f4f4f6;
+    --dim:#8a8a96;
+    --line:rgba(255,255,255,.08);
+    --user:#7C3AED;       /* purple */
+    --client:#3B82F6;     /* blue */
+    --backend:#10B981;    /* green */
+    --data:#F59E0B;       /* amber */
+    --ai:#EC4899;         /* pink */
+    --social:#06B6D4;     /* cyan */
+    --red:#E53935;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;overflow:hidden;height:100%}
+  body{
+    background:
+      radial-gradient(circle at 15% 20%, rgba(124,58,237,.18), transparent 50%),
+      radial-gradient(circle at 85% 80%, rgba(236,72,153,.14), transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(59,130,246,.10), transparent 60%),
+      var(--bg);
+  }
+
+  /* ── Header bar ───────────────────────────── */
+  .top{
+    position:fixed;top:0;left:0;right:0;height:64px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 24px;backdrop-filter:blur(20px);
+    background:rgba(10,10,15,.6);border-bottom:1px solid var(--line);
+    z-index:100;
+  }
+  .top h1{font-size:18px;font-weight:800;letter-spacing:-.3px}
+  .top h1 span{opacity:.5;font-weight:500;margin-right:6px}
+  .legend{display:flex;gap:14px;font-size:11px;font-weight:600}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .lg-user i{background:var(--user)}
+  .lg-client i{background:var(--client)}
+  .lg-back i{background:var(--backend)}
+  .lg-data i{background:var(--data)}
+  .lg-ai i{background:var(--ai)}
+  .lg-social i{background:var(--social)}
+
+  /* ── Stage / pannable canvas ──────────────── */
+  .stage{
+    position:absolute;top:64px;bottom:48px;left:0;right:0;
+    overflow:hidden;cursor:grab;
+  }
+  .stage:active{cursor:grabbing}
+  .canvas{
+    position:absolute;top:50%;left:50%;
+    width:2400px;height:1700px;
+    transform:translate(-50%,-50%);
+    transition:transform .3s cubic-bezier(.2,.7,.3,1);
+  }
+
+  /* ── SVG connector layer ──────────────────── */
+  .links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+  .links path{fill:none;stroke:rgba(255,255,255,.10);stroke-width:1.4;stroke-dasharray:4 6}
+  .links path.flow{stroke:rgba(255,255,255,.18);stroke-dasharray:none}
+  .links path.data-flow{stroke:rgba(245,158,11,.30)}
+  .links path.user-flow{stroke:rgba(124,58,237,.30)}
+  .links path.ai-flow{stroke:rgba(236,72,153,.30)}
+
+  /* ── Bubble base ──────────────────────────── */
+  .bub{
+    position:absolute;
+    border-radius:50%;
+    background:rgba(20,20,30,.85);
+    backdrop-filter:blur(12px);
+    border:1.5px solid var(--line);
+    color:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;
+    cursor:pointer;
+    transition:transform .25s cubic-bezier(.2,.7,.3,1), box-shadow .25s, border-color .25s;
+    z-index:2;
+    user-select:none;
+    box-shadow:0 8px 28px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .bub:hover{transform:scale(1.06);box-shadow:0 14px 42px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.12), inset 0 1px 0 rgba(255,255,255,.08)}
+  .bub.lg{font-size:18px;font-weight:800;letter-spacing:-.3px}
+  .bub.md{font-size:14px;font-weight:700}
+  .bub.sm{font-size:11px;font-weight:600;line-height:1.2;padding:8px}
+  .bub.xs{font-size:10px;font-weight:600;line-height:1.15;padding:6px}
+  .bub .sub{display:block;font-size:9px;font-weight:500;opacity:.55;margin-top:3px;letter-spacing:.3px;text-transform:uppercase}
+
+  /* Color tints by domain */
+  .bub.user{    border-color:rgba(124,58,237,.55);background:radial-gradient(circle at 30% 30%,rgba(124,58,237,.32),rgba(20,20,30,.85))}
+  .bub.client{  border-color:rgba(59,130,246,.55);background:radial-gradient(circle at 30% 30%,rgba(59,130,246,.30),rgba(20,20,30,.85))}
+  .bub.backend{ border-color:rgba(16,185,129,.55);background:radial-gradient(circle at 30% 30%,rgba(16,185,129,.30),rgba(20,20,30,.85))}
+  .bub.data{    border-color:rgba(245,158,11,.55);background:radial-gradient(circle at 30% 30%,rgba(245,158,11,.30),rgba(20,20,30,.85))}
+  .bub.ai{      border-color:rgba(236,72,153,.55);background:radial-gradient(circle at 30% 30%,rgba(236,72,153,.30),rgba(20,20,30,.85))}
+  .bub.social{  border-color:rgba(6,182,212,.55) ;background:radial-gradient(circle at 30% 30%,rgba(6,182,212,.30),rgba(20,20,30,.85))}
+
+  /* Pulsing center bubble */
+  .bub.core{
+    background:radial-gradient(circle at 35% 35%, rgba(229,57,53,.45), rgba(20,20,30,.95));
+    border:2px solid rgba(229,57,53,.7);
+    box-shadow:0 0 40px rgba(229,57,53,.35), 0 0 100px rgba(229,57,53,.15), inset 0 1px 0 rgba(255,255,255,.1);
+    animation:corepulse 4s ease-in-out infinite;
+  }
+  @keyframes corepulse{
+    0%,100%{box-shadow:0 0 40px rgba(229,57,53,.35), 0 0 100px rgba(229,57,53,.15), inset 0 1px 0 rgba(255,255,255,.1)}
+    50%{box-shadow:0 0 60px rgba(229,57,53,.5), 0 0 140px rgba(229,57,53,.25), inset 0 1px 0 rgba(255,255,255,.15)}
+  }
+
+  /* Active state when a bubble is selected */
+  .bub.active{
+    transform:scale(1.12);
+    box-shadow:0 18px 50px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.25), inset 0 1px 0 rgba(255,255,255,.1);
+    z-index:5;
+  }
+
+  /* ── Side panel ───────────────────────────── */
+  .panel{
+    position:fixed;top:84px;right:20px;width:380px;max-height:calc(100vh - 152px);
+    background:rgba(15,15,22,.92);backdrop-filter:blur(20px);
+    border:1px solid var(--line);border-radius:18px;
+    padding:22px 24px;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+    overflow-y:auto;
+    transform:translateX(440px);opacity:0;
+    transition:transform .35s cubic-bezier(.2,.7,.3,1), opacity .25s;
+    z-index:50;
+  }
+  .panel.open{transform:translateX(0);opacity:1}
+  .panel h2{font-size:20px;font-weight:800;letter-spacing:-.4px;margin-bottom:6px}
+  .panel .tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:4px 10px;border-radius:99px;margin-bottom:14px}
+  .panel p{font-size:13px;line-height:1.55;color:#cfcfd6;margin-bottom:12px}
+  .panel ul{list-style:none;margin:8px 0 14px}
+  .panel li{font-size:12px;line-height:1.5;color:#a8a8b3;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:8px}
+  .panel li::before{content:'›';color:rgba(255,255,255,.3);flex-shrink:0}
+  .panel .file{font-family:'JetBrains Mono','SF Mono',monospace;font-size:10.5px;color:#8a8a96;background:rgba(255,255,255,.04);padding:2px 6px;border-radius:4px;display:inline-block;margin:2px 4px 2px 0}
+  .panel .close{position:absolute;top:14px;right:16px;background:none;border:none;color:#8a8a96;font-size:20px;cursor:pointer;padding:4px;line-height:1}
+  .panel .close:hover{color:#fff}
+  .tag.user{background:rgba(124,58,237,.18);color:#c4b5fd}
+  .tag.client{background:rgba(59,130,246,.18);color:#93c5fd}
+  .tag.backend{background:rgba(16,185,129,.18);color:#6ee7b7}
+  .tag.data{background:rgba(245,158,11,.18);color:#fcd34d}
+  .tag.ai{background:rgba(236,72,153,.18);color:#f9a8d4}
+  .tag.social{background:rgba(6,182,212,.18);color:#67e8f9}
+  .tag.core{background:rgba(229,57,53,.18);color:#fca5a5}
+
+  /* ── Bottom controls ──────────────────────── */
+  .controls{
+    position:fixed;bottom:0;left:0;right:0;height:48px;
+    display:flex;align-items:center;justify-content:center;gap:16px;
+    backdrop-filter:blur(20px);
+    background:rgba(10,10,15,.7);border-top:1px solid var(--line);
+    z-index:100;
+  }
+  .controls button{
+    background:rgba(255,255,255,.05);border:1px solid var(--line);
+    color:var(--ink);font-size:11px;font-weight:600;
+    padding:7px 14px;border-radius:99px;cursor:pointer;
+    font-family:inherit;letter-spacing:.2px;
+    transition:all .2s;
+  }
+  .controls button:hover{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.2)}
+  .controls .hint{font-size:10.5px;color:var(--dim);font-weight:500}
+
+  /* ── Section labels on canvas ─────────────── */
+  .label{
+    position:absolute;
+    font-size:10px;font-weight:800;
+    text-transform:uppercase;letter-spacing:2px;
+    color:rgba(255,255,255,.20);
+    pointer-events:none;
+    z-index:0;
+    white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1><span>غرفة الأخبار</span>Architecture Map</h1>
+  <div class="legend">
+    <span class="lg-user"><i></i>User</span>
+    <span class="lg-client"><i></i>Client</span>
+    <span class="lg-back"><i></i>Backend</span>
+    <span class="lg-data"><i></i>Data</span>
+    <span class="lg-ai"><i></i>AI</span>
+    <span class="lg-social"><i></i>Social</span>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+  <div class="canvas" id="canvas">
+    <svg class="links" viewBox="0 0 2400 1700" preserveAspectRatio="none" id="links"></svg>
+
+    <!-- Section labels -->
+    <div class="label" style="top:60px;left:200px">User Layer</div>
+    <div class="label" style="top:60px;left:1100px">Client App (React PWA)</div>
+    <div class="label" style="top:60px;left:1900px">Backend (Cloudflare)</div>
+    <div class="label" style="top:1500px;left:200px">Data Layer (Supabase)</div>
+    <div class="label" style="top:1500px;left:1900px">External Sources</div>
+  </div>
+</div>
+
+<aside class="panel" id="panel">
+  <button class="close" id="closeBtn">×</button>
+  <span class="tag" id="pTag">—</span>
+  <h2 id="pTitle">Select a bubble</h2>
+  <p id="pDesc">Click any bubble in the map to learn what it does and which files implement it.</p>
+  <ul id="pList"></ul>
+  <div id="pFiles"></div>
+</aside>
+
+<div class="controls">
+  <button id="zoomIn">+ Zoom</button>
+  <button id="zoomOut">− Zoom</button>
+  <button id="reset">Reset View</button>
+  <span class="hint">drag to pan · click bubbles to inspect</span>
+</div>
+
+<script>
+// ── Bubble data ──────────────────────────────────────────
+// Each bubble: {id, x, y, r, label, sub, type, title, tag, desc, bullets, files}
+const BUBBLES = [
+  // ─── CORE ───
+  { id:'core', x:1200, y:800, r:130, label:'غرفة\nالأخبار', sub:'Sada · 101n.app', type:'core', size:'lg',
+    title:'غرفة الأخبار (Sada)',
+    tag:'CORE', tagClass:'core',
+    desc:'An Arabic-language social news platform: 30+ Arabic + English RSS sources aggregated, AI-translated, AI-clustered, and rendered as a real-time PWA on Cloudflare Pages.',
+    bullets:[
+      'Hosted at 101n.app on Cloudflare Pages',
+      'PWA — installable, offline-capable',
+      'Full RTL Arabic UI with Concrete palette',
+      'Anonymous-first, optional account for social features',
+    ],
+    files:['src/App.jsx','src/main.jsx','wrangler.toml']
+  },
+
+  // ─── USER LAYER (left) ───
+  { id:'user', x:300, y:300, r:75, label:'You', sub:'Reader', type:'user', size:'md',
+    title:'The User',
+    tag:'USER', tagClass:'user',
+    desc:'Anyone visiting 101n.app. Reads news anonymously by default; can sign in to unlock social features and cross-device sync.',
+    bullets:[
+      'Browses without account (anonymous mode)',
+      'Optionally creates account for social features',
+      'Phone-first PWA experience',
+    ]
+  },
+
+  { id:'onboard', x:200, y:540, r:65, label:'Onboarding', type:'user', size:'sm',
+    title:'Onboarding',
+    tag:'USER FLOW', tagClass:'user',
+    desc:'First-launch flow: pick interest topics, source preferences, language. Saves to localStorage so it never blocks repeat visits.',
+    bullets:[
+      'Topic interest picker (politics, sports, tech…)',
+      'Stored in localStorage as sada-prefs',
+      'Skipped on subsequent visits',
+    ],
+    files:['src/components/onboarding/Onboarding.jsx','src/data/topics.js']
+  },
+
+  { id:'auth', x:380, y:560, r:65, label:'Auth', type:'user', size:'sm',
+    title:'Authentication',
+    tag:'USER FLOW', tagClass:'user',
+    desc:'Optional sign-in via Supabase. Email + password sign-up with Arabic error messages. Triggers profile setup on first login.',
+    bullets:[
+      'Email/password through Supabase',
+      'AuthContext provides user/profile to whole app',
+      'Anonymous browsing always works as fallback',
+    ],
+    files:['src/context/AuthContext.jsx','src/components/auth/AuthModal.jsx','src/components/auth/ProfileSetup.jsx']
+  },
+
+  { id:'profile', x:240, y:740, r:60, label:'Profile', type:'user', size:'sm',
+    title:'User Profile',
+    tag:'USER FLOW', tagClass:'user',
+    desc:'Display name, username, avatar, bio. Shown to other users on comments and reactions.',
+    files:['src/components/social/UserProfile.jsx']
+  },
+
+  // ─── CLIENT APP — main views (center cluster) ───
+  { id:'home', x:980, y:430, r:80, label:'Home Feed', sub:'الرئيسية', type:'client', size:'md',
+    title:'Home Feed',
+    tag:'VIEW', tagClass:'client',
+    desc:'The main news stream. Three sub-tabs: "Now" (latest, hard news), "Important" (filtered by your interests), "Context" (deep investigations). Pull-to-refresh and infinite scroll.',
+    bullets:[
+      'Three tabs: Now / Important / Context',
+      'Source story-bar at top (tap to filter by source)',
+      'Breaking news ticker',
+      'Pull-to-refresh, infinite scroll',
+      'Each card has reactions + comments + bookmark + share',
+    ],
+    files:['src/App.jsx','src/components/feed/Post.jsx','src/components/feed/BreakingTicker.jsx']
+  },
+
+  { id:'radar', x:1380, y:430, r:80, label:'Radar', sub:'رادار', type:'client', size:'md',
+    title:'Trending Radar',
+    tag:'VIEW', tagClass:'client',
+    desc:'Full-screen radar disc visualizing the hottest topics extracted from the live feed. Frame-free dark theme with concentric rings, rotating sweep on refresh, and detected blips that brighten when scanned.',
+    bullets:[
+      'Topics placed on 3 concentric rings (hottest in inner)',
+      'Math-guaranteed even spacing — no label collisions',
+      'Rotating sweep wedge on refresh, lights up blips',
+      'Tap a topic → filter article list below the disc',
+      'AI-clustered topics (Llama 3.1 8B merges aliases)',
+    ],
+    files:['src/components/trending/TrendingRadar.jsx','src/lib/trending.js']
+  },
+
+  { id:'map', x:980, y:1170, r:75, label:'News Map', sub:'خريطة', type:'client', size:'md',
+    title:'News Map',
+    tag:'VIEW', tagClass:'client',
+    desc:'Geographic view: detects places mentioned in articles and pins them on a dark Mapbox map. Region clocks change based on what part of the world you are looking at.',
+    bullets:[
+      'Geo-detection from article text (Arabic place names)',
+      'Premium dark map style',
+      'Region-aware clocks (Gulf, Levant, Iraq…)',
+      'Tap pin → article opens',
+    ],
+    files:['src/components/map/NewsMap.jsx','src/data/geo.js']
+  },
+
+  { id:'saved', x:1380, y:1170, r:70, label:'Bookmarks', sub:'المحفوظات', type:'client', size:'md',
+    title:'Bookmarks',
+    tag:'VIEW', tagClass:'client',
+    desc:'Saved articles. For logged-in users they sync to Supabase (article_data JSONB persists even after the RSS feed rotates). Anonymous users get localStorage only.',
+    files:['src/components/bookmarks/BookmarksView.jsx']
+  },
+
+  { id:'settings', x:1130, y:1280, r:65, label:'Settings', type:'client', size:'sm',
+    title:'Settings',
+    tag:'VIEW', tagClass:'client',
+    desc:'Account section, source toggles, theme switcher, reset onboarding.',
+    files:['src/components/settings/SettingsView.jsx']
+  },
+
+  { id:'search', x:1230, y:1280, r:60, label:'Search', type:'client', size:'sm',
+    title:'Search',
+    tag:'OVERLAY', tagClass:'client',
+    desc:'Full-text search across the live feed. Future: also searches users by name.',
+    files:['src/components/search/SearchView.jsx']
+  },
+
+  { id:'notif', x:1310, y:1280, r:55, label:'Notifs', type:'client', size:'sm',
+    title:'Notifications',
+    tag:'OVERLAY', tagClass:'client',
+    desc:'Slides in over the home feed. Lists new breaking articles since last seen.',
+    files:['src/components/notifications/NotificationPanel.jsx']
+  },
+
+  { id:'detail', x:1180, y:610, r:75, label:'Article\nDetail', type:'client', size:'md',
+    title:'Article Detail',
+    tag:'OVERLAY', tagClass:'client',
+    desc:'Full-screen article view. Fetches full text via CORS proxies, shows AI summary, related articles, reactions, and inline comments.',
+    bullets:[
+      'Full-text fetch via allorigins + codetabs proxies',
+      'AI summary via /api/summarize',
+      'Reactions bar + comments sheet',
+      'Share as image card',
+    ],
+    files:['src/components/article/ArticleDetail.jsx','src/lib/shareCard.js']
+  },
+
+  // ─── CLIENT — state hooks ───
+  { id:'usenews', x:870, y:760, r:60, label:'useNews', type:'client', size:'sm',
+    title:'useNews Hook',
+    tag:'STATE', tagClass:'client',
+    desc:'The single source of truth for the live feed. Polls /api/feeds every 30s with cache-busting, exposes feed/loading/error/isLive. Enforces a 1.5s minimum loading duration so the radar sweep animation is observable.',
+    files:['src/lib/useNews.js']
+  },
+
+  { id:'authctx', x:740, y:850, r:55, label:'Auth\nContext', type:'client', size:'sm',
+    title:'AuthContext',
+    tag:'STATE', tagClass:'client',
+    desc:'Listens to supabase.auth.onAuthStateChange. Exposes user, profile, signIn, signOut to the whole app.',
+    files:['src/context/AuthContext.jsx']
+  },
+
+  { id:'reactionsHook', x:760, y:660, r:55, label:'use\nReactions', type:'social', size:'sm',
+    title:'useReactions Hook',
+    tag:'STATE', tagClass:'social',
+    desc:'Batch-fetches reaction counts and the current user reactions for all visible articles in one round trip (avoids N+1).',
+    files:['src/hooks/useReactions.js']
+  },
+
+  { id:'commentsHook', x:1620, y:760, r:55, label:'use\nComments', type:'social', size:'sm',
+    title:'useComments Hook',
+    tag:'STATE', tagClass:'social',
+    desc:'Paginated comments with profile joins, optimistic updates, edit/delete own comments.',
+    files:['src/hooks/useComments.js']
+  },
+
+  // ─── SOCIAL ───
+  { id:'social', x:1620, y:610, r:75, label:'Social\nLayer', type:'social', size:'md',
+    title:'Social Layer',
+    tag:'SOCIAL', tagClass:'social',
+    desc:'Reactions, comments, follows. Anonymous users can see counts but tapping prompts them to sign in. All counts materialized in reaction_counts table for fast reads.',
+    bullets:[
+      'Reactions: like / insightful / important / misleading',
+      'Comments: single-level threading, edit/delete own',
+      'Follow / unfollow with materialized counts',
+      'Optimistic UI updates',
+    ]
+  },
+
+  { id:'reactionBar', x:1740, y:760, r:55, label:'Reaction\nBar', type:'social', size:'sm',
+    title:'ReactionBar Component',
+    tag:'COMPONENT', tagClass:'social',
+    desc:'4 reaction types with counts, anonymous tap → auth modal.',
+    files:['src/components/social/ReactionBar.jsx']
+  },
+
+  { id:'commentSheet', x:1740, y:560, r:55, label:'Comment\nSheet', type:'social', size:'sm',
+    title:'CommentSheet Component',
+    tag:'COMPONENT', tagClass:'social',
+    desc:'Bottom sheet, comment list with avatars, fixed text input, optimistic send.',
+    files:['src/components/social/CommentSheet.jsx']
+  },
+
+  // ─── BACKEND (Cloudflare Pages Functions) ───
+  { id:'feedsApi', x:1900, y:430, r:75, label:'/api/feeds', type:'backend', size:'md',
+    title:'/api/feeds',
+    tag:'BACKEND', tagClass:'backend',
+    desc:'The aggregation engine. Fetches 30+ RSS feeds in parallel, parses XML, dedupes, interleaves tier1/tier2/translated-EN. Returns from KV cache (stale-while-revalidate) — actual aggregation runs at most every ~20 seconds.',
+    bullets:[
+      'Parallel RSS fetch (30+ sources)',
+      '3:1:1 interleave (tier1 : tier2 : translated EN)',
+      'Hash-based dedup on title prefix',
+      'Server-computed trending tags',
+      'KV-backed stale-while-revalidate cache',
+    ],
+    files:['functions/api/feeds.js']
+  },
+
+  { id:'cluster', x:2120, y:580, r:65, label:'/api/cluster', type:'ai', size:'sm',
+    title:'/api/cluster',
+    tag:'AI', tagClass:'ai',
+    desc:'Workers AI (Llama 3.1 8B) merges trending topics that refer to the same real-world entity (e.g. "إيراني" + "إيران" → one cluster). Result cached in KV for 5 minutes.',
+    files:['functions/api/cluster.js']
+  },
+
+  { id:'summarize', x:2150, y:430, r:65, label:'/api/\nsummarize', type:'ai', size:'sm',
+    title:'/api/summarize',
+    tag:'AI', tagClass:'ai',
+    desc:'Workers AI summarization (BART-large-cnn). Cached in KV per article.',
+    files:['functions/api/summarize.js']
+  },
+
+  { id:'moderate', x:2150, y:280, r:60, label:'/api/\nmoderate', type:'ai', size:'sm',
+    title:'/api/moderate',
+    tag:'AI', tagClass:'ai',
+    desc:'AI content moderation for incoming comments (safe / toxic).',
+    files:['functions/api/moderate.js']
+  },
+
+  { id:'translate', x:1930, y:280, r:60, label:'M2M-100\nTranslate', type:'ai', size:'sm',
+    title:'Translation Pipeline',
+    tag:'AI', tagClass:'ai',
+    desc:'English RSS items pass through Workers AI M2M-100 1.2B model and become Arabic. Translations cached in KV (24h) keyed by source+title hash.',
+    files:['functions/api/feeds.js (translateItem)']
+  },
+
+  { id:'alerts', x:1900, y:780, r:55, label:'/api/\nalerts', type:'backend', size:'sm',
+    title:'/api/alerts',
+    tag:'BACKEND', tagClass:'backend',
+    desc:'Breaking-news alert acknowledgement endpoint.',
+    files:['functions/api/alerts.js']
+  },
+
+  { id:'cron', x:2120, y:780, r:55, label:'/api/cron', type:'backend', size:'sm',
+    title:'/api/cron',
+    tag:'BACKEND', tagClass:'backend',
+    desc:'Manual cache-warming endpoint, called by the cron-worker.',
+    files:['functions/api/cron.js']
+  },
+
+  // ─── CACHE WARMER (Durable Object) ───
+  { id:'cronWorker', x:2110, y:980, r:80, label:'Cache\nWarmer', sub:'Durable Object', type:'backend', size:'md',
+    title:'Cache Warmer (sada-cron)',
+    tag:'BACKEND', tagClass:'backend',
+    desc:'A separate Cloudflare Worker on the Paid plan. Uses a Durable Object alarm that fires every 20 seconds, hits /api/feeds?refresh=1 to keep the KV cache hot. A 1-minute cron trigger acts as failsafe to re-arm the DO if it ever stops.',
+    bullets:[
+      'Durable Object with self-rearming alarms',
+      'Effective refresh cadence: 20 seconds',
+      '1-minute cron failsafe',
+      'So client requests always read instant warm cache',
+    ],
+    files:['cron-worker/index.js','cron-worker/wrangler.toml']
+  },
+
+  // ─── DATA — Supabase ───
+  { id:'supabase', x:680, y:1370, r:90, label:'Supabase', sub:'Postgres + Auth', type:'data', size:'md',
+    title:'Supabase',
+    tag:'DATA', tagClass:'data',
+    desc:'The persistent data layer. Provides Postgres tables for profiles, bookmarks, preferences, reactions, comments, follows. Auth via email/password. Row-level security enforces ownership.',
+    bullets:[
+      'Tables: profiles, bookmarks, preferences, reactions, comments, follows, reaction_counts',
+      'Auth: email/password',
+      'RLS: owner-write, public-read where appropriate',
+      'Triggers update materialized counts',
+    ],
+    files:['src/lib/supabase.js']
+  },
+
+  { id:'profiles', x:430, y:1280, r:50, label:'profiles', type:'data', size:'xs',
+    title:'profiles table',
+    tag:'TABLE', tagClass:'data',
+    desc:'display_name, username, avatar_url, bio. Auto-created on signup via trigger.',
+  },
+  { id:'bookmarks', x:440, y:1380, r:50, label:'bookmarks', type:'data', size:'xs',
+    title:'bookmarks table',
+    tag:'TABLE', tagClass:'data',
+    desc:'user_id + article_id + article_data (JSONB so the article persists even after the RSS feed rotates it out).',
+  },
+  { id:'reactions', x:470, y:1480, r:50, label:'reactions', type:'data', size:'xs',
+    title:'reactions table',
+    tag:'TABLE', tagClass:'data',
+    desc:'user × article × type. Trigger updates reaction_counts on insert/delete.',
+  },
+  { id:'comments', x:560, y:1530, r:50, label:'comments', type:'data', size:'xs',
+    title:'comments table',
+    tag:'TABLE', tagClass:'data',
+    desc:'Single-level threading via parent_id. 2000 char limit. Edit/delete restricted to author.',
+  },
+  { id:'follows', x:680, y:1540, r:50, label:'follows', type:'data', size:'xs',
+    title:'follows table',
+    tag:'TABLE', tagClass:'data',
+    desc:'follower_id × following_id composite PK. Trigger updates follower_count on profiles.',
+  },
+  { id:'prefs', x:790, y:1530, r:50, label:'preferences', type:'data', size:'xs',
+    title:'preferences table',
+    tag:'TABLE', tagClass:'data',
+    desc:'User settings — interests, theme, source toggles. Synced from localStorage on first login.',
+  },
+  { id:'counts', x:880, y:1450, r:50, label:'reaction_\ncounts', type:'data', size:'xs',
+    title:'reaction_counts table',
+    tag:'TABLE', tagClass:'data',
+    desc:'Materialized per-article counts (like / insightful / important / misleading / comment). Updated by trigger so reads are O(1).',
+  },
+
+  // ─── KV CACHE ───
+  { id:'kv', x:2110, y:1180, r:70, label:'KV Cache', type:'data', size:'md',
+    title:'Cloudflare KV',
+    tag:'DATA', tagClass:'data',
+    desc:'Two namespaces: FEED_CACHE (aggregated feed snapshot, 10-min TTL) and TRANSLATIONS (M2M-100 outputs, 24h TTL). The cron-worker keeps FEED_CACHE warm; reads are nanoseconds.',
+    bullets:[
+      'feed:latest — full aggregated feed JSON',
+      'feed:meta — timestamp + count',
+      't:<source>:<hash> — translated title+description',
+      'cluster:<hash> — AI clustering results (5 min TTL)',
+    ]
+  },
+
+  // ─── EXTERNAL SOURCES ───
+  { id:'rss', x:1900, y:1370, r:90, label:'30+ RSS\nSources', type:'data', size:'md',
+    title:'RSS Sources (30+)',
+    tag:'EXTERNAL', tagClass:'data',
+    desc:'Three tiers of news sources, fetched in parallel by /api/feeds. Tier 1 are flagship Arabic broadcasters, Tier 2 are regional newspapers, Tier 3 are English sources that get auto-translated.',
+    bullets:[
+      'Tier 1 (10): Al Jazeera, BBC Arabic, Sky Arabia, France24, DW, CNN Arabia…',
+      'Tier 2 (13): Al-Araby, Al-Masry Al-Youm, Arab News, Al-Quds…',
+      'Tier 3 (12): NYT, Fox, NPR, Guardian, WaPo, Bloomberg, Haaretz…',
+    ],
+    files:['src/data/sources.js','functions/api/feeds.js']
+  },
+
+  { id:'workersai', x:2150, y:1180, r:65, label:'Workers AI', type:'ai', size:'sm',
+    title:'Cloudflare Workers AI',
+    tag:'AI', tagClass:'ai',
+    desc:'Three models in use: M2M-100 1.2B (translation), Llama 3.1 8B (topic clustering, moderation), BART-large-cnn (summarization). All free-tier on the Workers Paid plan.',
+  },
+
+  { id:'mapbox', x:1660, y:1370, r:60, label:'Mapbox', type:'data', size:'sm',
+    title:'Mapbox',
+    tag:'EXTERNAL', tagClass:'data',
+    desc:'Vector tiles for the News Map view (premium dark style).',
+  },
+
+  { id:'proxies', x:1780, y:200, r:55, label:'CORS\nProxies', type:'data', size:'sm',
+    title:'CORS Proxies',
+    tag:'EXTERNAL', tagClass:'data',
+    desc:'Two proxies (allorigins, codetabs) used by ArticleDetail to fetch full article HTML when the RSS body is too short.',
+  },
+];
+
+// ── Connections (lines between bubbles) ──────
+// type: 'flow' (data), 'user' (interaction), 'ai' (ai call)
+const LINKS = [
+  // user → app
+  ['user','onboard','user'],
+  ['user','auth','user'],
+  ['user','core','user'],
+  ['auth','authctx','flow'],
+  ['authctx','core','flow'],
+  ['onboard','core','flow'],
+
+  // app → main views
+  ['core','home','flow'],
+  ['core','radar','flow'],
+  ['core','map','flow'],
+  ['core','saved','flow'],
+  ['core','settings','flow'],
+  ['core','detail','flow'],
+  ['core','search','flow'],
+  ['core','notif','flow'],
+
+  // hooks
+  ['core','usenews','flow'],
+  ['usenews','feedsApi','data-flow'],
+  ['home','usenews','flow'],
+  ['radar','usenews','flow'],
+  ['map','usenews','flow'],
+  ['core','reactionsHook','flow'],
+  ['reactionsHook','supabase','data-flow'],
+
+  // social
+  ['core','social','flow'],
+  ['detail','social','flow'],
+  ['social','reactionBar','flow'],
+  ['social','commentSheet','flow'],
+  ['social','commentsHook','flow'],
+  ['commentsHook','supabase','data-flow'],
+  ['reactionBar','reactionsHook','flow'],
+  ['social','moderate','ai-flow'],
+
+  // backend
+  ['feedsApi','rss','data-flow'],
+  ['feedsApi','translate','ai-flow'],
+  ['feedsApi','kv','data-flow'],
+  ['feedsApi','cluster','ai-flow'],
+  ['radar','cluster','ai-flow'],
+  ['detail','summarize','ai-flow'],
+  ['detail','proxies','data-flow'],
+  ['cronWorker','feedsApi','data-flow'],
+  ['cronWorker','cron','data-flow'],
+  ['cron','feedsApi','data-flow'],
+
+  // ai layer
+  ['translate','workersai','ai-flow'],
+  ['cluster','workersai','ai-flow'],
+  ['summarize','workersai','ai-flow'],
+  ['moderate','workersai','ai-flow'],
+
+  // data
+  ['supabase','profiles','data-flow'],
+  ['supabase','bookmarks','data-flow'],
+  ['supabase','reactions','data-flow'],
+  ['supabase','comments','data-flow'],
+  ['supabase','follows','data-flow'],
+  ['supabase','prefs','data-flow'],
+  ['supabase','counts','data-flow'],
+  ['authctx','supabase','data-flow'],
+  ['saved','supabase','data-flow'],
+  ['settings','supabase','data-flow'],
+  ['profile','supabase','data-flow'],
+
+  // external
+  ['map','mapbox','data-flow'],
+];
+
+// ── Render bubbles ───────────────────────────
+const canvas = document.getElementById('canvas');
+const linksSvg = document.getElementById('links');
+
+const bubMap = {};
+BUBBLES.forEach(b => {
+  bubMap[b.id] = b;
+  const el = document.createElement('div');
+  el.className = `bub ${b.type} ${b.size||'md'}`;
+  el.style.left = (b.x - b.r) + 'px';
+  el.style.top  = (b.y - b.r) + 'px';
+  el.style.width = (b.r*2) + 'px';
+  el.style.height = (b.r*2) + 'px';
+  el.dataset.id = b.id;
+  el.innerHTML = `<div>${(b.label||'').replace(/\n/g,'<br>')}${b.sub?`<span class="sub">${b.sub}</span>`:''}</div>`;
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.bub.active').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    showPanel(b);
+  });
+  canvas.appendChild(el);
+});
+
+// ── Render links ─────────────────────────────
+LINKS.forEach(([a,b,kind]) => {
+  const A = bubMap[a], B = bubMap[b];
+  if (!A || !B) return;
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  // gentle curve via mid-point offset
+  const mx = (A.x + B.x) / 2;
+  const my = (A.y + B.y) / 2;
+  // perpendicular offset proportional to distance
+  const dx = B.x - A.x, dy = B.y - A.y;
+  const d = Math.hypot(dx,dy);
+  const offset = Math.min(60, d * 0.12);
+  const px = -dy/d * offset;
+  const py = dx/d * offset;
+  path.setAttribute('d', `M${A.x},${A.y} Q${mx+px},${my+py} ${B.x},${B.y}`);
+  path.classList.add(kind === 'flow' ? 'flow' : kind === 'user' ? 'user-flow' : kind === 'ai' ? 'ai-flow' : 'data-flow');
+  linksSvg.appendChild(path);
+});
+
+// ── Side panel ───────────────────────────────
+const panel = document.getElementById('panel');
+const pTitle = document.getElementById('pTitle');
+const pDesc = document.getElementById('pDesc');
+const pTag = document.getElementById('pTag');
+const pList = document.getElementById('pList');
+const pFiles = document.getElementById('pFiles');
+const closeBtn = document.getElementById('closeBtn');
+
+function showPanel(b){
+  pTitle.textContent = b.title;
+  pDesc.textContent = b.desc || '';
+  pTag.textContent = b.tag || '';
+  pTag.className = 'tag ' + (b.tagClass||'');
+  pList.innerHTML = (b.bullets||[]).map(x => `<li>${x}</li>`).join('');
+  pFiles.innerHTML = (b.files||[]).map(f => `<span class="file">${f}</span>`).join('');
+  panel.classList.add('open');
+}
+closeBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  panel.classList.remove('open');
+  document.querySelectorAll('.bub.active').forEach(x => x.classList.remove('active'));
+});
+panel.addEventListener('click', (e) => e.stopPropagation());
+
+// ── Pan + zoom ───────────────────────────────
+const stage = document.getElementById('stage');
+let scale = 0.55, tx = 0, ty = 0;
+let dragging = false, sx=0, sy=0, stx=0, sty=0;
+
+function applyTransform(){
+  canvas.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(${scale})`;
+}
+
+stage.addEventListener('mousedown', e => {
+  dragging = true;
+  sx = e.clientX; sy = e.clientY; stx = tx; sty = ty;
+});
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  tx = stx + (e.clientX - sx);
+  ty = sty + (e.clientY - sy);
+  canvas.style.transition = 'none';
+  applyTransform();
+});
+window.addEventListener('mouseup', () => {
+  dragging = false;
+  canvas.style.transition = '';
+});
+
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.92 : 1.08;
+  scale = Math.max(0.25, Math.min(2.0, scale * delta));
+  canvas.style.transition = 'none';
+  applyTransform();
+}, { passive:false });
+
+document.getElementById('zoomIn').onclick = () => { scale = Math.min(2.0, scale * 1.18); applyTransform(); };
+document.getElementById('zoomOut').onclick = () => { scale = Math.max(0.25, scale * 0.85); applyTransform(); };
+document.getElementById('reset').onclick = () => { scale = 0.55; tx = 0; ty = 0; applyTransform(); };
+
+// Initial fit
+applyTransform();
+
+// Click outside panel closes it
+stage.addEventListener('click', () => {
+  panel.classList.remove('open');
+  document.querySelectorAll('.bub.active').forEach(x => x.classList.remove('active'));
+});
+
+// Auto-open the core bubble on first load so the user sees what the panel does.
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const core = bubMap['core'];
+    if (!core) return;
+    document.querySelector('.bub[data-id="core"]')?.classList.add('active');
+    showPanel(core);
+  }, 400);
+});
+</script>
+
+</body>
+</html>

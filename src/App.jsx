@@ -38,6 +38,7 @@ import { NotificationPanel } from './components/notifications/NotificationPanel'
 import { Onboarding } from './components/onboarding/Onboarding';
 import { TrendingRadar, RadarView } from './components/trending/TrendingRadar';
 import { BreakingTicker } from './components/feed/BreakingTicker';
+import { AdminPanel } from './components/admin/AdminPanel';
 
 export default function Sada() {
   const auth = useAuth();
@@ -101,6 +102,8 @@ export default function Sada() {
   const { feed:liveFeed, loading, isLive, refresh } = useNews();
   useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); Sound.notify(); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
 
+
+
   // Pull-to-refresh & infinite scroll
   const { pullY, refreshing, refreshMsg, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD } = usePullToRefresh(contentRef, refresh);
   const { visibleCount, onScroll } = useInfiniteScroll(20, 15, 200, feedTab);
@@ -125,9 +128,78 @@ export default function Sada() {
     };
   });
 
-  // Trending topics — recalculate every 10 minutes
-  const trendBucket = Math.floor(Date.now() / 600000);
-  const trending = useMemo(() => extractTrending(allFeed), [trendBucket]);
+  // Deep link: open shared article from ?article=ID
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandled.current || !allFeed.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const articleId = params.get('article');
+    if (articleId) {
+      const found = allFeed.find(f => f.id === articleId);
+      if (found) { deepLinkHandled.current = true; setArticle(found); window.history.replaceState({}, '', '/'); }
+    }
+  }, [allFeed]);
+
+  // Trending topics — recalculate every minute (recency-aware extractor)
+  const [trendTick, setTrendTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTrendTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+  // Raw trending: pure rules pass. Shows immediately.
+  const rawTrending = useMemo(() => extractTrending(allFeed), [trendTick, allFeed.length]);
+  // Clustered trending: AI-merged version. Updates when /api/cluster returns.
+  const [trending, setTrending] = useState([]);
+  useEffect(() => {
+    if (!rawTrending.length) { setTrending([]); return; }
+    // Show raw immediately so the radar isn't blank while AI thinks
+    setTrending(rawTrending);
+    let cancelled = false;
+    fetch('/api/cluster', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topics: rawTrending.map(t => t.word) })
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data || !Array.isArray(data.groups) || !data.groups.length) return;
+        const wordToEntry = Object.fromEntries(rawTrending.map(t => [t.word, t]));
+        // Type priority: persons first, then countries, then orgs/events/other
+        const TYPE_RANK = { person: 0, country: 1, org: 2, event: 3, other: 4 };
+        const merged = data.groups.map(group => {
+          // Accept both { topics, type } and bare-array forms
+          const topicWords = Array.isArray(group) ? group : (group.topics || []);
+          const type = (group && group.type) || 'other';
+          const entries = topicWords.map(w => wordToEntry[w]).filter(Boolean);
+          if (!entries.length) return null;
+          // Pick canonical: prefer noun forms (no ـية), then highest count
+          entries.sort((a, b) => {
+            const aAdj = a.word.endsWith('ية') ? 1 : 0;
+            const bAdj = b.word.endsWith('ية') ? 1 : 0;
+            if (aAdj !== bAdj) return aAdj - bAdj;
+            return b.count - a.count;
+          });
+          const canonical = entries[0];
+          return {
+            word: canonical.word,
+            count: entries.reduce((s, e) => s + e.count, 0),
+            score: entries.reduce((s, e) => s + e.score, 0),
+            velocity: Math.max(...entries.map(e => e.velocity || 0)),
+            type,
+            aliases: entries.length > 1 ? entries.map(e => e.word) : undefined,
+          };
+        }).filter(Boolean).sort((a, b) => {
+          // Strict type tier first, then score within tier
+          const ar = TYPE_RANK[a.type] ?? 4;
+          const br = TYPE_RANK[b.type] ?? 4;
+          if (ar !== br) return ar - br;
+          return b.score - a.score;
+        });
+        setTrending(merged);
+      })
+      .catch(() => {/* keep raw on failure */});
+    return () => { cancelled = true; };
+  }, [rawTrending]);
 
   // Filter by enabled sources
   const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
@@ -154,7 +226,7 @@ export default function Sada() {
 
   // Reactions — batch fetch for visible articles
   const visibleIds = useMemo(() => displayFeed.slice(0, visibleCount).map(f => f.id), [displayFeed, visibleCount]);
-  const { counts: reactionCounts, userReactions, toggleReaction } = useReactions(visibleIds, auth.user?.id);
+  const { counts: reactionCounts, userReactions, toggleReaction, incrementCommentCount } = useReactions(visibleIds, auth.user?.id);
   const handleToggleReaction = useCallback((articleId, type) => {
     toggleReaction(articleId, type).then(wasLoggedIn => {
       if (!wasLoggedIn) setShowAuth(true);
@@ -178,7 +250,7 @@ export default function Sada() {
   return (
     <div className="app">
       {/* Header */}
-      {nav!=='radar'&&<div className="hdr">
+      {nav!=='radar'&&nav!=='admin'&&<div className="hdr">
         <div className="logo"><span className="logo-icon">غ</span>غرفة الأخبار</div>
         <div className="hdr-r">
           <button className="ib" onClick={()=>{Sound.tap();setSrch(true);}}>{I.search()}</button>
@@ -189,7 +261,7 @@ export default function Sada() {
 
       {/* Tabs */}
       {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>{Sound.tap();setFeedTab(t.id);setActiveSource(null);}}>{t.l}</button>))}</div>)}
-      {nav!=='home'&&nav!=='radar'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}</div>)}
+      {nav!=='home'&&nav!=='radar'&&nav!=='admin'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}</div>)}
 
       {/* Main content */}
       <div className="content" ref={contentRef} onScroll={onScroll}
@@ -234,20 +306,21 @@ export default function Sada() {
           <div style={{ height:20 }}/>
         </>)}
 
-        {nav==='radar'   && <RadarView trending={trending} allFeed={allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}}/>}
+        {nav==='radar'   && <RadarView trending={trending} allFeed={allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}} onRefresh={refresh} refreshing={loading}/>}
         {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}
         {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}
-        {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onResetOnboarding={resetOnboarding} theme={theme} toggleTheme={toggleTheme} auth={auth} onOpenAuth={()=>setShowAuth(true)} onOpenProfile={()=>setShowProfile(true)}/>}
+        {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onResetOnboarding={resetOnboarding} theme={theme} toggleTheme={toggleTheme} auth={auth} onOpenAuth={()=>setShowAuth(true)} onOpenProfile={()=>setShowProfile(true)} onOpenAdmin={()=>setNav('admin')}/>}
+        {nav==='admin'   && <AdminPanel onClose={()=>setNav('settings')}/>}
       </div>
 
       {/* Bottom nav */}
-      {nav!=='radar'&&<div className="bnav">{navItems.map(item=>(<button key={item.id} className={`bnav-item ${nav===item.id?'on':''}`} onClick={()=>{Sound.tap();setNav(item.id);}}>{item.icon(nav===item.id)}<span>{item.label}</span></button>))}</div>}
+      {nav!=='radar'&&nav!=='admin'&&<div className="bnav">{navItems.map(item=>(<button key={item.id} className={`bnav-item ${nav===item.id?'on':''}`} onClick={()=>{Sound.tap();setNav(item.id);}}>{item.icon(nav===item.id)}<span>{item.label}</span></button>))}</div>}
 
       {/* Overlays */}
-      {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} relatedArticles={allFeed}/>}
+      {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} onOpenRelated={(r)=>{setArticle(null);setTimeout(()=>setArticle(r),50);}} relatedArticles={allFeed}/>}
       {srch&&<SearchView onClose={()=>{Sound.close();setSrch(false);}} feed={allFeed} onOpen={setArticle} onOpenProfile={id=>{ setSrch(false); setProfileUserId(id); }}/>}
       {notifs&&<NotificationPanel allFeed={allFeed} onClose={()=>{Sound.close();setNotifs(false);}} onOpen={setArticle}/>}
-      {commentArticle&&<CommentSheet articleId={commentArticle.id} onClose={()=>setCommentArticle(null)} onOpenAuth={()=>setShowAuth(true)}/>}
+      {commentArticle&&<CommentSheet articleId={commentArticle.id} onClose={()=>setCommentArticle(null)} onOpenAuth={()=>setShowAuth(true)} onCommentAdded={()=>incrementCommentCount(commentArticle.id)} onCommentRemoved={()=>incrementCommentCount(commentArticle.id,-1)}/>}
       {profileUserId&&<UserProfile userId={profileUserId} onClose={()=>setProfileUserId(null)} onOpenAuth={()=>setShowAuth(true)}/>}
       {showAuth&&<AuthModal onClose={()=>setShowAuth(false)} onSuccess={()=>setShowAuth(false)}/>}
       {showProfile&&<ProfileSetup onClose={()=>setShowProfile(false)}/>}

@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "smoke": "./scripts/smoke.sh",
+    "smoke:prod": "BASE_URL=https://101n.app ./scripts/smoke.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

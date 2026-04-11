@@ -87,5 +87,14 @@ export function useReactions(articleIds, userId) {
     return true; // was logged in
   }, [userId, userReactions]);
 
-  return { counts, userReactions, toggleReaction };
+  const incrementCommentCount = useCallback((articleId, delta = 1) => {
+    setCounts(prev => {
+      const next = { ...prev };
+      const c = next[articleId] || { like: 0, insightful: 0, important: 0, misleading: 0, comment: 0 };
+      next[articleId] = { ...c, comment: Math.max(0, (c.comment || 0) + delta) };
+      return next;
+    });
+  }, []);
+
+  return { counts, userReactions, toggleReaction, incrementCommentCount };
 }

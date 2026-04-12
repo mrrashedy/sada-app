@@ -59,11 +59,16 @@ export async function onRequestGet(context) {
     result.ok = false;
   }
 
-  // Supabase: cheap unauthenticated GET against the REST root.
-  if (env?.SUPABASE_URL) {
+  // Supabase: probe a known public-read table. The REST root (/rest/v1/) is
+  // not unauthenticated — it returns 401 even with valid keys — so we hit
+  // a real table that exists in every install.
+  if (env?.SUPABASE_URL && env?.SUPABASE_ANON_KEY) {
     try {
-      const sbRes = await fetch(`${env.SUPABASE_URL}/rest/v1/`, {
-        headers: { apikey: env.SUPABASE_ANON_KEY || '' },
+      const sbRes = await fetch(`${env.SUPABASE_URL}/rest/v1/comments?select=id&limit=1`, {
+        headers: {
+          apikey: env.SUPABASE_ANON_KEY,
+          authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+        },
         signal: AbortSignal.timeout(3000),
       });
       services.supabase = sbRes.ok ? 'ok' : `status:${sbRes.status}`;

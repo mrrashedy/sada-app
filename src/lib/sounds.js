@@ -211,9 +211,14 @@ function staticBurst(vol = 0.04, dur = 0.12) {
   } catch {}
 }
 
+// Haptic feedback — tiny vibration on tap (Android). iOS gets native tap via webkit.
+function haptic(ms = 10) {
+  try { navigator?.vibrate?.(ms); } catch {}
+}
+
 export const Sound = {
-  // Tap — hard knock, like tapping a glass desk
-  tap: () => knock(0.1),
+  // Tap — hard knock + haptic buzz
+  tap: () => { knock(0.1); haptic(10); },
 
   // Open article — deep thud + clean high tone (document opens)
   open: () => {
@@ -285,6 +290,14 @@ export const Sound = {
     const freq = 1400 + Math.random() * 800;
     contactPing(freq, 0.06, 0.45);
     thud(50, 0.08, 0.1);
+  },
+
+  // Map blip — territorial sweep ping: low resonant pulse + soft sub
+  // (different timbre from radarBlip so the two indicators are aurally distinct)
+  mapBlip: () => {
+    const freq = 60 + Math.random() * 40;
+    pulse(freq, 0.12, 0.35);
+    setTimeout(() => tone(380, 0.08, 0.04), 60);
   },
 
   // Radar scan — deep sweep pass with static crackle

@@ -1,7 +1,9 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#ECEAE5;--f1:#E2E0DB;--g1:#D4D2CC;--g2:#C4C2BC;--t1:#1A1A1A;--t2:#3D3D3D;--t3:#757575;--t4:#A8A8A8;--bk:#1A1A1A;--rd:#D32F2F;--bl:#1565C0;--gn:#2E7D32;--or:#FF6D00;--ft:-apple-system,"SF Arabic","SF Pro Arabic",system-ui,sans-serif}
+:root{--bg:#F8F6F1;--f1:#EEECE7;--g1:#E0DED8;--g2:#D0CEC8;--t1:#1A1A1A;--t2:#3D3D3D;--t3:#757575;--t4:#A8A8A8;--bk:#1A1A1A;--rd:#D32F2F;--bl:#1565C0;--gn:#2E7D32;--or:#FF6D00;--ft:-apple-system,"SF Arabic","SF Pro Arabic",system-ui,sans-serif}
 [data-theme="dark"]{--bg:#0E0E0E;--f1:#161616;--g1:rgba(255,255,255,.08);--g2:rgba(255,255,255,.13);--t1:#ECEAE5;--t2:#A8A6A0;--t3:#686664;--t4:#3A3A38;--bk:#ECEAE5;--rd:#EF5350;--bl:#42A5F5;--gn:#66BB6A;--or:#FFA040}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{0%{opacity:0;transform:translateY(-16px)}60%{opacity:1;transform:translateY(0)}100%{opacity:1;transform:translateY(0)}}
+.post-new{animation:slideIn 1.2s ease both!important}
 @keyframes hp{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
 @keyframes fi{from{opacity:0}to{opacity:1}}
 @keyframes sl{from{transform:translateX(100%)}to{transform:translateX(0)}}
@@ -15,7 +17,13 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .sb{display:none}
 
 /* Header */
-.hdr{display:flex;justify-content:space-between;align-items:center;padding:max(12px, env(safe-area-inset-top, 12px)) 28px 10px;flex-shrink:0}
+/* Live indicator breathing pulse */
+@keyframes livePulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.6}}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--gn);animation:livePulse 2s ease infinite;flex-shrink:0}
+
+.hdr{position:fixed;top:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.hdr-top{display:flex;justify-content:space-between;align-items:center;padding:max(12px, env(safe-area-inset-top, 12px)) 28px 10px}
+.hdr-hide{transform:translateY(-100%)}
 .logo{font-size:17px;font-weight:800;letter-spacing:-.3px;display:flex;align-items:center;gap:7px}
 .logo-icon{width:28px;height:28px;background:var(--bk);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;border-radius:8px;letter-spacing:0;flex-shrink:0}
 .hdr-r{display:flex;gap:16px;align-items:center}
@@ -35,59 +43,123 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .stories{display:flex;gap:10px;padding:10px 28px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
 .stories::-webkit-scrollbar{display:none}
 .story{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0}
-.s-ring{width:48px;height:48px;border-radius:50%;padding:2px;background:var(--bk)}
+.s-ring{width:48px;height:48px;border-radius:50%;padding:2px;background:var(--or)}
 .s-ring.seen{background:var(--t4)}
-.s-av{width:100%;height:100%;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:var(--bk);border:2px solid var(--bg)}
+.s-av{position:relative;width:100%;height:100%;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);overflow:hidden}
+.s-av-letter{font-weight:700;font-size:16px;color:var(--bk)}
+.s-av-logo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:5px;box-sizing:border-box;background:#fff;border-radius:50%;filter:grayscale(.7) contrast(1.25);transition:filter .25s ease,opacity .25s ease}
+/* Raw logo — custom image already has its own background/colors, but still
+   gets the default grayscale tan tint so it matches the rest of the strip. */
+.s-av-logo-raw{padding:0;background:transparent}
+/* Active/dim states — when a source is selected, the rest go full grayscale.
+   The active source keeps the default 70% "tan" tint. */
+.story.s-dim .s-av-logo,.story.s-dim .s-av-logo-raw{filter:grayscale(1) contrast(1.05);opacity:.55}
 .s-nm{font-size:10px;color:var(--t3);font-weight:500;max-width:50px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Content area */
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:95px;padding-bottom:70px}
 
 /* Post card */
-.post{padding:10px 28px;border-bottom:.5px solid var(--g1);animation:fu .4s ease both;overflow:hidden}
-.ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.post{padding:5px 14px 3px 14px;border-bottom:.5px solid var(--g1);animation:fu .4s ease both;overflow:hidden}
+.post .ptitle,.post .pbody,.post .strap,.post .pactions{margin-left:10px}
+.post .strap{margin-left:12px}
+.ph{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .pav{width:34px;height:34px;border-radius:50%;border:1px solid var(--g1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--t1);background:var(--bg);flex-shrink:0}
 .pinfo{flex:1;min-width:0}
-.pname{font-size:13px;font-weight:700;color:var(--t1)}
-.ptime{font-size:11px;color:var(--t4);margin-right:6px}
+.pname{font-size:13px;font-weight:600;color:var(--t3)}
+.pname-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;margin-left:6px;filter:grayscale(.7) contrast(1.15)}
+.ptime{font-size:11px;color:var(--t4);margin-right:6px;display:inline-flex;align-items:center;gap:4px}
+.ptime-dot{width:6px;height:6px;border-radius:50%;background:var(--rd);flex-shrink:0;animation:hp 1.2s ease infinite}
 .ptag{display:inline-block;font-size:10px;font-weight:600;color:var(--or);border:1px solid rgba(255,109,0,.2);padding:2px 9px;border-radius:6px;letter-spacing:.3px}
 .ptag.brk{color:var(--rd);border-color:rgba(211,47,47,.2)}
-.ptitle{font-size:15px;font-weight:700;line-height:1.7;color:var(--t1);margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
-.pbody{font-size:13px;line-height:1.7;color:var(--t2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+/* Inline tag variant — flows with the body text so the last line of the body
+   can carry tags when there's room, saving vertical space in the card. */
+.ptag-inline{padding:1px 7px;margin-inline-start:6px;font-size:9px;vertical-align:middle;line-height:1.4}
+.pname-brk{margin-right:8px;padding:1px 7px;font-size:9px;vertical-align:middle}
+.ptitle{font-size:15px;font-weight:700;line-height:1.6;color:var(--t1);margin-bottom:3px;word-break:break-word}
+.pbody{font-size:13px;line-height:1.7;color:var(--t2);word-break:break-word}
 .pmore-t{color:var(--t4);font-weight:500;cursor:pointer}
 
 /* Image strap */
 .strap{margin-top:8px;border-radius:6px;overflow:hidden;position:relative;height:56px;width:100%;max-width:100%}
+.strap-grid::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 12px,rgba(0,0,0,.06) 12px,rgba(0,0,0,.06) 13px),repeating-linear-gradient(90deg,transparent,transparent 12px,rgba(0,0,0,.06) 12px,rgba(0,0,0,.06) 13px)}
 .strap-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(255,255,255,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15)}
 .strap-dur{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);color:white;font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px}
 
 /* Post actions */
-.pactions{display:flex;align-items:center;margin-top:8px}
-.act{display:flex;align-items:center;gap:4px;flex:1;cursor:pointer;color:var(--t4);font-size:11px;background:none;border:none;font-family:var(--ft);transition:color .15s}
+.pactions{display:flex;align-items:center;justify-content:center;gap:48px;margin-top:3px}
+.act{display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:11px;background:none;border:none;font-family:var(--ft);transition:color .15s;padding:3px 0}
 .act:active{opacity:.4}
 .act.liked{color:var(--rd)}
 .act.liked svg{animation:hp .3s ease}
 .act.interested{color:var(--rd)}
 .act.interested svg{animation:hp .3s ease}
 .act.saved{color:var(--bk)}
-.act:last-child{flex:0}
 
 /* Bottom nav */
-.bnav{display:flex;border-top:.5px solid var(--g1);padding:8px 0 max(20px, env(safe-area-inset-bottom, 20px));background:var(--bg);flex-shrink:0}
-.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;background:none;border:none;color:var(--t4);font-family:var(--ft);font-size:10px;font-weight:500;padding:4px 0;transition:color .2s}
+.bnav{display:flex;align-items:center;border-top:.5px solid var(--g1);padding:14px 0 max(22px, env(safe-area-inset-bottom, 22px));position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.bnav-hide{transform:translateY(100%)}
+.bnav-item{flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;background:none;border:none;color:var(--t4);font-family:var(--ft);padding:6px 0;transition:color .2s}
 .bnav-item.on{color:var(--bk)}
+.bnav-icon{display:inline-flex;align-items:center;justify-content:center}
+.bnav-item:not(.bnav-center) .bnav-icon svg{width:24px;height:24px}
+
+/* Center button — slightly larger icon, no background circle */
+.bnav-center{flex:1.1}
+.bnav-center .bnav-icon{color:var(--t2);transition:color .2s,transform .2s}
+.bnav-center .bnav-icon svg{width:30px;height:30px}
+.bnav-center.on .bnav-icon{color:var(--bk);transform:scale(1.06)}
+
+/* Pulsing nav indicators — 3 quick pulses every 60 seconds.
+   Shared keyframe driven by --blip-strong / --blip-fade custom properties so
+   radar (red) and map (blue) can use the same animation with different colors.
+   Total cycle: 60s. The 3 pulses happen in the first ~3s, then idle. */
+@keyframes nav-3blip{
+  /* Pulse 1 — 0.0s peak, return at 0.6s */
+  0%   {transform:scale(1);   box-shadow:0 0 0 0 var(--blip-strong)}
+  0.5% {transform:scale(1.3); box-shadow:0 0 0 6px var(--blip-fade)}
+  1%   {transform:scale(1);   box-shadow:0 0 0 0 var(--blip-strong)}
+  /* Pulse 2 — 1.2s peak, return at 1.8s */
+  1.5% {transform:scale(1);   box-shadow:0 0 0 0 var(--blip-strong)}
+  2%   {transform:scale(1.3); box-shadow:0 0 0 6px var(--blip-fade)}
+  3%   {transform:scale(1);   box-shadow:0 0 0 0 var(--blip-strong)}
+  /* Pulse 3 — 2.4s peak, return at 3s */
+  3.5% {transform:scale(1);   box-shadow:0 0 0 0 var(--blip-strong)}
+  4%   {transform:scale(1.3); box-shadow:0 0 0 6px var(--blip-fade)}
+  5%   {transform:scale(1);   box-shadow:0 0 0 0 var(--blip-strong)}
+  /* Idle — 3s to 60s */
+  100% {transform:scale(1);   box-shadow:0 0 0 0 var(--blip-strong)}
+}
+.radar-dot{
+  --blip-strong:rgba(229,57,53,.7);
+  --blip-fade:rgba(229,57,53,0);
+  animation:nav-3blip 60s linear infinite;
+  transform-origin:center;
+}
+.map-dot{
+  --blip-strong:rgba(21,101,192,.7);
+  --blip-fade:rgba(21,101,192,0);
+  animation:nav-3blip 60s linear infinite;
+  animation-delay:-30s;  /* offset 30s so radar/map alternate */
+  transform-origin:center;
+}
 
 /* Article detail */
 .detail{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:100;overflow-y:auto;animation:sl .3s cubic-bezier(.25,.46,.45,.94);direction:rtl;font-family:var(--ft)}
 .det-hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:.5px solid var(--g1)}
-.det-strap{height:180px;border-radius:0}
-.det-body{padding:20px 20px 80px}
-.det-tag-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
-.det-src{font-size:12px;font-weight:700;border:1px solid var(--g2);border-radius:20px;padding:4px 12px}
-.det-meta{display:flex;gap:10px;font-size:12px;color:var(--t3);margin-bottom:16px}
-.det-title{font-size:22px;font-weight:800;line-height:1.7;color:var(--bk);margin-bottom:10px}
-.det-sub{font-size:14px;color:var(--t2);line-height:1.85;margin-bottom:20px;padding-bottom:20px;border-bottom:.5px solid var(--g1)}
-.det-p{font-size:16px;line-height:2;color:var(--t2);margin-bottom:16px}
+.det-strap{height:200px;border-radius:0}
+.det-body{padding:24px 36px 100px;max-width:680px;margin:0 auto}
+.det-tag-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.det-src{font-size:11px;font-weight:600;color:var(--t3);letter-spacing:.3px}
+.det-meta{display:flex;gap:10px;font-size:11px;color:var(--t4);margin-bottom:18px}
+.det-title{font-size:20px;font-weight:700;line-height:1.5;color:var(--bk);margin-bottom:18px;letter-spacing:-.2px}
+.det-sub{font-size:14px;color:var(--t2);line-height:1.75;margin-bottom:22px;padding-bottom:22px;border-bottom:.5px solid var(--g1);font-weight:400}
+.det-p{font-size:13px;line-height:1.9;color:var(--t2);margin-bottom:14px;font-weight:400}
+.det-cta{display:block;text-align:center;padding:14px 20px;margin:20px 0;background:var(--f1);border:1px solid var(--g1);border-radius:12px;color:var(--t1);font-size:14px;font-weight:600;font-family:var(--ft);text-decoration:none;direction:rtl;transition:background .2s}
+.det-cta:active{background:var(--g1)}
+/* AI-highlighted key sentences — orange underline */
+.det-p mark.hl,.det-sub mark.hl{background:none;color:inherit;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:2px;text-underline-offset:4px;font-weight:inherit;padding:0;border-radius:0}
+[data-theme="dark"] .det-p mark.hl,[data-theme="dark"] .det-sub mark.hl{text-decoration-color:var(--or)}
 
 /* Search */
 .srch{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:100;animation:fi .15s;padding:12px 20px;overflow-y:auto;direction:rtl;font-family:var(--ft)}
@@ -163,10 +235,10 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 textarea.auth-input{line-height:1.6}
 
 /* Reaction bar */
-.reaction-bar{display:flex;align-items:center}
-.reaction-bar.compact{flex:2}
+.reaction-bar{display:flex;align-items:center;gap:48px}
+.reaction-bar.compact{flex:none}
 .reaction-bar.expanded{border-top:.5px solid var(--g1);padding-top:14px}
-.rbtn{display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;font-family:var(--ft);color:var(--t4);font-size:11px;padding:0;transition:color .15s;flex:1}
+.rbtn{display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;font-family:var(--ft);color:var(--t3);font-size:11px;padding:0;transition:color .15s}
 .rbtn:active{opacity:.4}
 .rbtn.active{color:var(--rd)}
 .rbtn.active svg{animation:hp .3s ease}
@@ -227,3 +299,31 @@ textarea.auth-input{line-height:1.6}
 [data-theme="dark"] .auth-input{background:var(--f1);border-color:var(--g1)}
 [data-theme="dark"] .comment-sheet{box-shadow:0 -4px 24px rgba(0,0,0,.4)}
 [data-theme="dark"] .rbtn.active{color:#E53935}
+
+/* ── Photo Grid (bento mosaic) ───────────────────────── */
+/* Fewer columns + taller row-height + thinner gaps + 100 tiles (VISIBLE_COUNT in JS). */
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:130px;grid-auto-flow:row dense;gap:2px;padding:8px 8px 100px}
+@media (min-width:720px){.pgrid{grid-template-columns:repeat(4,1fr);grid-auto-rows:170px;gap:3px}}
+@media (min-width:1024px){.pgrid{grid-template-columns:repeat(6,1fr);grid-auto-rows:200px;gap:4px}}
+
+.pgrid-card{position:relative;border-radius:10px;overflow:hidden;perspective:1200px;cursor:pointer;background:var(--f1);border:.5px solid var(--g1);transition:opacity .35s ease;-webkit-tap-highlight-color:transparent;grid-column:span 1;grid-row:span 1}
+.pgrid-card.size-tall {grid-column:span 1;grid-row:span 2}
+.pgrid-card.size-wide {grid-column:span 2;grid-row:span 1}
+.pgrid-card.size-large{grid-column:span 2;grid-row:span 2}
+.pgrid-card.fading{opacity:0}
+
+.pgrid-flip{position:absolute;inset:0;width:100%;height:100%;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;transition:transform .55s cubic-bezier(.4,0,.2,1)}
+.pgrid-card.flipped .pgrid-flip{transform:rotateY(180deg)}
+
+.pgrid-front,.pgrid-back{position:absolute;inset:0;width:100%;height:100%;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.pgrid-front{overflow:hidden}
+.pgrid-front img{display:block;width:100%;height:100%;object-fit:cover}
+
+.pgrid-back{background:var(--bk);color:var(--bg);padding:12px;display:flex;flex-direction:column;justify-content:flex-end;transform:rotateY(180deg);font-family:var(--ft);direction:rtl}
+.pgrid-back-title{font-size:13px;font-weight:700;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;transition:color .2s}
+.pgrid-back-title:hover,.pgrid-back-title:active{color:var(--or)}
+.pgrid-card.size-large .pgrid-back-title{font-size:15px;-webkit-line-clamp:6}
+.pgrid-card.size-tall .pgrid-back-title{-webkit-line-clamp:6}
+.pgrid-back-meta{font-size:10px;color:var(--t4);display:flex;gap:6px;align-items:center}
+
+.pgrid-empty{text-align:center;color:var(--t3);padding:60px 20px;font-size:13px;direction:rtl;line-height:1.7;grid-column:1/-1}

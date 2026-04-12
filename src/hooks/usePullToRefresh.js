@@ -41,5 +41,5 @@ export function usePullToRefresh(contentRef, refreshFn) {
     }
   }, [pullY, refreshing, refreshFn]);
 
-  return { pulling, pullY, refreshing, refreshMsg, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD };
+  return { pulling, pullY, refreshing, refreshMsg, setRefreshMsg, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD };
 }

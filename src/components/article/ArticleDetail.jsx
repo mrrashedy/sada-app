@@ -1,106 +1,34 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { I } from '../shared/Icons';
 import { shareArticle } from '../../lib/shareCard';
 import { Sound } from '../../lib/sounds';
-import { useSummary } from '../../hooks/useSummary';
 import { ReactionBar } from '../social/ReactionBar';
+import { useHighlight } from '../../hooks/useHighlight';
 
-// Order matters: try our own proxy first (whitelisted hosts only, instant
-// edge cache, under our control), then fall back to public proxies for the
-// long tail of sources we don't whitelist yet. Each entry returns either
-// `{ url, parse }` where `parse(rawText) → htmlString`.
-const PROXIES = [
-  {
-    name: 'self',
-    url: link => `/api/proxy?url=${encodeURIComponent(link)}`,
-    // /api/proxy returns the raw HTML body directly
-    parse: text => text,
-  },
-  {
-    name: 'allorigins',
-    url: link => `https://api.allorigins.win/get?url=${encodeURIComponent(link)}`,
-    // allorigins wraps the body in JSON: { contents, status }
-    parse: text => {
-      try { return JSON.parse(text)?.contents || ''; } catch { return ''; }
-    },
-  },
-  {
-    name: 'codetabs',
-    url: link => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(link)}`,
-    parse: text => text,
-  },
-];
-
-const SELECTORS = [
-  'article', '.article-body', '.article-content', '.article__body',
-  '.story-body', '.content-body', '.post-content', '.entry-content',
-  '[itemprop="articleBody"]', '.wysiwyg', '.article-text', '.body-content',
-  '.article_body', '.td-post-content', '.c-article-body', '.article-detail',
-  '.main-article', '.news-article', '.single-post-content',
-];
-
-async function fetchFullText(link) {
-  for (const proxy of PROXIES) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const res = await fetch(proxy.url(link), { signal: controller.signal });
-      clearTimeout(timeout);
-      // Skip on any non-2xx — including 403/404 from /api/proxy when the
-      // host isn't on our whitelist (we'll fall through to public proxies).
-      if (!res.ok) continue;
-
-      const raw = await res.text();
-      const html = proxy.parse(raw);
-      if (typeof html !== 'string' || html.length < 200) continue;
-
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-
-      // Try structured selectors first
-      for (const sel of SELECTORS) {
-        const el = doc.querySelector(sel);
-        if (el) {
-          const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
-          if (text.length > 200) return text.slice(0, 5000);
-        }
-      }
-
-      // Fallback: collect all paragraphs
-      const paras = Array.from(doc.querySelectorAll('p'))
-        .map(p => p.textContent.trim())
-        .filter(t => t.length > 30 && !t.includes('cookie') && !t.includes('©') && !t.match(/https?:\/\//));
-
-      if (paras.length >= 2) return paras.join('\n\n').slice(0, 5000);
-    } catch {}
-  }
-  return null;
+// Wrap verbatim occurrences of `phrases` inside `text` in <mark class="hl">…</mark>.
+function highlightText(text, phrases) {
+  if (!text || !phrases?.length) return text;
+  const ordered = [...phrases].sort((a, b) => b.length - a.length);
+  const escaped = ordered.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`(${escaped.join('|')})`, 'g');
+  const parts = text.split(re);
+  return parts.map((part, i) =>
+    ordered.includes(part)
+      ? <mark key={i} className="hl">{part}</mark>
+      : part
+  );
 }
 
 export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCounts, userReactions, onToggleReaction, commentCount, onComment, onOpenRelated, relatedArticles = [] }) {
-  const [fullText, setFullText] = useState(null);
-  const [fetching, setFetching] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
-  const { summaries, fetchSummary } = useSummary();
-  const summary = summaries[article.id];
+  // The article body comes from the RSS <description> field (up to 800 chars),
+  // truncated to ~400 chars at a sentence boundary in App.jsx. No proxy
+  // scraping — we use only what the publisher gave us in their RSS feed.
+  const cleanBody = article.body || '';
 
-  useEffect(() => {
-    if (!article.link || article.link === '#') return;
-    setFetching(true);
-    fetchFullText(article.link)
-      .then(text => { if (text) setFullText(text); })
-      .finally(() => setFetching(false));
-  }, [article.id]);
+  // AI-highlighted key phrases from the RSS body
+  const { phrases: highlightPhrases } = useHighlight(article.id, article.title, cleanBody);
 
-  const handleSummary = () => {
-    setShowSummary(true);
-    if (!summary?.text && !summary?.loading) {
-      fetchSummary(article.id, article.title, article.body || fullText || '');
-    }
-  };
-
-  const paragraphs = fullText ? fullText.split('\n').filter(p => p.trim().length > 20) : null;
-
-  // Find related stories by matching tags/keywords
+  // Related stories by tag/keyword overlap
   const related = useMemo(() => {
     if (!relatedArticles.length) return [];
     const keywords = [article.tag, ...(article.tags || [])].filter(Boolean);
@@ -120,7 +48,7 @@ export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCount
         <button className="ib" onClick={onClose}>{I.back()}</button>
         <div style={{ display: 'flex', gap: 14 }}>
           <button className="ib" style={isSaved ? { color: 'var(--bk)' } : {}} onClick={() => onSave(article.id)}>{I.bookmark(isSaved)}</button>
-          <button className="ib" onClick={()=>{Sound.share();shareArticle(article);}}>{I.share()}</button>
+          <button className="ib" onClick={() => { Sound.share(); shareArticle(article); }}>{I.share()}</button>
         </div>
       </div>
       {article.realImg && (
@@ -128,7 +56,7 @@ export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCount
           <img
             src={article.realImg}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'saturate(1.3)' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             onError={e => { e.target.parentElement.style.display = 'none'; }}
           />
         </div>
@@ -141,48 +69,13 @@ export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCount
         <div className="det-meta"><span>{article.t}</span></div>
         <div className="det-title">{article.title}</div>
 
-        {/* AI Summary */}
-        <div style={{ marginBottom: 16 }}>
-          {!showSummary ? (
-            <button onClick={handleSummary} className="ai-summary-btn">
-              ✨ ملخص ذكي
-            </button>
-          ) : (
-            <div className="ai-summary-box">
-              <div className="ai-summary-hdr">
-                <span>✨ ملخص ذكي</span>
-                <button onClick={() => setShowSummary(false)} style={{ background: 'none', border: 'none', color: 'var(--t4)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--ft)' }}>إخفاء</button>
-              </div>
-              {summary?.loading && <div style={{ color: 'var(--t4)', fontSize: 13 }}>جاري التلخيص بالذكاء الاصطناعي…</div>}
-              {summary?.text && <div style={{ fontSize: 14, lineHeight: 1.9, color: 'var(--t1)' }}>{summary.text}</div>}
-              {summary?.error && <div style={{ fontSize: 13, color: 'var(--t3)' }}>التلخيص غير متاح حالياً</div>}
-            </div>
-          )}
-        </div>
+        {cleanBody && <div className="det-sub">{highlightText(cleanBody, highlightPhrases)}</div>}
 
-        {article.body && <div className="det-sub">{article.body}</div>}
-        {fetching && (
-          <div style={{ color: 'var(--t4)', fontSize: 13, padding: '16px 0', textAlign: 'center' }}>
-            جاري تحميل المقال…
-          </div>
-        )}
-        {paragraphs && paragraphs.map((p, i) => <p key={i} className="det-p">{p}</p>)}
-        {!fetching && !paragraphs && article.link && article.link !== '#' && (
-          <p className="det-p" style={{ color: 'var(--t3)', fontStyle: 'italic' }}>
-            لم يتم تحميل نص المقال. اقرأ المقال كاملاً من المصدر أدناه.
-          </p>
-        )}
+        {/* Prominent CTA — drives traffic to the source outlet */}
         {article.link && article.link !== '#' && (
-          <div style={{ marginTop: 20, paddingTop: 14, borderTop: '.5px solid var(--g1)' }}>
-            <a
-              href={article.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--t3)', fontSize: 12, fontWeight: 600, fontFamily: 'var(--ft)', textDecoration: 'none' }}
-            >
-              {I.link()} اقرأ من {article.s.n}
-            </a>
-          </div>
+          <a href={article.link} target="_blank" rel="noopener noreferrer" className="det-cta">
+            اقرأ المقال كاملاً في {article.s.n} ←
+          </a>
         )}
 
         {/* Reactions + Comments */}

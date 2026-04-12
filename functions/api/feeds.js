@@ -16,6 +16,10 @@ const SOURCES = {
   independent_ar:  { name: "إندبندنت عربية", initial: "إ", tier: 1, feeds: ["https://www.independentarabia.com/rss.xml"] },
   aawsat:          { name: "الشرق الأوسط", initial: "ش", tier: 1, feeds: ["https://aawsat.com/feed"] },
   alhurra:         { name: "الحرة", initial: "ح", tier: 1, feeds: ["https://www.alhurra.com/rss"] },
+  // Tier 1 additions — only RT Arabic passed production testing. The other 5
+  // candidates (Al Arabiya, Al-Ahram, Al-Shorouk, Masrawy, Asharq News) are
+  // hard-blocked on Cloudflare Worker IPs (403/404) and were dropped.
+  rt_ar:           { name: "روسيا اليوم", initial: "RT", tier: 1, feeds: ["https://arabic.rt.com/rss/"] },
 
   // Tier 2: Regional newspapers
   alaraby:   { name: "العربي الجديد", initial: "ع", tier: 2, feeds: ["https://www.alaraby.co.uk/rss"] },
@@ -32,9 +36,6 @@ const SOURCES = {
   noonpost:  { name: "نون بوست", initial: "ن", tier: 2, feeds: ["https://www.noonpost.com/rss"] },
   lusail:    { name: "لوسيل", initial: "لس", tier: 2, feeds: ["https://lusailnews.net/feed"] },
 
-  // Tier 2: API aggregators (JSON APIs, no RSS feeds)
-  gdelt:     { name: "GDELT", initial: "GD", tier: 2, api: 'gdelt' },
-
   // Tier 3: English sources (auto-translated)
   bbc_en:   { name: "BBC عالمي", initial: "BB", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/world/rss.xml"] },
   nyt:      { name: "نيويورك تايمز", initial: "NY", tier: 3, lang: "en", feeds: ["https://rss.nytimes.com/services/xml/rss/nyt/World.xml"] },
@@ -49,20 +50,66 @@ const SOURCES = {
   guardian_w:   { name: "الغارديان", initial: "G", tier: 3, lang: "en", feeds: ["https://www.theguardian.com/world/rss"] },
   wapo_world:   { name: "واشنطن بوست", initial: "WP", tier: 3, lang: "en", feeds: ["https://feeds.washingtonpost.com/rss/world"] },
   haaretz:      { name: "هآرتس", initial: "H", tier: 3, lang: "en", feeds: ["https://www.haaretz.com/cmlink/1.628752"] },
-  jpost:        { name: "Jerusalem Post", initial: "JP", tier: 3, lang: "en", feeds: ["https://www.jpost.com/rss/rssfeedsfrontpage.aspx"] },
   bloomberg:    { name: "بلومبرغ", initial: "BL", tier: 3, lang: "en", feeds: ["https://feeds.bloomberg.com/politics/news.rss"] },
   cnn_en:       { name: "CNN عالمي", initial: "CN", tier: 3, lang: "en", feeds: ["http://rss.cnn.com/rss/edition_world.rss"] },
+
+  // ── PHOTO-GRID-ONLY SOURCES ──────────────────────────────────────
+  // Tagged `photoOnly: true` so they're excluded from the main /api/feeds
+  // (news) aggregation and only appear in /api/feeds?kind=photos.
+  // The photo grid is an independent feature like the radar.
+
+  // English photo-rich sources (auto-translated, culture/tech/science-leaning)
+  wired:        { name: "Wired", initial: "WD", tier: 3, lang: "en", photoOnly: true, feeds: ["https://www.wired.com/feed/rss"] },
+  verge:        { name: "The Verge", initial: "VG", tier: 3, lang: "en", photoOnly: true, feeds: ["https://www.theverge.com/rss/index.xml"] },
+  atlasobscura: { name: "Atlas Obscura", initial: "AO", tier: 3, lang: "en", photoOnly: true, feeds: ["https://www.atlasobscura.com/feeds/latest"] },
+  smithsonian:  { name: "Smithsonian", initial: "SM", tier: 3, lang: "en", photoOnly: true, feeds: ["https://www.smithsonianmag.com/rss/latest_articles/"] },
+  bbc_culture:  { name: "BBC Culture", initial: "BC", tier: 3, lang: "en", photoOnly: true, feeds: ["https://www.bbc.com/culture/feed.rss"] },
+  arstechnica:  { name: "Ars Technica", initial: "AT", tier: 3, lang: "en", photoOnly: true, feeds: ["https://feeds.arstechnica.com/arstechnica/index"] },
+
+  // French fine-art & photography magazines (auto-translated via M2M-100)
+  beauxarts:      { name: "Beaux Arts", initial: "BA", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.beauxarts.com/feed/"] },
+  connaissance:   { name: "Connaissance des Arts", initial: "CA", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.connaissancedesarts.com/feed/"] },
+  jda:            { name: "Le Journal des Arts", initial: "JA", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.lejournaldesarts.fr/rss.xml"] },
+  telerama_arts:  { name: "Télérama Arts", initial: "TR", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.telerama.fr/rss/arts-expositions.xml"] },
+  tribune_art:    { name: "La Tribune de l'Art", initial: "TA", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.latribunedelart.com/spip.php?page=backend"] },
+  artsper:        { name: "Artsper Magazine", initial: "AP", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://blog.artsper.com/fr/feed/"] },
+  artpress:       { name: "ArtPress", initial: "AR", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.artpress.com/feed/"] },
+  blind_mag:      { name: "Blind Magazine", initial: "BM", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.blind-magazine.com/fr/feed/"] },
+  fisheye_mag:    { name: "Fisheye Magazine", initial: "FM", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://fisheyemagazine.fr/feed/"] },
+  phototrend:     { name: "Phototrend", initial: "PT", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://phototrend.fr/feed/"] },
+  lemonde_arts:   { name: "Le Monde Arts", initial: "LMa", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.lemonde.fr/arts/rss_full.xml"] },
+  lemonde_photo:  { name: "Le Monde Photo", initial: "LMp", tier: 3, lang: "fr", photoOnly: true, feeds: ["https://www.lemonde.fr/photo/rss_full.xml"] },
 };
 
-const SOURCE_LIST = Object.entries(SOURCES).map(([id, s]) => ({
-  id, name: s.name, initial: s.initial, tier: s.tier,
-}));
+// Helper: filter the SOURCES map by kind and return as entries.
+// kind 'news'   → sources WITHOUT photoOnly (main feed)
+// kind 'photos' → sources WITH photoOnly (photo grid)
+function sourcesForKind(kind) {
+  return Object.entries(SOURCES).filter(([, s]) => {
+    const isPhoto = !!s.photoOnly;
+    return kind === 'photos' ? isPhoto : !isPhoto;
+  });
+}
+
+// Per-kind source list for the client (name/initial/tier only)
+function sourceListForKind(kind) {
+  return sourcesForKind(kind).map(([id, s]) => ({
+    id, name: s.name, initial: s.initial, tier: s.tier,
+  }));
+}
+
+// Back-compat: the legacy SOURCE_LIST exported the full set (used by admin
+// and debug tools). Keep it as the news list by default.
+const SOURCE_LIST = sourceListForKind('news');
 
 // ─── Utilities ───
 
-const CACHE_TTL = 30;       // 30s — max staleness before forcing re-fetch (DO refresher warms it every 20s)
-const KV_KEY_FEED = 'feed:latest';
-const KV_KEY_META = 'feed:meta';
+const CACHE_TTL = 15;       // 15s — max staleness before forcing re-fetch (DO refresher warms it every 20s)
+// Kind-specific KV keys so the news feed and photo feed never collide
+const KV_KEYS = {
+  news:   { feed: 'feed:latest',   meta: 'feed:meta'   },
+  photos: { feed: 'photos:latest', meta: 'photos:meta' },
+};
 
 function hash(str) {
   let h = 0;
@@ -125,80 +172,6 @@ function parseXML(xml) {
     items.push({ title, link, description: description.slice(0, 800), pubDate, image, categories, timestamp: pubDate ? new Date(pubDate).getTime() : 0, isBreaking });
   }
   return items;
-}
-
-// ─── JSON API Adapter: GDELT Project ───
-// GDELT Doc 2.0 API — free, key-less. Fetches world news in all non-Arabic
-// languages; the translation pipeline below converts them to Arabic.
-
-function normalizeItem({ id, source, title, description, link, image, pubDate, lang, categories = [] }) {
-  const ts = pubDate ? new Date(pubDate).getTime() : Date.now();
-  const isBreaking = /عاجل|breaking|urgent/i.test(title);
-  const cats = [...categories];
-  if (isBreaking && !cats.includes('عاجل')) cats.unshift('عاجل');
-  return {
-    title: cleanText(title || ''),
-    link: link || '',
-    description: cleanText(description || '').slice(0, 800),
-    pubDate: pubDate || new Date().toISOString(),
-    image: image || '',
-    categories: cats,
-    timestamp: ts,
-    isBreaking,
-    sourceId: id,
-    sourceName: source.name,
-    sourceInitial: source.initial,
-    sourceTier: source.tier,
-    lang: lang || 'en',
-  };
-}
-
-// GDELT seendate is YYYYMMDDTHHMMSSZ (no separators) — convert to ISO 8601.
-function gdeltDate(s) {
-  if (!s || s.length < 15) return '';
-  return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(9,11)}:${s.slice(11,13)}:${s.slice(13,15)}Z`;
-}
-
-async function fetchGdelt(id, source) {
-  // Top 10 world languages M2M-100 handles well — everything EXCEPT Arabic.
-  // GDELT requires parens around OR'd terms.
-  // maxrecords tuned to stay within the Workers AI translation budget per cycle.
-  const LANGS = ['english', 'french', 'german', 'spanish', 'portuguese', 'italian', 'russian', 'chinese', 'japanese', 'turkish'];
-  const q = `(${LANGS.map(l => `sourcelang:${l}`).join(' OR ')})`;
-  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q)}&maxrecords=30&sort=DateDesc&timespan=24h&mode=ArtList&format=json`;
-
-  // GDELT returns full language names — map back to 2-letter codes for M2M_LANG
-  const NAME_TO_CODE = {
-    english: 'en', french: 'fr', german: 'de', spanish: 'es',
-    portuguese: 'pt', italian: 'it', russian: 'ru', chinese: 'zh',
-    japanese: 'ja', turkish: 'tr', arabic: 'ar',
-  };
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/3.0)' },
-      signal: controller.signal,
-      cf: { cacheTtl: 120, cacheEverything: true },
-    });
-    clearTimeout(timeout);
-    if (!res.ok) return [];
-    const data = await res.json();
-    const articles = Array.isArray(data.articles) ? data.articles : [];
-    return articles
-      .map(a => normalizeItem({
-        id, source,
-        title: a.title || '',
-        description: '',  // GDELT Doc 2.0 provides no excerpt
-        link: a.url || '',
-        image: a.socialimage || '',
-        pubDate: gdeltDate(a.seendate),
-        lang: NAME_TO_CODE[(a.language || '').toLowerCase()] || 'en',
-        categories: [],
-      }))
-      .filter(item => item.title && item.link && item.lang !== 'ar');
-  } catch { return []; }
 }
 
 // ─── Translation (KV-indexed, single-blob for subrequest efficiency) ───
@@ -309,13 +282,12 @@ async function warmTranslations(items, ai, kv, limit = 40) {
 // ─── Core Aggregation Pipeline ───
 // This is the expensive operation — fetches all RSS, translates, deduplicates, interleaves
 
-async function aggregateFeeds(ai, translationKV) {
+async function aggregateFeeds(ai, translationKV, kind = 'news') {
   const allItems = [];
 
-  // Fetch all sources in parallel — dispatch by source type (RSS vs JSON API)
-  const fetches = Object.entries(SOURCES).flatMap(([id, source]) => {
-    if (source.api === 'gdelt') return [fetchGdelt(id, source)];
-    // RSS sources (existing path)
+  // Fetch sources for the requested kind — news feed and photo grid use
+  // disjoint source pools (the `photoOnly: true` flag gates them).
+  const fetches = sourcesForKind(kind).flatMap(([id, source]) => {
     return (source.feeds || []).map(async (feedUrl) => {
       try {
         const controller = new AbortController();
@@ -323,7 +295,7 @@ async function aggregateFeeds(ai, translationKV) {
         const res = await fetch(feedUrl, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/3.0)', 'Accept': 'application/rss+xml, application/xml, text/xml, */*' },
           signal: controller.signal,
-          cf: { cacheTtl: 60, cacheEverything: true },
+          cf: { cacheTtl: 15, cacheEverything: true },
         });
         clearTimeout(timeout);
         if (!res.ok) return [];
@@ -363,10 +335,9 @@ async function aggregateFeeds(ai, translationKV) {
   const sortByTime = (a, b) => b.timestamp - a.timestamp;
   const dedupAr = dedup(arabic).sort(sortByTime);
 
-  // Non-Arabic pool: round-robin by source so GDELT and every English source
-  // get fair representation (pure time-sort lets the freshest-updating source
-  // monopolize the non-Ar budget and pushes out slower sources like GDELT,
-  // which buckets to 15-min intervals).
+  // Non-Arabic pool: round-robin by source so every English source gets fair
+  // representation (pure time-sort lets the freshest-updating source
+  // monopolize the non-Ar budget and pushes out slower sources).
   const nonArByScore = dedup(nonArabic).sort(sortByTime);
   const nonArBySource = new Map();
   for (const item of nonArByScore) {
@@ -416,14 +387,19 @@ async function aggregateFeeds(ai, translationKV) {
     categories: item.categories,
     time: timeAgo(item.pubDate),
     timestamp: item.timestamp || 0,
+    _futureTs: !!(item.timestamp && item.timestamp > Date.now()),
     isBreaking: item.isBreaking,
     translated: item.translated || false,
     lang: item.lang || 'ar',
     source: { id: item.sourceId, name: item.sourceName, initial: item.sourceInitial, tier: item.sourceTier },
   }));
 
+  // Drop items with future timestamps — broken RSS pubDate data (e.g. RT Arabic
+  // sometimes publishes dates hours ahead). These would otherwise pin at the top.
+  const cleanFeed = feed.filter(f => !f._futureTs);
+
   // Extract breaking articles for alerts
-  const breaking = feed.filter(f => f.isBreaking).slice(0, 20);
+  const breaking = cleanFeed.filter(f => f.isBreaking).slice(0, 20);
 
   // Extract trending (top tags by frequency)
   const tagFreq = {};
@@ -432,7 +408,7 @@ async function aggregateFeeds(ai, translationKV) {
   }));
   const trending = Object.entries(tagFreq).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([tag, count]) => ({ tag, count }));
 
-  return { feed, breaking, trending, stats: { total: feed.length, translated: feed.filter(f => f.translated).length, sources: Object.keys(SOURCES).length } };
+  return { feed: cleanFeed, breaking, trending, stats: { total: cleanFeed.length, translated: cleanFeed.filter(f => f.translated).length, sources: Object.keys(SOURCES).length } };
 }
 
 // ─── Admin Curation Layer (applied per-request, not baked into KV cache) ───
@@ -535,7 +511,7 @@ function buildPayload(data, layer, limit, cacheMeta) {
   return {
     ok: true,
     count: Math.min(curatedFeed.length, limit),
-    sources: SOURCE_LIST,
+    sources: data.sources || SOURCE_LIST,
     feed: curatedFeed.slice(0, limit),
     breaking,
     trending: data.trending || [],
@@ -562,15 +538,24 @@ export async function onRequest(context) {
     const limit = parseInt(url.searchParams.get('limit')) || 200;
     const forceRefresh = url.searchParams.has('refresh');
 
-    // Fire admin-layer + translation-index fetches in parallel with KV / aggregation
-    const layerPromise = fetchAdminLayer(env);
+    // Resolve kind. The photo grid is an independent feature, so it uses its
+    // own disjoint source pool and its own KV cache keys.
+    const kind = url.searchParams.get('kind') === 'photos' ? 'photos' : 'news';
+    const kvKeys = KV_KEYS[kind];
+
+    // Admin curation layer only applies to the news feed, not the photo grid.
+    const layerPromise = kind === 'news' ? fetchAdminLayer(env) : Promise.resolve(null);
     const indexPromise = loadTranslationIndex(translationKV);
+
+    // Per-kind source list — the client uses this to render the stories strip
+    // for the news feed, or to show "source" attribution on photos.
+    const sourceList = sourceListForKind(kind);
 
     // 1. Try KV cache first
     if (feedCache && !forceRefresh) {
       const [cachedFeed, cachedMeta, layer, index] = await Promise.all([
-        feedCache.get(KV_KEY_FEED, 'json'),
-        feedCache.get(KV_KEY_META, 'json'),
+        feedCache.get(kvKeys.feed, 'json'),
+        feedCache.get(kvKeys.meta, 'json'),
         layerPromise,
         indexPromise,
       ]);
@@ -581,17 +566,17 @@ export async function onRequest(context) {
 
         // Apply translation index at read time — any item cached in the index
         // gets its Arabic title, untranslated items pass through.
-        const translatedData = { ...cachedFeed, feed: applyTranslationIndex(cachedFeed.feed, index) };
+        const translatedData = { ...cachedFeed, sources: sourceList, feed: applyTranslationIndex(cachedFeed.feed, index) };
         const payload = buildPayload(translatedData, layer, limit, {
           age, fresh: isFresh, aggregatedAt: cachedMeta.ts,
         });
         const response = new Response(JSON.stringify(payload), {
-          headers: { ...CORS, 'Cache-Control': isFresh ? 'public, s-maxage=30' : 'public, s-maxage=5, stale-while-revalidate=120' },
+          headers: { ...CORS, 'Cache-Control': isFresh ? 'public, s-maxage=10' : 'public, s-maxage=3, stale-while-revalidate=60' },
         });
 
         // If stale, trigger background re-aggregation (non-blocking)
         if (!isFresh) {
-          context.waitUntil(refreshCache(ai, translationKV, feedCache));
+          context.waitUntil(refreshCache(ai, translationKV, feedCache, kind));
         }
 
         return response;
@@ -599,14 +584,15 @@ export async function onRequest(context) {
     }
 
     // 2. No cache — aggregate fresh (first request or KV not configured)
-    const data = await aggregateFeeds(ai, translationKV);
+    const data = await aggregateFeeds(ai, translationKV, kind);
+    data.sources = sourceList;
 
     // Store in KV (no warming here — /api/warm handles it separately with
     // its own subrequest budget; aggregation alone uses ~45 subreqs)
     if (feedCache) {
       context.waitUntil(Promise.all([
-        feedCache.put(KV_KEY_FEED, JSON.stringify(data), { expirationTtl: 600 }),
-        feedCache.put(KV_KEY_META, JSON.stringify({ ts: Date.now(), count: data.feed.length }), { expirationTtl: 600 }),
+        feedCache.put(kvKeys.feed, JSON.stringify(data), { expirationTtl: 600 }),
+        feedCache.put(kvKeys.meta, JSON.stringify({ ts: Date.now(), count: data.feed.length }), { expirationTtl: 600 }),
       ]));
     }
 
@@ -614,7 +600,7 @@ export async function onRequest(context) {
     const translatedData = { ...data, feed: applyTranslationIndex(data.feed, index) };
     const payload = buildPayload(translatedData, layer, limit, { age: 0, fresh: true, aggregatedAt: Date.now() });
     return new Response(JSON.stringify(payload), {
-      headers: { ...CORS, 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' },
+      headers: { ...CORS, 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=60' },
     });
 
   } catch (e) {
@@ -625,12 +611,13 @@ export async function onRequest(context) {
 // Background re-aggregation (runs via waitUntil, doesn't block response).
 // Translation warming is handled by the separate /api/warm endpoint, so
 // this path only does aggregation + KV write.
-async function refreshCache(ai, translationKV, feedCache) {
+async function refreshCache(ai, translationKV, feedCache, kind = 'news') {
   try {
-    const data = await aggregateFeeds(ai, translationKV);
+    const data = await aggregateFeeds(ai, translationKV, kind);
+    const kvKeys = KV_KEYS[kind];
     await Promise.all([
-      feedCache.put(KV_KEY_FEED, JSON.stringify(data), { expirationTtl: 600 }),
-      feedCache.put(KV_KEY_META, JSON.stringify({ ts: Date.now(), count: data.feed.length }), { expirationTtl: 600 }),
+      feedCache.put(kvKeys.feed, JSON.stringify(data), { expirationTtl: 600 }),
+      feedCache.put(kvKeys.meta, JSON.stringify({ ts: Date.now(), count: data.feed.length }), { expirationTtl: 600 }),
     ]);
   } catch {}
 }

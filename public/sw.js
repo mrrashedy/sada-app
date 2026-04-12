@@ -1,4 +1,5 @@
-const CACHE_NAME = 'sada-v3.1';
+// Bumped to v4 to force-evict any stale caches from previous deploys.
+const CACHE_NAME = 'sada-v4';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', (e) => {
@@ -20,12 +21,20 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
 
-  // Never cache API calls or JS/CSS assets (Vite hashes them already)
   const url = new URL(e.request.url);
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/assets/')) {
+
+  // NEVER touch API calls — let the network handle them, no SW interception.
+  // (Was: returned early but still inside respondWith stack — be explicit.)
+  if (url.pathname.startsWith('/api/')) {
     return;
   }
 
+  // Hashed Vite assets — let the browser HTTP cache handle them, no SW caching.
+  if (url.pathname.startsWith('/assets/')) {
+    return;
+  }
+
+  // HTML / shell — network-first, fall back to cache offline.
   e.respondWith(
     fetch(e.request)
       .then((response) => {

@@ -39,6 +39,7 @@ import { Onboarding } from './components/onboarding/Onboarding';
 import { TrendingRadar, RadarView } from './components/trending/TrendingRadar';
 import { BreakingTicker } from './components/feed/BreakingTicker';
 import { AdminPanel } from './components/admin/AdminPanel';
+import { PhotoGrid } from './components/photos/PhotoGrid';
 
 export default function Sada() {
   const auth = useAuth();
@@ -67,6 +68,17 @@ export default function Sada() {
   const [newCount, setNewCount] = useState(0);
   const prevLen                 = useRef(0);
   const contentRef              = useRef(null);
+  const lastScrollY             = useRef(0);
+  const [barsHidden, setBarsHidden] = useState(false);
+  const handleScroll = useCallback(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const y = el.scrollTop;
+    const delta = y - lastScrollY.current;
+    if (delta > 8) setBarsHidden(true);       // scrolling down → hide
+    else if (delta < -8) setBarsHidden(false); // scrolling up → show
+    lastScrollY.current = y;
+  }, []);
 
   // Bookmarks
   const [savedIds, setSavedIds] = useState(() => { try { const s=localStorage.getItem('sada-bookmarks'); return s?new Set(JSON.parse(s)):new Set(); } catch { return new Set(); } });
@@ -102,10 +114,50 @@ export default function Sada() {
   const { feed:liveFeed, loading, isLive, refresh } = useNews();
   useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); Sound.notify(); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
 
+  // Bottom-nav indicator pulses — every 60s each indicator fires 3 quick blips
+  // in sync with its CSS animation. Map is offset 30s from radar so the two
+  // indicators alternate (you hear something every 30s instead of overlapping).
+  // First sequence fires a few seconds after mount so the audio context has a
+  // chance to unlock from a user interaction.
+  useEffect(() => {
+    const radarTriple = () => {
+      try { Sound.radarBlip(); } catch {}
+      setTimeout(() => { try { Sound.radarBlip(); } catch {} }, 1200);
+      setTimeout(() => { try { Sound.radarBlip(); } catch {} }, 2400);
+    };
+    const mapTriple = () => {
+      try { Sound.mapBlip(); } catch {}
+      setTimeout(() => { try { Sound.mapBlip(); } catch {} }, 1200);
+      setTimeout(() => { try { Sound.mapBlip(); } catch {} }, 2400);
+    };
+    const radarInitial = setTimeout(radarTriple, 3000);   // first radar at +3s
+    const mapInitial   = setTimeout(mapTriple,  33000);   // first map  at +33s
+    const radarInterval = setInterval(radarTriple, 60000);
+    const mapInterval   = setInterval(mapTriple,  60000);
+    return () => {
+      clearTimeout(radarInitial); clearTimeout(mapInitial);
+      clearInterval(radarInterval); clearInterval(mapInterval);
+    };
+  }, []);
+
 
 
   // Pull-to-refresh & infinite scroll
-  const { pullY, refreshing, refreshMsg, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD } = usePullToRefresh(contentRef, refresh);
+  const { pullY, refreshing, refreshMsg, setRefreshMsg, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD } = usePullToRefresh(contentRef, refresh);
+
+  // Refresh button handler — shares the same toast banner as pull-to-refresh.
+  // Plays the refresh sound, awaits the fetch's new-item count, then shows
+  // "N خبر جديد" or "أخبارك محدّثة" for 2.5s.
+  const handleHeaderRefresh = useCallback(async () => {
+    Sound.refresh();
+    try {
+      const count = (await refresh()) || 0;
+      setRefreshMsg(count > 0 ? `${count} خبر جديد` : 'أخبارك محدّثة');
+    } catch {
+      setRefreshMsg('تعذّر التحديث');
+    }
+    setTimeout(() => setRefreshMsg(null), 2500);
+  }, [refresh, setRefreshMsg]);
   const { visibleCount, onScroll } = useInfiniteScroll(20, 15, 200, feedTab);
 
   // Transform API data → feed items with tags
@@ -115,16 +167,40 @@ export default function Sada() {
       (TOPIC_KEYWORDS[t.id]||[]).some(kw => text.includes(kw))
     ).slice(0,2).map(t => t.label);
     const apiCats = (item.categories||[]).filter(c => c && c !== 'عاجل');
-    const allTags = [...new Set([...apiCats, ...detectedTopics])].slice(0,4);
+    // Smart dedupe: normalise (lowercase + trim), drop exact duplicates AND
+    // near-duplicates where one tag is a substring of another (e.g. "رياضة"
+    // vs "رياضة عالمية" → keep the longer/more specific one).
+    const norm = s => s.toLowerCase().trim();
+    const raw = [...apiCats, ...detectedTopics];
+    const allTags = [];
+    for (const t of raw) {
+      if (!t) continue;
+      const tn = norm(t);
+      const dupIdx = allTags.findIndex(k => {
+        const kn = norm(k);
+        return kn === tn || kn.includes(tn) || tn.includes(kn);
+      });
+      if (dupIdx === -1) {
+        allTags.push(t);
+      } else if (t.length > allTags[dupIdx].length) {
+        // Replace with the longer/more specific variant
+        allTags[dupIdx] = t;
+      }
+      if (allTags.length >= 3) break;
+    }
 
+    const sid = item.source?.id;
+    const srcMeta = sid ? SOURCES.find(x => x.id === sid) : null;
     return {
-      id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟' },
+      id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟', id:sid, domain:srcMeta?.domain, logo:srcMeta?.logo },
       t: item.time||'الآن', pubTs: item.timestamp || (Date.now() - i*60000),
       title: item.title,
-      body: (item.body||'').replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,300)||null,
+      body: ((b) => { if (!b) return null; return b.replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,800)||null; })(item.body),
+      brief: ((b) => { if (!b) return null; b=b.replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim(); if (b.length<=180) return b||null; const sub=b.slice(0,180); const sent=Math.max(sub.lastIndexOf('. '),sub.lastIndexOf('。'),sub.lastIndexOf('؟ '),sub.lastIndexOf('! '),sub.lastIndexOf('.\n')); if (sent>60) return b.slice(0,sent+1).trim()||null; const word=sub.lastIndexOf(' '); return (word>60?b.slice(0,word):sub).trim()||null; })(item.body),
       realImg: item.image||null, link: item.link,
       tag: item.categories?.[0]||null, tags: allTags,
       brk: item.categories?.[0]==='عاجل'||!!item.title?.includes('عاجل'),
+      _new: !!item._new,
     };
   });
 
@@ -234,12 +310,14 @@ export default function Sada() {
   }, [toggleReaction]);
   const handleComment = useCallback((item) => { setCommentArticle(item); }, []);
 
-  // Navigation
+  // Navigation — radar is the center button (index 2 of 5), styled bigger.
+  // RTL flex order: index 0 = rightmost, index 4 = leftmost.
+  // So map (index 1) sits visually to the right of radar, photos (index 3) to its left.
   const navItems = [
     { id:'home', label:'الرئيسية', icon:f=>I.home(f) },
-    { id:'radar',label:'رادار',    icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.radar(f)}<span style={{position:'absolute',top:0,right:-1,width:9,height:9,borderRadius:'50%',background:'#E53935',border:'2px solid var(--bg)'}}/></span> },
-    { id:'map',  label:'خريطة',    icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.map(f)}<span style={{position:'absolute',top:0,right:-1,width:9,height:9,borderRadius:'50%',background:'var(--bl)',border:'2px solid var(--bg)'}}/></span> },
-    { id:'saved',label:'المحفوظات',icon:f=>I.saved(f)},
+    { id:'map',  label:'خريطة',    icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.map(f)}<span className="map-dot" style={{position:'absolute',top:0,right:-1,width:9,height:9,borderRadius:'50%',background:'var(--bl)',border:'2px solid var(--bg)'}}/></span> },
+    { id:'radar',label:'رادار',    center:true, icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.radar(f)}<span className="radar-dot" style={{position:'absolute',top:-1,right:-2,width:10,height:10,borderRadius:'50%',background:'#E53935',border:'2px solid var(--bg)'}}/></span> },
+    { id:'photos',label:'صور',     icon:f=>I.photos(f) },
     { id:'settings',label:'الإعدادات',icon:()=>auth.isLoggedIn?<div style={{width:22,height:22,borderRadius:'50%',background:'var(--rd)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:'#fff'}}>{(auth.profile?.display_name||'?')[0]}</div>:I.user()},
   ];
 
@@ -250,21 +328,21 @@ export default function Sada() {
   return (
     <div className="app">
       {/* Header */}
-      {nav!=='radar'&&nav!=='admin'&&<div className="hdr">
-        <div className="logo"><span className="logo-icon">غ</span>غرفة الأخبار</div>
-        <div className="hdr-r">
-          <button className="ib" onClick={()=>{Sound.tap();setSrch(true);}}>{I.search()}</button>
-          <button className={`ib ${loading?'spinning':''}`} onClick={()=>{Sound.refresh();refresh();}}>{I.globe()}</button>
-          <button className={`ib ${allFeed.some(f=>f.pubTs>seenTs)?'ndot':''}`} onClick={()=>{Sound.tap();setNotifs(true); const now=Date.now(); setSeenTs(now); try{localStorage.setItem('sada-seen-ts',String(now));}catch{}; }}>{I.bell()}</button>
+      {nav!=='radar'&&nav!=='admin'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
+        <div className="hdr-top">
+          <div className="logo"><span className="logo-icon">غ</span>غرفة الأخبار</div>
+          <div className="hdr-r">
+            <button className="ib" onClick={()=>{Sound.tap();setSrch(true);}}>{I.search()}</button>
+            <button className={`ib ${loading?'spinning':''}`} onClick={handleHeaderRefresh}>{I.globe()}</button>
+            <button className={`ib ${allFeed.some(f=>f.pubTs>seenTs)?'ndot':''}`} onClick={()=>{Sound.tap();setNotifs(true); const now=Date.now(); setSeenTs(now); try{localStorage.setItem('sada-seen-ts',String(now));}catch{}; }}>{I.bell()}</button>
+          </div>
         </div>
+        {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>{Sound.tap();setFeedTab(t.id);setActiveSource(null);}}>{t.l}</button>))}</div>)}
+        {nav!=='home'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}{nav==='photos'&&'صور من العالم'}</div>)}
       </div>}
 
-      {/* Tabs */}
-      {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>{Sound.tap();setFeedTab(t.id);setActiveSource(null);}}>{t.l}</button>))}</div>)}
-      {nav!=='home'&&nav!=='radar'&&nav!=='admin'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}</div>)}
-
       {/* Main content */}
-      <div className="content" ref={contentRef} onScroll={onScroll}
+      <div className="content" ref={contentRef} onScroll={(e)=>{onScroll(e);handleScroll();}}
         onTouchStart={nav==='home'?onTouchStart:undefined}
         onTouchMove={nav==='home'?onTouchMove:undefined}
         onTouchEnd={nav==='home'?onTouchEnd:undefined}>
@@ -280,13 +358,12 @@ export default function Sada() {
           {newCount>0&&(<div onClick={()=>{Sound.notify();setNewCount(0);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}} style={{ position:'sticky',top:0,zIndex:50,background:'#0A0A0A',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',cursor:'pointer' }}>↑ {newCount} خبر جديد</div>)}
 
           {/* Live indicator */}
-          {isLive&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'5px 0',fontSize:11,color:'var(--t4)' }}><div style={{ width:5,height:5,borderRadius:'50%',background:'var(--gn)' }}/>أخبار مباشرة · {allFeed.length} خبر</div>)}
+          {isLive&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'5px 0',fontSize:11,color:'var(--t4)' }}><div className="live-dot"/>أخبار مباشرة · {allFeed.length} خبر</div>)}
 
-          {/* Breaking news ticker */}
-          <BreakingTicker feed={allFeed} onOpen={setArticle}/>
+          {/* Breaking news ticker — removed per design */}
 
           {/* Source stories */}
-          <div className="stories">{SOURCES.map((s,i)=>(<div className="story" key={i} onClick={()=>{Sound.tap();setActiveSource(prev=>prev===s.n?null:s.n);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}}><div className={`s-ring ${activeSource===s.n?'':'seen'}`}><div className="s-av">{s.i}</div></div><div className="s-nm">{s.n}</div></div>))}</div>
+          <div className={`stories${activeSource?' stories-filtering':''}`}>{SOURCES.filter(s=>!s.photoOnly).map((s,i)=>{const logoSrc=s.logo||(s.domain?`https://www.google.com/s2/favicons?domain=${s.domain}&sz=128`:null);const isActive=activeSource===s.n;const isDim=activeSource&&!isActive;return(<div className={`story${isActive?' s-active':''}${isDim?' s-dim':''}`} key={i} onClick={()=>{Sound.tap();setActiveSource(prev=>prev===s.n?null:s.n);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}}><div className={`s-ring ${isActive?'':'seen'}`}><div className="s-av">{!logoSrc&&<span className="s-av-letter">{s.i}</span>}{logoSrc&&<img className={`s-av-logo${s.logo?' s-av-logo-raw':''}${s.tint?' s-av-logo-'+s.tint:''}`} src={logoSrc} alt="" loading="lazy" onError={e=>{e.currentTarget.outerHTML='<span class="s-av-letter">'+s.i.replace(/[<>&"]/g,'')+'</span>';}}/>}</div></div><div className="s-nm">{s.n}</div></div>);})}</div>
           {activeSource&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',background:'var(--f1)',borderBottom:'.5px solid var(--g1)' }}><span style={{ fontSize:13,fontWeight:700,color:'var(--t1)' }}>أخبار {activeSource}</span><button onClick={()=>setActiveSource(null)} style={{ fontSize:12,fontWeight:600,color:'var(--t3)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>عرض الكل ✕</button></div>)}
 
 
@@ -301,12 +378,13 @@ export default function Sada() {
           {!loading&&displayFeed.length===0&&feedTab==='important'&&userTopics.length>0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار تطابق اهتماماتك حالياً</div>}
           {!loading&&displayFeed.length===0&&feedTab==='context'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد تحليلات أو تقارير حالياً</div>}
           {!loading&&displayFeed.length===0&&feedTab==='now'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار عاجلة حالياً</div>}
-          {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={item.id} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} onInterest={toggleInterest} isInterested={interestedIds.has(item.id)} showImg={i%4!==3} reactionCounts={reactionCounts[item.id]} userReactions={userReactions[item.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[item.id]?.comment||0} onComment={handleComment}/>))}
+          {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={item.id} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} onInterest={toggleInterest} isInterested={interestedIds.has(item.id)} showImg={i>=4&&i%4!==3} reactionCounts={reactionCounts[item.id]} userReactions={userReactions[item.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[item.id]?.comment||0} onComment={handleComment}/>))}
           {!loading&&visibleCount<displayFeed.length&&(<div className="load-more"><div className="spinner" style={{ width:18,height:18,border:'2px solid var(--g2)',borderTopColor:'var(--t3)',borderRadius:'50%',animation:'spin .6s linear infinite',margin:'0 auto' }}/></div>)}
           <div style={{ height:20 }}/>
         </>)}
 
         {nav==='radar'   && <RadarView trending={trending} allFeed={allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}} onRefresh={refresh} refreshing={loading}/>}
+        {nav==='photos'  && <PhotoGrid/>}
         {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}
         {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}
         {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onResetOnboarding={resetOnboarding} theme={theme} toggleTheme={toggleTheme} auth={auth} onOpenAuth={()=>setShowAuth(true)} onOpenProfile={()=>setShowProfile(true)} onOpenAdmin={()=>setNav('admin')}/>}
@@ -314,7 +392,7 @@ export default function Sada() {
       </div>
 
       {/* Bottom nav */}
-      {nav!=='radar'&&nav!=='admin'&&<div className="bnav">{navItems.map(item=>(<button key={item.id} className={`bnav-item ${nav===item.id?'on':''}`} onClick={()=>{Sound.tap();setNav(item.id);}}>{item.icon(nav===item.id)}<span>{item.label}</span></button>))}</div>}
+      {nav!=='radar'&&nav!=='admin'&&<div className={`bnav${barsHidden?' bnav-hide':''}`}>{navItems.map(item=>(<button key={item.id} aria-label={item.label} className={`bnav-item ${item.center?'bnav-center':''} ${nav===item.id?'on':''}`} onClick={()=>{Sound.tap();setNav(item.id);}}><span className="bnav-icon">{item.icon(nav===item.id)}</span></button>))}</div>}
 
       {/* Overlays */}
       {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} onOpenRelated={(r)=>{setArticle(null);setTimeout(()=>setArticle(r),50);}} relatedArticles={allFeed}/>}

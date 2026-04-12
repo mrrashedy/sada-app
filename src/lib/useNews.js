@@ -1,11 +1,16 @@
-// useNews hook — fetches from /api/feeds, refreshes every 45s with cache-busting
+// useNews hook — fetches from /api/feeds, refreshes every 15s with cache-busting
+// The `kind` parameter selects which backend pool to read:
+//   'news'   → the main Arabic news feed (default)
+//   'photos' → the photo-grid-only sources (art, fashion, photography magazines)
+// Each kind has its own KV cache on the server and its own polling instance
+// on the client — they never share state.
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 const API_URL = '/api/feeds';
 
 // No sample data — this is a production app
 
-export function useNews(sources = []) {
+export function useNews(sources = [], kind = 'news') {
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,10 +52,13 @@ export function useNews(sources = []) {
       // Don't pass ?refresh=1 — that blocks for 5-15s while the server
       // re-aggregates 40+ RSS feeds. Instead, the cron-worker warms the KV
       // every minute, so reading the cache is always near-fresh and instant.
+      if (kind && kind !== 'news') params.set('kind', kind);
       if (sources.length > 0) params.set('sources', sources.join(','));
 
       const res = await fetch(`${API_URL}?${params}`, {
         signal: abortRef.current.signal,
+        cache: 'no-store',
+        headers: { 'cache-control': 'no-cache' },
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -61,9 +69,11 @@ export function useNews(sources = []) {
         setFeed(prev => {
           const oldIds = new Set(prev.map(f => f.id));
           newCount = data.feed.filter(f => !oldIds.has(f.id)).length;
+          // Mark genuinely new items (not in previous set) so the UI can animate them
+          const tagged = data.feed.map(f => oldIds.has(f.id) ? f : { ...f, _new: true });
           const newIds = new Set(data.feed.map(f => f.id));
           const kept = prev.filter(p => !newIds.has(p.id));
-          return [...data.feed, ...kept].slice(0, 500);
+          return [...tagged, ...kept].slice(0, 500);
         });
         setIsLive(true);
 
@@ -86,14 +96,14 @@ export function useNews(sources = []) {
 
     await finishLoading();
     return 0;
-  }, [sources.join(',')]);
+  }, [sources.join(','), kind]);
 
   useEffect(() => {
     fetchNews(false);
 
-    // Poll every 30s — the DO refresher keeps server cache ≤20s stale,
-    // so clients don't need to be more aggressive than that.
-    const interval = setInterval(() => fetchNews(true), 30000);
+    // Poll every 15s — matches the server's 15s KV TTL + 10s CDN s-maxage,
+    // so silent polls pick up new items within ~25s of them hitting the edge.
+    const interval = setInterval(() => fetchNews(true), 15000);
 
     // Refresh when tab becomes visible
     const onVisible = () => {

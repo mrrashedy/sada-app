@@ -5,6 +5,7 @@ import { liveTimeAgo } from '../../lib/timeAgo';
 import { Sound } from '../../lib/sounds';
 import { shareArticle } from '../../lib/shareCard';
 import { ReactionBar } from '../social/ReactionBar';
+import { flagUrl } from '../../lib/countryFlags';
 
 const PERSON_RE = /رئيس|وزير|نائب|أمير|ملك|سفير|قائد|أمين|زعيم|قاض|مبعوث|صرّح|صرح|أعلن|أكد|قال|يقول|طالب|دعا|أردوغان|ترامب|بايدن|نتنياهو|بوتين|ماكرون|زيلينسكي|بن سلمان/;
 
@@ -39,7 +40,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
   return (
     <div className={`post${item._new ? ' post-new' : ''}`} style={{ animationDelay:`${delay}s` }}>
       <div className="ph">
-        <div className="pinfo">{(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}<span className="pname">{item.s.n}</span><span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span></div>
+        <div className="pinfo">{(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}<span className="pname">{item.s.n}</span>{item.flags?.length>0&&<span className="pflags">{item.flags.map(c=><img key={c} className="pflag" src={flagUrl(c)} alt="" loading="lazy"/>)}</span>}<span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span></div>
         <button className="ib" style={{ color:'var(--t4)', padding:0 }}>{I.more()}</button>
       </div>
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>

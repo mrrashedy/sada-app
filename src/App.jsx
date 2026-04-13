@@ -13,6 +13,7 @@ import { useReactions } from './hooks/useReactions';
 
 // Lib
 import { scoreByTopics, isOpinionOrSentimental, isDeepInvestigative } from './lib/filters';
+import { detectFlags } from './lib/countryFlags';
 import { Sound } from './lib/sounds';
 import { extractTrending } from './lib/trending';
 import { shareArticle } from './lib/shareCard';
@@ -111,7 +112,10 @@ export default function Sada() {
   const toggleSource = useCallback(i => { setSources(prev => { const next={...prev,[i]:prev[i]===false?true:false}; try { localStorage.setItem('sada-sources',JSON.stringify(next)); } catch {} return next; }); }, []);
 
   // Live feed
-  const { feed:liveFeed, loading, isLive, refresh } = useNews();
+  // Three independent feed hooks — each vertical has its own data pipeline
+  const { feed:liveFeed, loading, isLive, refresh } = useNews([], 'news', 15000);
+  const { feed:mapFeed } = useNews([], 'map', 30000);
+  const { feed:radarFeed, refresh:radarRefresh } = useNews([], 'radar', 30000);
   useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); Sound.notify(); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
 
   // Bottom-nav indicator pulses — every 60s each indicator fires 3 quick blips
@@ -160,16 +164,13 @@ export default function Sada() {
   }, [refresh, setRefreshMsg]);
   const { visibleCount, onScroll } = useInfiniteScroll(20, 15, 200, feedTab);
 
-  // Transform API data → feed items with tags
-  const allFeed = liveFeed.map((item,i) => {
+  // Shared transform: raw API items → client-side items with tags, flags, briefs
+  const transformFeed = useCallback((rawFeed) => rawFeed.map((item, i) => {
     const text = ((item.title||'')+' '+(item.body||'')).toLowerCase();
     const detectedTopics = TOPICS.filter(t =>
       (TOPIC_KEYWORDS[t.id]||[]).some(kw => text.includes(kw))
     ).slice(0,2).map(t => t.label);
     const apiCats = (item.categories||[]).filter(c => c && c !== 'عاجل');
-    // Smart dedupe: normalise (lowercase + trim), drop exact duplicates AND
-    // near-duplicates where one tag is a substring of another (e.g. "رياضة"
-    // vs "رياضة عالمية" → keep the longer/more specific one).
     const norm = s => s.toLowerCase().trim();
     const raw = [...apiCats, ...detectedTopics];
     const allTags = [];
@@ -183,12 +184,10 @@ export default function Sada() {
       if (dupIdx === -1) {
         allTags.push(t);
       } else if (t.length > allTags[dupIdx].length) {
-        // Replace with the longer/more specific variant
         allTags[dupIdx] = t;
       }
       if (allTags.length >= 3) break;
     }
-
     const sid = item.source?.id;
     const srcMeta = sid ? SOURCES.find(x => x.id === sid) : null;
     return {
@@ -200,9 +199,15 @@ export default function Sada() {
       realImg: item.image||null, link: item.link,
       tag: item.categories?.[0]||null, tags: allTags,
       brk: item.categories?.[0]==='عاجل'||!!item.title?.includes('عاجل'),
+      flags: detectFlags(`${item.title || ''} ${item.body || ''}`),
       _new: !!item._new,
     };
-  });
+  }), []);
+
+  // Transform all three feed pools
+  const allFeed = useMemo(() => transformFeed(liveFeed), [liveFeed, transformFeed]);
+  const mapItems = useMemo(() => transformFeed(mapFeed), [mapFeed, transformFeed]);
+  const radarItems = useMemo(() => transformFeed(radarFeed), [radarFeed, transformFeed]);
 
   // Deep link: open shared article from ?article=ID
   const deepLinkHandled = useRef(false);
@@ -223,7 +228,8 @@ export default function Sada() {
     return () => clearInterval(id);
   }, []);
   // Raw trending: pure rules pass. Shows immediately.
-  const rawTrending = useMemo(() => extractTrending(allFeed), [trendTick, allFeed.length]);
+  // Radar trending uses its own dedicated feed (70% Arab + 30% global)
+  const rawTrending = useMemo(() => extractTrending(radarItems.length ? radarItems : allFeed), [trendTick, radarItems.length, allFeed.length]);
   // Clustered trending: AI-merged version. Updates when /api/cluster returns.
   const [trending, setTrending] = useState([]);
   useEffect(() => {
@@ -342,7 +348,7 @@ export default function Sada() {
       </div>}
 
       {/* Main content */}
-      <div className="content" ref={contentRef} onScroll={(e)=>{onScroll(e);handleScroll();}}
+      <div className={`content${nav==='radar'?' content-full':''}`} ref={contentRef} onScroll={(e)=>{onScroll(e);handleScroll();}}
         onTouchStart={nav==='home'?onTouchStart:undefined}
         onTouchMove={nav==='home'?onTouchMove:undefined}
         onTouchEnd={nav==='home'?onTouchEnd:undefined}>
@@ -383,9 +389,9 @@ export default function Sada() {
           <div style={{ height:20 }}/>
         </>)}
 
-        {nav==='radar'   && <RadarView trending={trending} allFeed={allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}} onRefresh={refresh} refreshing={loading}/>}
+        {nav==='radar'   && <RadarView trending={trending} allFeed={radarItems.length ? radarItems : allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}} onRefresh={radarRefresh || refresh} refreshing={loading}/>}
         {nav==='photos'  && <PhotoGrid/>}
-        {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}
+        {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={mapItems.length ? mapItems : allFeed}/>}
         {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}
         {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onResetOnboarding={resetOnboarding} theme={theme} toggleTheme={toggleTheme} auth={auth} onOpenAuth={()=>setShowAuth(true)} onOpenProfile={()=>setShowProfile(true)} onOpenAdmin={()=>setNav('admin')}/>}
         {nav==='admin'   && <AdminPanel onClose={()=>setNav('settings')}/>}

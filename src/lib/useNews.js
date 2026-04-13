@@ -10,7 +10,7 @@ const API_URL = '/api/feeds';
 
 // No sample data — this is a production app
 
-export function useNews(sources = [], kind = 'news') {
+export function useNews(sources = [], kind = 'news', pollInterval = 15000) {
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,7 +20,7 @@ export function useNews(sources = [], kind = 'news') {
   const [cacheAge, setCacheAge] = useState(null);
   const abortRef = useRef(null);
 
-  const fetchNews = useCallback(async (silent = false) => {
+  const fetchNews = useCallback(async (silent = false, forceRefresh = false) => {
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
 
@@ -46,12 +46,12 @@ export function useNews(sources = [], kind = 'news') {
 
     try {
       const params = new URLSearchParams({
-        limit: '500',
+        limit: '1200',
         t: silent ? Math.floor(Date.now() / 15000) : Date.now(),
       });
-      // Don't pass ?refresh=1 — that blocks for 5-15s while the server
-      // re-aggregates 40+ RSS feeds. Instead, the cron-worker warms the KV
-      // every minute, so reading the cache is always near-fresh and instant.
+      // User-initiated refreshes send ?refresh=1 to force server re-aggregation.
+      // Silent polls read from the KV cache (warmed by the cron worker every 20s).
+      if (forceRefresh) params.set('refresh', '1');
       if (kind && kind !== 'news') params.set('kind', kind);
       if (sources.length > 0) params.set('sources', sources.join(','));
 
@@ -101,9 +101,8 @@ export function useNews(sources = [], kind = 'news') {
   useEffect(() => {
     fetchNews(false);
 
-    // Poll every 15s — matches the server's 15s KV TTL + 10s CDN s-maxage,
-    // so silent polls pick up new items within ~25s of them hitting the edge.
-    const interval = setInterval(() => fetchNews(true), 15000);
+    // Poll at the specified interval. Main feed: 15s. Map/radar: 30s.
+    const interval = setInterval(() => fetchNews(true), pollInterval);
 
     // Refresh when tab becomes visible
     const onVisible = () => {
@@ -121,7 +120,7 @@ export function useNews(sources = [], kind = 'news') {
   return {
     feed, loading, error, isLive,
     serverTrending, serverBreaking, cacheAge,
-    refresh: () => fetchNews(false),
-    silentRefresh: () => fetchNews(true),
+    refresh: () => fetchNews(false, true),
+    silentRefresh: () => fetchNews(true, false),
   };
 }

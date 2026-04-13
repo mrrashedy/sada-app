@@ -32,17 +32,28 @@ async function translateOne(item, ai) {
     description: item.description ?? item.body ?? '',
     lang: item.lang || 'en',
   };
-  const sourceLang = M2M_LANG[f.lang] || 'english';
+  const sourceLang = M2M_LANG[f.lang] || 'English';
   try {
-    const titleRes = await ai.run('@cf/meta/m2m100-1.2b', { text: f.title, source_lang: sourceLang, target_lang: 'arabic' });
-    const t = titleRes?.translated_text || f.title;
-    let d = f.description;
-    if (d) {
-      try {
-        const descRes = await ai.run('@cf/meta/m2m100-1.2b', { text: d, source_lang: sourceLang, target_lang: 'arabic' });
-        d = descRes?.translated_text || d;
-      } catch {}
-    }
+    const prompt = `Translate the following ${sourceLang} news headline and brief into natural, fluent Modern Standard Arabic. Use proper Arabic news style — formal but readable, like Al Jazeera or BBC Arabic would write it. Do NOT transliterate names — use the standard Arabic forms (e.g. "Trump" → "ترامب", "Iran" → "إيران"). Return ONLY the translation, nothing else.
+
+TITLE: ${f.title}${f.description ? `\nBRIEF: ${f.description}` : ''}`;
+
+    const res = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
+      messages: [
+        { role: 'system', content: 'You are a professional Arabic news translator. You translate headlines and article briefs from world languages into fluent Modern Standard Arabic. Return only the translated text, no explanations.' },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 300,
+    });
+
+    const raw = (res?.response || '').trim();
+    if (!raw) return null;
+
+    // Split title and description from the response
+    const lines = raw.split('\n').filter(l => l.trim());
+    const t = lines[0] || f.title;
+    const d = lines.length > 1 ? lines.slice(1).join(' ').trim() : (f.description || '');
+
     return { t, d };
   } catch { return null; }
 }
@@ -60,25 +71,33 @@ export async function onRequest(context) {
   }
 
   try {
-    // 1. Read cached feed + existing translation index
-    const [data, index] = await Promise.all([
-      feedCache.get(KV_KEY_FEED, 'json'),
+    // 1. Read cached feeds from ALL verticals + existing translation index
+    // Each vertical may have non-Arabic items that need translating.
+    const FEED_KEYS = ['feed:latest', 'map:latest', 'radar:latest'];
+    const [index, ...feedResults] = await Promise.all([
       translationKV.get(TRANSLATIONS_INDEX_KEY, 'json'),
+      ...FEED_KEYS.map(k => feedCache.get(k, 'json').catch(() => null)),
     ]);
     const idx = index || {};
 
-    if (!data?.feed) {
-      return new Response(JSON.stringify({ ok: false, error: 'no cached feed — call /api/feeds?refresh=1 first' }), { headers: CORS });
+    // Merge all non-Arabic items from all verticals
+    const allItems = [];
+    for (const data of feedResults) {
+      if (data?.feed) allItems.push(...data.feed);
+    }
+
+    if (allItems.length === 0) {
+      return new Response(JSON.stringify({ ok: false, error: 'no cached feeds — call /api/feeds?refresh=1 first' }), { headers: CORS });
     }
 
     // 2. Find non-Arabic items missing from the index
     const pending = [];
-    for (const item of data.feed) {
+    for (const item of allItems) {
       if (!item.lang || item.lang === 'ar') continue;
       const h = translationHash(item);
       if (idx[h]) continue;
       pending.push({ item, h });
-      if (pending.length >= 40) break; // stay under ~45 subrequests total
+      if (pending.length >= 30) break; // stay under subrequest budget (30 AI calls + KV reads)
     }
 
     if (pending.length === 0) {

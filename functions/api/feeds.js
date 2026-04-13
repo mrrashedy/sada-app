@@ -15,26 +15,29 @@ const SOURCES = {
   cnn_ar:          { name: "CNN عربية", initial: "C", tier: 1, feeds: ["https://arabic.cnn.com/api/v1/rss/rss.xml"] },
   independent_ar:  { name: "إندبندنت عربية", initial: "إ", tier: 1, feeds: ["https://www.independentarabia.com/rss.xml"] },
   aawsat:          { name: "الشرق الأوسط", initial: "ش", tier: 1, feeds: ["https://aawsat.com/feed"] },
-  alhurra:         { name: "الحرة", initial: "ح", tier: 1, feeds: ["https://www.alhurra.com/rss"] },
-  // Tier 1 additions — only RT Arabic passed production testing. The other 5
-  // candidates (Al Arabiya, Al-Ahram, Al-Shorouk, Masrawy, Asharq News) are
-  // hard-blocked on Cloudflare Worker IPs (403/404) and were dropped.
+  alhurra:         { name: "الحرة", initial: "ح", tier: 1, feeds: ["https://alhurra.com/feed"] },
+  // Tier 1 additions
   rt_ar:           { name: "روسيا اليوم", initial: "RT", tier: 1, feeds: ["https://arabic.rt.com/rss/"] },
+
+  // Wire services + aggregators (Arabic Google News topics give broad coverage)
+  gnews_world:     { name: "أخبار Google عالمي", initial: "GN", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/WORLD?hl=ar&gl=SA&ceid=SA:ar"] },
+  gnews_tech:      { name: "أخبار Google تقنية", initial: "GT", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=ar&gl=SA&ceid=SA:ar"] },
+  gnews_health:    { name: "أخبار Google صحة", initial: "GH", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/HEALTH?hl=ar&gl=SA&ceid=SA:ar"] },
+  gnews_science:   { name: "أخبار Google علوم", initial: "GS", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=ar&gl=SA&ceid=SA:ar"] },
 
   // Tier 2: Regional newspapers
   alaraby:   { name: "العربي الجديد", initial: "ع", tier: 2, feeds: ["https://www.alaraby.co.uk/rss"] },
   almasry:   { name: "المصري اليوم", initial: "م", tier: 2, feeds: ["https://www.almasryalyoum.com/rss/rssfeed"] },
+  youm7:     { name: "اليوم السابع", initial: "٧", tier: 1, feeds: ["https://www.youm7.com/RSS/SectionRss?SectionID=97","https://www.youm7.com/RSS/SectionRss?SectionID=203"] },
+  egypt_ind: { name: "Egypt Independent", initial: "EI", tier: 2, lang: "en", feeds: ["https://www.egyptindependent.com/feed/"] },
   okaz:      { name: "عكاظ", initial: "ك", tier: 2, feeds: ["https://www.okaz.com.sa/rssFeed/0"] },
   alsumaria: { name: "السومرية", initial: "سم", tier: 2, feeds: ["https://www.alsumaria.tv/Rss/iraq-latest-news/ar"] },
   alkhaleej: { name: "الخليج", initial: "خ", tier: 2, feeds: ["https://www.alkhaleej.ae/section/1110/rss.xml"] },
   uae24:     { name: "24 الإمارات", initial: "٢", tier: 2, feeds: ["https://24.ae/rss.aspx"] },
   alsharq:   { name: "الشرق", initial: "ق", tier: 2, feeds: ["https://al-sharq.com/rss/latestNews"] },
-  dohanews:  { name: "دوحة نيوز", initial: "ه", tier: 2, feeds: ["https://dohanews.co/feed/"] },
-  arabnews:  { name: "Arab News", initial: "A", tier: 2, feeds: ["https://www.arabnews.com/rss.xml"] },
   alyaum:    { name: "اليوم", initial: "ل", tier: 2, feeds: ["https://www.alyaum.com/rssFeed/1005"] },
   alquds:    { name: "القدس العربي", initial: "ق", tier: 2, feeds: ["https://www.alquds.co.uk/feed/"] },
-  noonpost:  { name: "نون بوست", initial: "ن", tier: 2, feeds: ["https://www.noonpost.com/rss"] },
-  lusail:    { name: "لوسيل", initial: "لس", tier: 2, feeds: ["https://lusailnews.net/feed"] },
+  noonpost:  { name: "نون بوست", initial: "ن", tier: 2, feeds: ["https://www.noonpost.com/feed/"] },
 
   // Tier 3: English sources (auto-translated)
   bbc_en:   { name: "BBC عالمي", initial: "BB", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/world/rss.xml"] },
@@ -49,7 +52,6 @@ const SOURCES = {
   // Tier 4: Additional real-time firehose sources — major Western broadcasters
   guardian_w:   { name: "الغارديان", initial: "G", tier: 3, lang: "en", feeds: ["https://www.theguardian.com/world/rss"] },
   wapo_world:   { name: "واشنطن بوست", initial: "WP", tier: 3, lang: "en", feeds: ["https://feeds.washingtonpost.com/rss/world"] },
-  haaretz:      { name: "هآرتس", initial: "H", tier: 3, lang: "en", feeds: ["https://www.haaretz.com/cmlink/1.628752"] },
   bloomberg:    { name: "بلومبرغ", initial: "BL", tier: 3, lang: "en", feeds: ["https://feeds.bloomberg.com/politics/news.rss"] },
   cnn_en:       { name: "CNN عالمي", initial: "CN", tier: 3, lang: "en", feeds: ["http://rss.cnn.com/rss/edition_world.rss"] },
 
@@ -87,7 +89,10 @@ const SOURCES = {
 function sourcesForKind(kind) {
   return Object.entries(SOURCES).filter(([, s]) => {
     const isPhoto = !!s.photoOnly;
-    return kind === 'photos' ? isPhoto : !isPhoto;
+    if (kind === 'photos') return isPhoto;
+    if (kind === 'map') return false;        // map = NewsData API only, no RSS
+    // 'news' and 'radar' both use all non-photo RSS sources
+    return !isPhoto;
   });
 }
 
@@ -109,6 +114,8 @@ const CACHE_TTL = 15;       // 15s — max staleness before forcing re-fetch (DO
 const KV_KEYS = {
   news:   { feed: 'feed:latest',   meta: 'feed:meta'   },
   photos: { feed: 'photos:latest', meta: 'photos:meta' },
+  map:    { feed: 'map:latest',    meta: 'map:meta'    },
+  radar:  { feed: 'radar:latest',  meta: 'radar:meta'  },
 };
 
 function hash(str) {
@@ -146,7 +153,11 @@ function cleanText(str) {
 
 function parseXML(xml) {
   const items = [];
-  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+
+  // Detect Atom feeds (The Verge, etc.) vs RSS feeds
+  const isAtom = xml.includes('<feed') && xml.includes('xmlns="http://www.w3.org/2005/Atom"');
+  const itemRegex = isAtom ? /<entry>([\s\S]*?)<\/entry>/g : /<item>([\s\S]*?)<\/item>/g;
+
   let match;
   while ((match = itemRegex.exec(xml)) !== null) {
     const block = match[1];
@@ -156,22 +167,134 @@ function parseXML(xml) {
     };
     const title = get('title');
     if (!title) continue;
-    const link = get('link');
-    const description = get('description').replace(/https?:\/\/[^\s<>"']+/g, '').replace(/\s+/g, ' ').trim();
-    const pubDate = get('pubDate');
+
+    // Atom uses <link href="..."/>, RSS uses <link>...</link>
+    let link = get('link');
+    if (!link && isAtom) {
+      const linkMatch = block.match(/<link[^>]+rel=["']alternate["'][^>]+href=["']([^"']+)["']/);
+      if (linkMatch) link = linkMatch[1];
+      if (!link) { const lm = block.match(/<link[^>]+href=["']([^"']+)["']/); if (lm) link = lm[1]; }
+    }
+
+    // Atom uses <content> or <summary>, RSS uses <description>
+    const description = (get('description') || get('summary') || get('content')).replace(/https?:\/\/[^\s<>"']+/g, '').replace(/\s+/g, ' ').trim();
+
+    // Atom uses <published> or <updated>, RSS uses <pubDate>
+    const pubDate = get('pubDate') || get('published') || get('updated');
+
     let image = '';
     const mediaMatch = block.match(/url=["']([^"']+\.(jpg|jpeg|png|webp)[^"']*)/i);
     if (mediaMatch) image = mediaMatch[1];
     if (!image) { const enc = block.match(/<enclosure[^>]+url=["']([^"']+)/); if (enc) image = enc[1]; }
+    // Atom thumbnail
+    if (!image) { const thumb = block.match(/<media:thumbnail[^>]+url=["']([^"']+)/); if (thumb) image = thumb[1]; }
+    if (!image) { const img = block.match(/<img[^>]+src=["']([^"']+\.(jpg|jpeg|png|webp)[^"']*)/i); if (img) image = img[1]; }
+
     const categories = [];
-    const catRegex = /<category[^>]*>([\s\S]*?)<\/category>/g;
+    const catRegex = /<category[^>]*(?:term=["']([^"']+)["'])?[^>]*>([\s\S]*?)<\/category>|<category[^>]+term=["']([^"']+)["'][^>]*\/>/g;
     let catMatch;
-    while ((catMatch = catRegex.exec(block)) !== null) { const c = cleanText(catMatch[1]); if (c && c.length < 30) categories.push(c); }
+    while ((catMatch = catRegex.exec(block)) !== null) {
+      const c = cleanText(catMatch[1] || catMatch[2] || catMatch[3] || '');
+      if (c && c.length < 30) categories.push(c);
+    }
+
     const isBreaking = title.includes('عاجل') || title.includes('breaking') || title.toLowerCase().includes('urgent');
     if (isBreaking && !categories.includes('عاجل')) categories.unshift('عاجل');
     items.push({ title, link, description: description.slice(0, 800), pubDate, image, categories, timestamp: pubDate ? new Date(pubDate).getTime() : 0, isBreaking });
   }
   return items;
+}
+
+// ─── NewsData.io API Adapter ───
+// Professional plan: 50,000 credits/month. Each API call = 1 credit.
+// Three verticals call different language batches; throttled per-kind so
+// the combined budget stays under 50k/month (~39k target).
+
+const ND_LANG_MAP = {
+  arabic: 'ar', english: 'en', french: 'fr', german: 'de', spanish: 'es',
+  portuguese: 'pt', russian: 'ru', chinese: 'zh', japanese: 'ja', korean: 'ko',
+  turkish: 'tr', hindi: 'hi', italian: 'it', dutch: 'nl', polish: 'pl',
+  swedish: 'sv', danish: 'da', norwegian: 'no', indonesian: 'id', thai: 'th',
+  vietnamese: 'vi', czech: 'cs', romanian: 'ro', greek: 'el', hungarian: 'hu',
+  ar: 'ar', en: 'en', fr: 'fr', de: 'de', es: 'es', pt: 'pt',
+  ru: 'ru', zh: 'zh', ja: 'ja', ko: 'ko', tr: 'tr', hi: 'hi',
+};
+
+// Per-kind NewsData batch configs
+const ND_BATCHES = {
+  news:  [{ language: 'ar', size: 50 }],                                          // 1 call
+  map:   [{ language: 'en', size: 50 }, { language: 'fr,de,es,pt,ru,tr', size: 50 }, { language: 'zh,ja,ko,hi', size: 50 }],  // 3 calls
+  radar: [{ language: 'ar', size: 50 }, { language: 'en', size: 30 }],             // 2 calls
+};
+
+// Throttle: minimum seconds between NewsData calls per kind.
+// news=5min, map=10min, radar=5min → ~39k calls/month total.
+const ND_THROTTLE_SEC = { news: 300, map: 600, radar: 300 };
+
+function ndThrottleKey(kind) { return `nd_ts:${kind}`; }
+
+async function fetchNewsDataForKind(env, feedCache, kind = 'news') {
+  const apiKey = env?.NEWSDATA_API_KEY;
+  if (!apiKey) return [];
+  const batches = ND_BATCHES[kind];
+  if (!batches) return [];
+
+  // Rate control is handled by the cron worker's tick schedule:
+  // news=every tick, map=every 4th, radar=every 4th (offset).
+  // No additional throttle needed here.
+
+  try {
+    const allResults = [];
+    const fetches = batches.map(async (batch) => {
+      const params = new URLSearchParams({
+        apikey: apiKey,
+        language: batch.language,
+        size: String(batch.size),
+      });
+      try {
+        const res = await fetch(`https://newsdata.io/api/1/latest?${params}`, {
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        if (data.status !== 'success' || !Array.isArray(data.results)) return [];
+        return data.results;
+      } catch { return []; }
+    });
+
+    const results = await Promise.allSettled(fetches);
+    results.forEach(r => { if (r.status === 'fulfilled') allResults.push(...r.value); });
+
+    return allResults
+      .filter(a => a.title && a.link && !a.duplicate)
+      .map(a => {
+        const ts = a.pubDate ? new Date(a.pubDate).getTime() : Date.now();
+        const apiCats = Array.isArray(a.category) ? a.category.filter(c => c && c !== 'top') : [];
+        const aiTags = Array.isArray(a.ai_tag) ? a.ai_tag : [];
+        const cats = [...new Set([...apiCats, ...aiTags])].slice(0, 5);
+        const isBreaking = (a.title || '').includes('عاجل') || (a.title || '').toLowerCase().includes('breaking') || cats.includes('breaking');
+        if (isBreaking && !cats.includes('عاجل')) cats.unshift('عاجل');
+        const body = (a.content || a.description || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        const itemLang = ND_LANG_MAP[a.language] || ND_LANG_MAP[(a.language || '').toLowerCase()] || 'en';
+        return {
+          title: (a.title || '').trim(),
+          link: a.link,
+          description: body.slice(0, 800),
+          pubDate: a.pubDate || '',
+          image: a.image_url || '',
+          categories: cats,
+          timestamp: ts,
+          isBreaking,
+          sourceId: `nd_${(a.source_id || 'unknown').replace(/[^a-z0-9_]/g, '')}`,
+          sourceName: a.source_name || a.source_id || 'NewsData',
+          sourceInitial: (a.source_name || 'N')[0],
+          sourceTier: 2,
+          lang: itemLang,
+          sentiment: a.sentiment || null,
+          country: Array.isArray(a.country) ? a.country : [],
+        };
+      });
+  } catch { return []; }
 }
 
 // ─── Translation (KV-indexed, single-blob for subrequest efficiency) ───
@@ -219,6 +342,17 @@ async function saveTranslationIndex(kv, index) {
 }
 
 // In-memory apply: given an index, translate matching items with zero subrequests.
+// Quality check: reject translations that contain non-Arabic script leaks
+// (Latin letters, Cyrillic, etc. mixed into supposedly Arabic text).
+function isCleanArabic(text) {
+  if (!text) return false;
+  // Count Arabic characters vs Latin/Cyrillic
+  const arabic = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g) || []).length;
+  const foreign = (text.match(/[a-zA-Zа-яА-Я]/g) || []).length;
+  // Allow up to 10% foreign chars (for names like "CNN", numbers, etc.)
+  return arabic > 0 && (foreign / (arabic + foreign)) < 0.15;
+}
+
 function applyTranslationIndex(items, index) {
   if (!index) return items;
   return items.map(item => {
@@ -227,6 +361,8 @@ function applyTranslationIndex(items, index) {
     const h = translationHash(item);
     const hit = index[h];
     if (!hit) return item;
+    // Only use the translation if it's clean Arabic — reject mixed-language garbage
+    if (!isCleanArabic(hit.t)) return item;
     return { ...item, title: hit.t || item.title, description: hit.d || item.description, body: hit.t ? (hit.d || item.body) : item.body, translated: true };
   });
 }
@@ -282,7 +418,7 @@ async function warmTranslations(items, ai, kv, limit = 40) {
 // ─── Core Aggregation Pipeline ───
 // This is the expensive operation — fetches all RSS, translates, deduplicates, interleaves
 
-async function aggregateFeeds(ai, translationKV, kind = 'news') {
+async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feedCache = null) {
   const allItems = [];
 
   // Fetch sources for the requested kind — news feed and photo grid use
@@ -310,6 +446,15 @@ async function aggregateFeeds(ai, translationKV, kind = 'news') {
   const results = await Promise.allSettled(fetches);
   results.forEach(r => { if (r.status === 'fulfilled') allItems.push(...r.value); });
 
+  // NewsData.io API — supplements RSS with 85,000+ sources.
+  // Each vertical gets its own language batches and throttle cadence.
+  if (kind !== 'photos') {
+    try {
+      const ndItems = await fetchNewsDataForKind(env, feedCache, kind);
+      allItems.push(...ndItems);
+    } catch {}
+  }
+
   // Note: translation index is applied at READ time (in onRequest / buildPayload)
   // rather than here, so any feed snapshot benefits from the growing index
   // without needing re-aggregation. This also saves a subrequest in the hot path.
@@ -326,55 +471,46 @@ async function aggregateFeeds(ai, translationKV, kind = 'news') {
   const dedup = (items) => {
     const seen = new Set();
     return items.filter(item => {
-      const key = item.title.slice(0, 50).trim();
+      const key = item.title.trim();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
   };
   const sortByTime = (a, b) => b.timestamp - a.timestamp;
-  const dedupAr = dedup(arabic).sort(sortByTime);
 
-  // Non-Arabic pool: round-robin by source so every English source gets fair
-  // representation (pure time-sort lets the freshest-updating source
-  // monopolize the non-Ar budget and pushes out slower sources).
-  const nonArByScore = dedup(nonArabic).sort(sortByTime);
-  const nonArBySource = new Map();
-  for (const item of nonArByScore) {
-    if (!nonArBySource.has(item.sourceId)) nonArBySource.set(item.sourceId, []);
-    nonArBySource.get(item.sourceId).push(item);
-  }
-  const dedupNonAr = [];
-  let anyLeft = true;
-  while (anyLeft) {
-    anyLeft = false;
-    for (const list of nonArBySource.values()) {
-      if (list.length > 0) {
-        dedupNonAr.push(list.shift());
-        anyLeft = true;
-      }
+  // Timestamp sort with per-source cap — newest first, but no single source
+  // can take more than MAX_PER_SOURCE consecutive items. This prevents RT (100+
+  // items) from flooding the top while ensuring NewsData items appear naturally
+  // alongside RSS content.
+  const allDeduped = dedup([...allItems]).sort(sortByTime);
+  const LIMIT = 1200;
+  const MAX_PER_SOURCE = 3; // max items from same source before forcing variety
+  const mixed = [];
+  const srcCount = new Map(); // track consecutive items per source in recent window
+
+  for (const item of allDeduped) {
+    if (mixed.length >= LIMIT) break;
+    const sid = item.sourceId;
+    const recent = srcCount.get(sid) || 0;
+    if (recent >= MAX_PER_SOURCE) {
+      // Defer this item — will be picked up in the backfill pass
+      continue;
+    }
+    mixed.push(item);
+    srcCount.set(sid, recent + 1);
+    // Reset other sources' counts every 20 items to allow them back in
+    if (mixed.length % 20 === 0) {
+      for (const [k] of srcCount) srcCount.set(k, Math.max(0, srcCount.get(k) - 1));
     }
   }
-
-  // Interleave: 3 tier1 : 1 tier2 : 1 translated-non-Arabic
-  const tier1 = dedupAr.filter(i => i.sourceTier === 1);
-  const tier2 = dedupAr.filter(i => i.sourceTier !== 1);
-  const mixed = [];
-  let t1 = 0, t2 = 0, ei = 0;
-  const LIMIT = 500;
-  while (mixed.length < LIMIT && (t1 < tier1.length || t2 < tier2.length || ei < dedupNonAr.length)) {
-    for (let n = 0; n < 3 && t1 < tier1.length && mixed.length < LIMIT; n++) mixed.push(tier1[t1++]);
-    if (t2 < tier2.length && mixed.length < LIMIT) mixed.push(tier2[t2++]);
-    if (ei < dedupNonAr.length && mixed.length < LIMIT) mixed.push(dedupNonAr[ei++]);
-  }
-  while (mixed.length < LIMIT && t1 < tier1.length) mixed.push(tier1[t1++]);
-  while (mixed.length < LIMIT && t2 < tier2.length) mixed.push(tier2[t2++]);
-  while (mixed.length < LIMIT && ei < dedupNonAr.length) mixed.push(dedupNonAr[ei++]);
-
-  // If no translated non-Arabic items, fill with Arabic only
-  if (dedupNonAr.length === 0) {
-    mixed.length = 0;
-    mixed.push(...dedup(arabic).sort(sortByTime).slice(0, LIMIT));
+  // Backfill with remaining items sorted by time
+  if (mixed.length < LIMIT) {
+    const usedIds = new Set(mixed.map(m => m.title));
+    for (const item of allDeduped) {
+      if (mixed.length >= LIMIT) break;
+      if (!usedIds.has(item.title)) mixed.push(item);
+    }
   }
 
   // Format for client
@@ -540,7 +676,8 @@ export async function onRequest(context) {
 
     // Resolve kind. The photo grid is an independent feature, so it uses its
     // own disjoint source pool and its own KV cache keys.
-    const kind = url.searchParams.get('kind') === 'photos' ? 'photos' : 'news';
+    const VALID_KINDS = ['news', 'photos', 'map', 'radar'];
+    const kind = VALID_KINDS.includes(url.searchParams.get('kind')) ? url.searchParams.get('kind') : 'news';
     const kvKeys = KV_KEYS[kind];
 
     // Admin curation layer only applies to the news feed, not the photo grid.
@@ -576,7 +713,7 @@ export async function onRequest(context) {
 
         // If stale, trigger background re-aggregation (non-blocking)
         if (!isFresh) {
-          context.waitUntil(refreshCache(ai, translationKV, feedCache, kind));
+          context.waitUntil(refreshCache(ai, translationKV, feedCache, kind, env));
         }
 
         return response;
@@ -584,7 +721,7 @@ export async function onRequest(context) {
     }
 
     // 2. No cache — aggregate fresh (first request or KV not configured)
-    const data = await aggregateFeeds(ai, translationKV, kind);
+    const data = await aggregateFeeds(ai, translationKV, kind, env, feedCache);
     data.sources = sourceList;
 
     // Store in KV (no warming here — /api/warm handles it separately with
@@ -611,9 +748,9 @@ export async function onRequest(context) {
 // Background re-aggregation (runs via waitUntil, doesn't block response).
 // Translation warming is handled by the separate /api/warm endpoint, so
 // this path only does aggregation + KV write.
-async function refreshCache(ai, translationKV, feedCache, kind = 'news') {
+async function refreshCache(ai, translationKV, feedCache, kind = 'news', env = null) {
   try {
-    const data = await aggregateFeeds(ai, translationKV, kind);
+    const data = await aggregateFeeds(ai, translationKV, kind, env, feedCache);
     const kvKeys = KV_KEYS[kind];
     await Promise.all([
       feedCache.put(kvKeys.feed, JSON.stringify(data), { expirationTtl: 600 }),

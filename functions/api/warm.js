@@ -32,15 +32,17 @@ async function translateOne(item, ai) {
     description: item.description ?? item.body ?? '',
     lang: item.lang || 'en',
   };
+  // English items never need translation — they're already English.
+  if (f.lang === 'en') return null;
   const sourceLang = M2M_LANG[f.lang] || 'English';
   try {
-    const prompt = `Translate the following ${sourceLang} news headline and brief into natural, fluent Modern Standard Arabic. Use proper Arabic news style — formal but readable, like Al Jazeera or BBC Arabic would write it. Do NOT transliterate names — use the standard Arabic forms (e.g. "Trump" → "ترامب", "Iran" → "إيران"). Return ONLY the translation, nothing else.
+    const prompt = `Translate the following ${sourceLang} news headline and brief into clear, natural English in a professional news-wire style (like Reuters, AP, or the BBC World Service). Keep proper nouns in their standard English forms. Return ONLY the translation, nothing else.
 
 TITLE: ${f.title}${f.description ? `\nBRIEF: ${f.description}` : ''}`;
 
     const res = await ai.run('@cf/meta/llama-3.1-8b-instruct', {
       messages: [
-        { role: 'system', content: 'You are a professional Arabic news translator. You translate headlines and article briefs from world languages into fluent Modern Standard Arabic. Return only the translated text, no explanations.' },
+        { role: 'system', content: 'You are a professional news translator. You translate headlines and article briefs from world languages into clear, natural English in professional news-wire style. Return only the translated text, no explanations.' },
         { role: 'user', content: prompt },
       ],
       max_tokens: 300,
@@ -90,10 +92,11 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ ok: false, error: 'no cached feeds — call /api/feeds?refresh=1 first' }), { headers: CORS });
     }
 
-    // 2. Find non-Arabic items missing from the index
+    // 2. Find items needing translation: anything that isn't already Arabic
+    // or English. English stays as-is; French/German/etc → English.
     const pending = [];
     for (const item of allItems) {
-      if (!item.lang || item.lang === 'ar') continue;
+      if (!item.lang || item.lang === 'ar' || item.lang === 'en') continue;
       const h = translationHash(item);
       if (idx[h]) continue;
       pending.push({ item, h });

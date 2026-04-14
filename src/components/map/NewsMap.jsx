@@ -112,10 +112,17 @@ function buildMapSpots(feed) {
     const geo = detectGeoFromText(txt);
     if (!geo) return;
     if (!spots[geo.id]) spots[geo.id] = { ...geo, stories: [], heat: 1 };
+    const src = item.s || item.source || {};
+    const logo = src.logo || (src.domain ? `https://www.google.com/s2/favicons?domain=${src.domain}&sz=64` : null);
     spots[geo.id].stories.push({
-      title: item.title, src: item.s?.n||item.source?.name||'—',
-      t: item.t||item.time||'', tag: item.tag||item.categories?.[0]||null,
-      brk: item.brk||false, link: item.link||null,
+      title: item.title,
+      src: src.n || src.name || '—',
+      logo,
+      img: item.realImg || null,
+      t: item.t||item.time||'',
+      tag: item.tag||item.categories?.[0]||null,
+      brk: item.brk||false,
+      link: item.link||null,
     });
   });
   Object.values(spots).forEach(s => { const c=s.stories.length; s.heat=c>=5?3:c>=2?2:1; });
@@ -148,6 +155,15 @@ if (typeof document !== 'undefined' && !document.getElementById('newsmap-css')) 
     @keyframes nm-line{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
     @keyframes nm-ticker{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
     @keyframes nm-ring{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.5);opacity:0}}
+    @keyframes nm-mark-in{0%{transform:scale(0);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+    @keyframes nm-mark-pulse{0%,100%{box-shadow:0 0 0 0 var(--mk-glow, rgba(229,57,53,.5)),0 4px 14px rgba(0,0,0,.5)}50%{box-shadow:0 0 0 6px rgba(229,57,53,0),0 4px 14px rgba(0,0,0,.5)}}
+    /* Animate the avatar (child), not the marker root — maplibre owns the root's transform */
+    .nm-marker{cursor:pointer}
+    .nm-marker-avatar{transition:transform .22s cubic-bezier(.34,1.56,.64,1);animation:nm-mark-in .45s cubic-bezier(.34,1.56,.64,1) both;will-change:transform}
+    .nm-marker:hover .nm-marker-avatar{transform:scale(1.12)}
+    .nm-marker.hot .nm-marker-avatar{animation:nm-mark-in .45s cubic-bezier(.34,1.56,.64,1) both,nm-mark-pulse 2.2s ease-in-out .45s infinite}
+    .nm-marker-label{opacity:0;transition:opacity .2s}
+    .nm-marker:hover .nm-marker-label{opacity:1}
   `;
   document.head.appendChild(s);
 }
@@ -285,18 +301,14 @@ export function NewsMap({ onClose, liveFeed=[] }) {
           },
         });
 
-        // Hit-test circles
-        map.addLayer({
-          id: 'news-heat-circles', type: 'circle', source: 'news-heat',
-          paint: { 'circle-radius': ['interpolate',['linear'],['zoom'], 0,4, 5,8, 10,14], 'circle-color': 'rgba(255,255,255,0)', 'circle-stroke-width': 0 },
-        });
-        map.on('mouseenter','news-heat-circles', () => { map.getCanvas().style.cursor='pointer'; });
-        map.on('mouseleave','news-heat-circles', () => { map.getCanvas().style.cursor=''; });
-
+        // Click fallback for low-zoom (when DOM markers are small/clustered)
         map.on('click', (e) => {
           const { lng: cLng, lat: cLat } = e.lngLat;
           const zoom = map.getZoom();
-          const maxDist = zoom < 4 ? 5 : zoom < 6 ? 3 : zoom < 8 ? 1.5 : 0.5;
+          // Only do proximity fallback when zoomed way out — otherwise let
+          // DOM markers handle direct clicks.
+          if (zoom > 4.5) return;
+          const maxDist = 5;
           let nearest = null, minDist = Infinity;
           spotsRef.current.forEach(spot => {
             const d = Math.sqrt(Math.pow(spot.lng-cLng,2)+Math.pow(spot.lat-cLat,2));
@@ -354,6 +366,93 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
   }, [mapReady]);
+
+  // Snapchat-style DOM markers — circular avatar per spot, ring color by heat
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+    const ML = window.maplibregl;
+    if (!ML) return;
+    const map = mapRef.current;
+    const markers = [];
+
+    spots.forEach((spot) => {
+      const heat = spot.heat || 1;
+      const size = heat >= 3 ? 52 : heat >= 2 ? 44 : 38;
+      const ringColor = heat >= 3 ? '#E53935' : heat >= 2 ? '#FF9800' : '#FFC107';
+      const glowRgba = heat >= 3 ? 'rgba(229,57,53,.55)' : heat >= 2 ? 'rgba(255,152,0,.5)' : 'rgba(255,193,7,.45)';
+      const hasBreaking = spot.stories.some(s => s.brk);
+      const top = spot.stories[0] || {};
+      const avatar = top.img || top.logo || '';
+
+      const el = document.createElement('div');
+      el.className = `nm-marker${heat >= 3 ? ' hot' : ''}`;
+      // Don't set position here — maplibre sets `position: absolute` on the
+      // marker element to anchor it to geo coordinates. Children use their
+      // own absolute positioning, which still resolves against this element.
+      el.style.cssText = `width:${size}px;height:${size}px;--mk-glow:${glowRgba};`;
+
+      const avatarInner = avatar
+        ? `<img src="${avatar}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.parentElement.style.background='#222';this.parentElement.innerHTML='<div style=&quot;color:#fff;font-size:16px;font-weight:900;&quot;>${(top.src||'?')[0]||'?'}</div>'+this.parentElement.innerHTML;"/>`
+        : `<div style="color:#fff;font-size:${Math.round(size*0.4)}px;font-weight:900;font-family:var(--ft);">${(top.src||'?')[0]||'?'}</div>`;
+
+      el.innerHTML = `
+        <div class="nm-marker-avatar" style="
+          width:${size}px;height:${size}px;border-radius:50%;
+          background:#0b0d11;border:3px solid ${ringColor};
+          box-shadow:0 0 18px ${glowRgba},0 4px 14px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,255,255,.12);
+          overflow:hidden;display:flex;align-items:center;justify-content:center;
+          position:relative;
+        ">
+          ${avatarInner}
+        </div>
+        ${spot.stories.length > 1 ? `
+          <div style="
+            position:absolute;top:-4px;right:-4px;z-index:2;
+            background:${ringColor};color:#fff;
+            font-size:10px;font-weight:800;font-family:var(--ft);
+            min-width:18px;height:18px;border-radius:9px;
+            display:flex;align-items:center;justify-content:center;padding:0 5px;
+            border:2px solid #020408;letter-spacing:.02em;
+          ">${spot.stories.length}</div>
+        ` : ''}
+        ${hasBreaking ? `
+          <div style="
+            position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);z-index:2;
+            background:#E53935;color:#fff;
+            font-size:8px;font-weight:900;font-family:var(--ft);letter-spacing:.08em;
+            padding:2px 6px;border-radius:3px;
+            border:1.5px solid #020408;
+            box-shadow:0 0 8px rgba(229,57,53,.6);
+          ">LIVE</div>
+        ` : ''}
+        <div class="nm-marker-label" style="
+          position:absolute;top:${size + (hasBreaking ? 12 : 6)}px;left:50%;transform:translateX(-50%);
+          font-size:10px;font-weight:800;color:#fff;font-family:var(--ft);
+          background:rgba(0,0,0,.78);padding:3px 8px;border-radius:6px;
+          white-space:nowrap;pointer-events:none;letter-spacing:.02em;
+          border:.5px solid rgba(255,255,255,.1);
+        ">${spot.city}</div>
+      `;
+
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playBlip();
+        setSel(spot);
+        map.flyTo({
+          center: [spot.lng, spot.lat - 1.5], zoom: 5.8, pitch: 58,
+          bearing: (Math.random() - 0.5) * 25, duration: 1600,
+          easing: t => t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1,
+        });
+      });
+
+      const marker = new ML.Marker({ element: el, anchor: 'center' })
+        .setLngLat([spot.lng, spot.lat])
+        .addTo(map);
+      markers.push(marker);
+    });
+
+    return () => { markers.forEach(m => m.remove()); };
+  }, [mapReady, spots]);
 
   const handleClose = () => {
     setSel(null);

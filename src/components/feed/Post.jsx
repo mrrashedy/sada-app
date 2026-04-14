@@ -45,9 +45,9 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
       </div>
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>
         <div style={isPerson ? { flex:1,minWidth:0 } : undefined}>
-          <div ref={titleRef} className="ptitle" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{clean(item.title)}</div>
+          <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{clean(item.title)}</div>
           {!longTitle && (item.brief || (item.tags && item.tags.length > 0)) && (
-            <div className="pbody">
+            <div className="pbody" dir="auto">
               {item.brief && clean(item.brief)}
               {item.tags && item.tags.length > 0 && item.tags.map((t, i) => (
                 <span key={i} className="ptag ptag-inline">{clean(t)}</span>

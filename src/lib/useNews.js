@@ -15,8 +15,10 @@ export function useNews(sources = [], kind = 'news', pollInterval = 15000) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLive, setIsLive] = useState(false);
-  const [serverTrending, setServerTrending] = useState([]);
   const [serverBreaking, setServerBreaking] = useState([]);
+  // Admin pin/hide/add decisions for the trending radar — applied client-side
+  // on top of extractTrending() output in App.jsx.
+  const [radarOverrides, setRadarOverrides] = useState([]);
   const [cacheAge, setCacheAge] = useState(null);
   const abortRef = useRef(null);
 
@@ -77,9 +79,10 @@ export function useNews(sources = [], kind = 'news', pollInterval = 15000) {
         });
         setIsLive(true);
 
-        // Server-side trending + breaking (from KV cache)
-        if (data.trending) setServerTrending(data.trending);
+        // Server-side breaking list (from KV cache) + admin radar overrides
+        // (fetched live from Supabase per-request, not cached in KV).
         if (data.breaking) setServerBreaking(data.breaking);
+        if (Array.isArray(data.radarOverrides)) setRadarOverrides(data.radarOverrides);
         if (data._cache) setCacheAge(data._cache.age);
 
         await finishLoading();
@@ -119,7 +122,7 @@ export function useNews(sources = [], kind = 'news', pollInterval = 15000) {
 
   return {
     feed, loading, error, isLive,
-    serverTrending, serverBreaking, cacheAge,
+    serverBreaking, radarOverrides, cacheAge,
     refresh: () => fetchNews(false, true),
     silentRefresh: () => fetchNews(true, false),
   };

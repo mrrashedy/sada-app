@@ -147,51 +147,152 @@ export function TrendingRadar({ trending, trendFilter, setTrendFilter }) {
   );
 }
 
-function placeBig(topics, size = 360) {
+// Minimum / maximum dot diameter in pixels. `count/maxCount` drives the linear
+// scale between them, so the most-mentioned topic = max, floor = min.
+const DOT_MIN = 5;
+const DOT_MAX = 11;
+
+function dotSizeFor(ratio) {
+  return Math.round(DOT_MIN + Math.max(0, Math.min(1, ratio)) * (DOT_MAX - DOT_MIN));
+}
+
+// Deterministic pseudo-random in [0,1) from a string seed. Used to jitter
+// dot angle + radius so the radar doesn't feel mechanically symmetric —
+// same topic always lands in the same visual slot, so the scatter is
+// stable across re-renders instead of jiggling on every poll.
+function hash01(str, salt = 0) {
+  let h = 5381 + salt * 131;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) + h) ^ str.charCodeAt(i);
+  }
+  return ((h >>> 0) % 10000) / 10000;
+}
+
+function placeBig(topics, size = 360, safeWidth = 360) {
   const cx = size / 2, cy = size / 2;
-  // Cap so labels don't fight for space.
-  const list = topics.slice(0, 9);
+  // Cap at 20 so the radar fits up to 20 dots regularly.
+  const list = topics.slice(0, 20);
   const maxCount = list[0]?.count || 1;
 
-  // Three concentric rings — innermost holds the hottest topics. We drop the
-  // very-inner ring entirely; at tiny radii the circumference is too short to
-  // hold labels without collisions, and the disc center stays clear for the
-  // central red dot. Listed outer → inner so ring index 0 = outermost.
-  const ringRadii = [0.76, 0.52, 0.30].map(p => p * size / 2);
-  const ringCount = ringRadii.length;
-  // Per-ring rotational offsets, chosen so dots on adjacent rings never fall
-  // on the same radial spoke. With even per-ring spacing this guarantees a
-  // mathematically clean spread (no collision detection needed).
-  const ringOffsets = [0, 40, 80]; // outer, middle, inner
+  // Two concentric CIRCLES — the disc is square (size × size) and the rings
+  // are perfect circles. The disc may be larger than the viewport width, in
+  // which case the visible portion is an arc. Blip placement is horizontally
+  // constrained by `safeWidth` so labels never fall outside the viewport;
+  // when a ring exceeds the safe zone, dots are placed in top/bottom arcs
+  // only (the east/west sectors of the ring extend off-screen, unused).
+  // Three rings — the hottest topics sit closest to the centre, with
+  // progressively cooler topics at wider radii. The innermost ring (0.28)
+  // fills the dead zone around the refresh button so the radar doesn't
+  // feel like an empty bullseye.
+  const ringPct = [0.86, 0.50, 0.28];
+  // Vertical padding (px) reserved for labels below each dot so outer-ring
+  // dots at the bottom don't push their labels off the disc.
+  const VPAD = 30;
+  // Horizontal label clearance — half the blip container width plus cushion.
+  const LABEL_HALFW = 44;
+  // Largest horizontal displacement a dot may have from the disc center while
+  // its label stays within the viewport. Clamped to prevent collapse on tiny
+  // screens.
+  const safeHalfW = Math.max(120, safeWidth / 2 - LABEL_HALFW);
+  const ringCapacity = [10, 6, 4];
+  // Offset each ring so dots don't align on the same radial spoke across
+  // rings — middle and inner rings are rotated by half their own spacing.
+  const ringOffsets  = [0, 30, 45];
 
-  // Round-robin from inside out: hottest topic → innermost ring, next → next
-  // ring, …, then wraps. Every ring fills before any wraps so dots can never
-  // bunch in one quadrant.
-  const ringTopics = ringRadii.map(() => []);
-  list.forEach((t, idx) => {
-    const ri = (ringCount - 1) - (idx % ringCount);
-    ringTopics[ri].push(t);
-  });
+  // Assign topics to rings in rank order, starting with the innermost.
+  // Topics 0–3 (hottest) → inner ring, topics 4–9 → middle ring,
+  // topics 10–19 → outer ring.
+  const ringTopics = ringPct.map(() => []);
+  let idx = 0;
+  for (let ri = ringPct.length - 1; ri >= 0; ri--) {
+    const cap = ringCapacity[ri];
+    for (let k = 0; k < cap && idx < list.length; k++, idx++) {
+      ringTopics[ri].push(list[idx]);
+    }
+  }
 
-  // Lay each ring out with even angular spacing around its full circumference.
   const placed = [];
   ringTopics.forEach((items, ri) => {
-    const r = ringRadii[ri];
+    const r = ringPct[ri] * size / 2;
+    // Vertical radius shrinks slightly so outer-ring labels fit within the
+    // disc without clipping the count text.
+    const ry = Math.min(r, (size - VPAD * 2) / 2);
     const n = items.length;
     if (!n) return;
-    const ringSpacing = 360 / n;
-    items.forEach((t, i) => {
-      const angleDeg = -90 + ringOffsets[ri] + i * ringSpacing;
-      const rad = (angleDeg * Math.PI) / 180;
-      const ratio = t.count / maxCount;
-      placed.push({
-        ...t,
-        x: cx + r * Math.cos(rad),
-        y: cy + r * Math.sin(rad),
-        hot: ratio > 0.6,
-        ratio,
+
+    // If the ring fits entirely within the safe horizontal zone, distribute
+    // blips around the full circle. Otherwise, split them between two arcs
+    // (north and south), because the east/west sectors are off-screen.
+    if (r <= safeHalfW) {
+      const ringSpacing = 360 / n;
+      items.forEach((t, i) => {
+        const seed = t.word || String(i);
+        // Jitter angle by up to ±35% of the slot so neighbours don't
+        // collide, and radius by ±8% so dots scatter along the ring band
+        // instead of sitting on a perfect circle.
+        const angleJitter = (hash01(seed, 1) - 0.5) * ringSpacing * 0.7;
+        const radiusScale = 1 + (hash01(seed, 2) - 0.5) * 0.16;
+        const angleDeg = -90 + ringOffsets[ri] + i * ringSpacing + angleJitter;
+        const rad = (angleDeg * Math.PI) / 180;
+        const ratio = t.count / maxCount;
+        placed.push({
+          ...t,
+          x: cx + r * radiusScale * Math.cos(rad),
+          y: cy + ry * radiusScale * Math.sin(rad),
+          dotSize: dotSizeFor(ratio),
+          hot: ratio > 0.55,
+          ratio,
+        });
       });
-    });
+    } else {
+      // Angular span where |cos θ| ≤ safeHalfW / r ⇔ dot is inside the safe
+      // horizontal zone. Measured from the ±y axis; gives two symmetric arcs
+      // centred on top (−90°) and bottom (+90°).
+      const cutoffDeg = Math.asin(safeHalfW / r) * 180 / Math.PI;
+      // Reserve a label-sized margin from the arc ends so the outermost blips
+      // don't sit right at the cropping edge.
+      const arcPad = Math.min(cutoffDeg * 0.15, 8);
+      const topStart = -90 - cutoffDeg + arcPad;
+      const topEnd   = -90 + cutoffDeg - arcPad;
+      const botStart =  90 - cutoffDeg + arcPad;
+      const botEnd   =  90 + cutoffDeg - arcPad;
+
+      const topCount = Math.ceil(n / 2);
+      const botCount = n - topCount;
+      const topItems = items.slice(0, topCount);
+      const botItems = items.slice(topCount);
+
+      const placeArc = (arcItems, startDeg, endDeg) => {
+        const m = arcItems.length;
+        if (!m) return;
+        const arcSpacing = m > 1 ? (endDeg - startDeg) / (m - 1) : (endDeg - startDeg);
+        arcItems.forEach((t, i) => {
+          const baseDeg = m === 1
+            ? (startDeg + endDeg) / 2
+            : startDeg + (i / (m - 1)) * (endDeg - startDeg);
+          const seed = t.word || String(i);
+          // Same jitter pattern as the full-circle branch but slightly
+          // tighter on angle (0.5 vs 0.7) since arc slots are already
+          // compressed into a smaller angular span.
+          const angleJitter = (hash01(seed, 1) - 0.5) * arcSpacing * 0.5;
+          const radiusScale = 1 + (hash01(seed, 2) - 0.5) * 0.16;
+          const angleDeg = baseDeg + angleJitter;
+          const rad = (angleDeg * Math.PI) / 180;
+          const ratio = t.count / maxCount;
+          placed.push({
+            ...t,
+            x: cx + r * radiusScale * Math.cos(rad),
+            y: cy + ry * radiusScale * Math.sin(rad),
+            dotSize: dotSizeFor(ratio),
+            hot: ratio > 0.55,
+            ratio,
+          });
+        });
+      };
+
+      placeArc(topItems, topStart, topEnd);
+      placeArc(botItems, botStart, botEnd);
+    }
   });
   return placed;
 }
@@ -202,28 +303,38 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
   const [booted, setBooted] = useState(false);
   const [activeBlip, setActiveBlip] = useState(-1);
   const [ripple, setRipple] = useState(null);
-  const [discSize, setDiscSize] = useState(360);
+  const [geom, setGeom] = useState({ discSize: 360, safeWidth: 360 });
+  const { discSize, safeWidth } = geom;
   const [sweptBlip, setSweptBlip] = useState(-1);
   const intervalRef = useRef(null);
   const sweepStartRef = useRef(0);
 
-  // Responsive disc sizing — frame-free, disc fills the viewport.
-  // No bezel or label padding reserved — the radar content extends to the
-  // screen edges.
+  // Responsive disc sizing — the radar is a CIRCLE whose diameter scales with
+  // the viewport. On portrait phones where vw ≪ vh, the circle is larger
+  // than vw, so its left and right edges are cropped by the viewport
+  // (overflow:hidden on the wrapper). Rings stay circular so the radar keeps
+  // its characteristic shape. The diameter is capped at vh*0.85 so the full
+  // circle always fits vertically.
   useEffect(() => {
     const updateSize = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      // Reserve only ~120px for the header + small breathing room at bottom.
-      const available = Math.min(vw, vh - 120);
-      setDiscSize(Math.max(260, Math.min(900, available)));
+      // Diameter: 70% of viewport height, capped at 1200 for very large
+      // displays. On portrait phones this leaves ~30% vertical breathing
+      // room; on narrow phones where vh*0.70 > vw, the disc extends past
+      // the viewport edges and is cropped by overflow:hidden on the wrapper.
+      const d = Math.min(1200, vh * 0.70);
+      setGeom({
+        discSize: Math.max(320, Math.round(d)),
+        safeWidth: vw,
+      });
     };
     updateSize();
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
-  const placed = useMemo(() => placeBig(trending.slice(0, 16), discSize), [trending, discSize]);
+  const placed = useMemo(() => placeBig(trending.slice(0, 20), discSize, safeWidth), [trending, discSize, safeWidth]);
   const placedRef = useRef(placed);
   useEffect(() => { placedRef.current = placed; }, [placed]);
 
@@ -337,14 +448,12 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
             animation:'radar-ping 2.4s ease infinite',
             boxShadow:`0 0 6px ${RED}`,
           }}/>
-          <span style={{ fontSize:17, fontWeight:700, color:'#fff', letterSpacing:.2 }}>رادار الأخبار</span>
           <span style={{
-            fontSize:8.5, color:RED, fontFamily:MONO, letterSpacing:1.3, fontWeight:700,
-            padding:'2px 5px', border:`1px solid ${RED_DIM}`, borderRadius:2,
+            fontSize:9, color:RED, fontFamily:MONO, letterSpacing:1.3, fontWeight:700,
+            padding:'2px 6px', border:`1px solid ${RED_DIM}`, borderRadius:2,
           }}>LIVE</span>
           <span style={{
-            fontSize:9, color:'rgba(255,255,255,.35)', fontFamily:MONO, letterSpacing:.8,
-            marginRight:8,
+            fontSize:9.5, color:'rgba(255,255,255,.4)', fontFamily:MONO, letterSpacing:.9,
           }}>
             {String(trending.length).padStart(3,'0')} · {hudTime}
           </span>
@@ -358,14 +467,21 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
         </button>}
       </div>
 
-      {/* Disc area — frame-free, rings and lines extend to the screen edges */}
+      {/* Disc area — the wrapper is full-width with overflow:hidden so the
+          inner disc (a square of discSize) gets horizontally cropped by the
+          viewport when discSize > vw. This gives the radar its classic
+          circular look even on portrait phones: rings stay as perfect
+          circles that simply extend off-screen at the east/west sides. */}
       <div style={{
-        height: discSize + 20,
-        display:'flex', alignItems:'center', justifyContent:'center',
+        height: discSize,
+        width:'100%',
+        overflow:'hidden',
         position:'relative', zIndex:2,
       }}>
         <div style={{
-          position:'relative',
+          position:'absolute',
+          top:0, left:'50%',
+          marginLeft: -discSize / 2,
           width: discSize, height: discSize,
           animation: booted ? 'radar-boot .7s cubic-bezier(.34,1.56,.64,1) both' : 'none',
         }}>
@@ -382,14 +498,199 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
               pointerEvents:'none',
             }}/>
 
-            {/* Concentric rings — frame-free, extending all the way to the edge */}
-            {[0, 0.2, 0.4, 0.6, 0.8].map((pct, i) => (
+            {/* Radar environment — degree ticks around the rim and
+                scattered ghost ambient returns. All subtle and low
+                opacity: the ticks give a compass feel, the ghosts read
+                as background clutter behind the real blips. Positions
+                are deterministic (seeded from a fixed index) so the
+                clutter doesn't shuffle on each re-render. */}
+            <svg
+              width={discSize}
+              height={discSize}
+              viewBox={`0 0 ${discSize} ${discSize}`}
+              style={{
+                position:'absolute', inset:0,
+                opacity: booted ? 1 : 0,
+                transition:'opacity .6s ease .35s',
+                pointerEvents:'none',
+              }}>
+              {/* Degree ticks every 10° — longer at 30° increments, longest at cardinals */}
+              {Array.from({length: 36}).map((_, i) => {
+                const deg = i * 10;
+                const isCardinal = deg % 90 === 0;
+                const isMajor = deg % 30 === 0;
+                const outer = discSize / 2 - 1;
+                const len = isCardinal ? 13 : isMajor ? 8 : 4;
+                const inner = outer - len;
+                const rad = (deg - 90) * Math.PI / 180;
+                const cx = discSize / 2;
+                const cy = discSize / 2;
+                return (
+                  <line
+                    key={`tick-${i}`}
+                    x1={cx + outer * Math.cos(rad)}
+                    y1={cy + outer * Math.sin(rad)}
+                    x2={cx + inner * Math.cos(rad)}
+                    y2={cy + inner * Math.sin(rad)}
+                    stroke="rgba(229,57,53,.28)"
+                    strokeWidth={isCardinal ? 1.2 : 0.8}
+                  />
+                );
+              })}
+              {/* Ghost ambient returns — fixed dim blips mimicking noise */}
+              {Array.from({length: 16}).map((_, i) => {
+                const seed = `ghost-${i}`;
+                const angle = hash01(seed, 1) * 360;
+                // Bias to the mid-band so ghosts don't crowd the centre
+                // (where real hot topics live) or the clipped rim.
+                const rPct = 0.18 + hash01(seed, 2) * 0.68;
+                const r = rPct * discSize / 2;
+                const rad = angle * Math.PI / 180;
+                const gx = discSize / 2 + r * Math.cos(rad);
+                const gy = discSize / 2 + r * Math.sin(rad);
+                const size = 0.8 + hash01(seed, 3) * 1.6;
+                return (
+                  <circle
+                    key={`ghost-${i}`}
+                    cx={gx}
+                    cy={gy}
+                    r={size}
+                    fill="rgba(229,57,53,.26)"
+                  />
+                );
+              })}
+              {/* Bearing spokes every 45° — very faint dashed radials
+                  from the outer tick ring down to the innermost visible ring */}
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+                if (deg % 90 === 0) return null; // skip cardinals (crosshairs already cover them)
+                const rad = (deg - 90) * Math.PI / 180;
+                const cx = discSize / 2;
+                const cy = discSize / 2;
+                const r1 = discSize / 2 * 0.15;
+                const r2 = discSize / 2 * 0.88;
+                return (
+                  <line
+                    key={`spoke-${deg}`}
+                    x1={cx + r1 * Math.cos(rad)}
+                    y1={cy + r1 * Math.sin(rad)}
+                    x2={cx + r2 * Math.cos(rad)}
+                    y2={cy + r2 * Math.sin(rad)}
+                    stroke="rgba(229,57,53,.15)"
+                    strokeWidth={0.8}
+                    strokeDasharray="2 6"
+                  />
+                );
+              })}
+
+              {/* Geographical features — non-concentric circles and curved
+                  paths that read as landmasses / coastlines / terrain
+                  contours. Positions are hard-coded as fractions of
+                  discSize so they scale with the disc. Opacity is kept
+                  extremely low so they dissolve into the background. */}
+              {[
+                // Upper-left landmass cluster
+                { cx: 0.22, cy: 0.24, r: 0.098, dash: '3 5' },
+                { cx: 0.13, cy: 0.38, r: 0.042, dash: '3 5' },
+                { cx: 0.32, cy: 0.36, r: 0.022, dash: null },
+                { cx: 0.27, cy: 0.18, r: 0.035, dash: '2 4' },
+                { cx: 0.10, cy: 0.22, r: 0.028, dash: null },
+                { cx: 0.34, cy: 0.28, r: 0.018, dash: null },
+                // Lower-right landmass cluster
+                { cx: 0.78, cy: 0.72, r: 0.108, dash: '3 5' },
+                { cx: 0.89, cy: 0.80, r: 0.028, dash: null },
+                { cx: 0.71, cy: 0.88, r: 0.048, dash: '3 5' },
+                { cx: 0.82, cy: 0.64, r: 0.030, dash: null },
+                { cx: 0.93, cy: 0.72, r: 0.020, dash: null },
+                // Lower-left islands
+                { cx: 0.42, cy: 0.92, r: 0.035, dash: null },
+                { cx: 0.18, cy: 0.84, r: 0.065, dash: '3 5' },
+                { cx: 0.08, cy: 0.92, r: 0.028, dash: '2 4' },
+                { cx: 0.30, cy: 0.80, r: 0.020, dash: null },
+                // Upper-right cluster
+                { cx: 0.58, cy: 0.20, r: 0.036, dash: null },
+                { cx: 0.86, cy: 0.30, r: 0.024, dash: null },
+                { cx: 0.72, cy: 0.10, r: 0.042, dash: '3 5' },
+                { cx: 0.90, cy: 0.18, r: 0.018, dash: null },
+                // Mid-zone small markers
+                { cx: 0.48, cy: 0.62, r: 0.016, dash: null },
+                { cx: 0.62, cy: 0.48, r: 0.022, dash: null },
+                { cx: 0.38, cy: 0.52, r: 0.018, dash: null },
+              ].map((f, i) => (
+                <circle
+                  key={`geo-c-${i}`}
+                  cx={f.cx * discSize}
+                  cy={f.cy * discSize}
+                  r={f.r * discSize}
+                  fill="none"
+                  stroke="rgba(229,57,53,.16)"
+                  strokeWidth={0.8}
+                  strokeDasharray={f.dash || ''}
+                />
+              ))}
+              {/* Coastline arcs — sinuous curves that suggest shoreline */}
+              {[
+                `M ${discSize*0.06} ${discSize*0.56} Q ${discSize*0.22} ${discSize*0.46}, ${discSize*0.40} ${discSize*0.56} T ${discSize*0.72} ${discSize*0.60}`,
+                `M ${discSize*0.60} ${discSize*0.12} Q ${discSize*0.76} ${discSize*0.26}, ${discSize*0.68} ${discSize*0.42} T ${discSize*0.84} ${discSize*0.54}`,
+                `M ${discSize*0.28} ${discSize*0.06} Q ${discSize*0.44} ${discSize*0.16}, ${discSize*0.54} ${discSize*0.08}`,
+                `M ${discSize*0.20} ${discSize*0.96} Q ${discSize*0.35} ${discSize*0.86}, ${discSize*0.55} ${discSize*0.94}`,
+                `M ${discSize*0.92} ${discSize*0.44} Q ${discSize*0.82} ${discSize*0.56}, ${discSize*0.88} ${discSize*0.68}`,
+                `M ${discSize*0.04} ${discSize*0.32} Q ${discSize*0.14} ${discSize*0.44}, ${discSize*0.06} ${discSize*0.58}`,
+                // Longer winding coastlines
+                `M ${discSize*0.02} ${discSize*0.70} Q ${discSize*0.18} ${discSize*0.64}, ${discSize*0.28} ${discSize*0.74} T ${discSize*0.52} ${discSize*0.78}`,
+                `M ${discSize*0.46} ${discSize*0.04} Q ${discSize*0.56} ${discSize*0.14}, ${discSize*0.52} ${discSize*0.24} T ${discSize*0.64} ${discSize*0.34}`,
+                `M ${discSize*0.98} ${discSize*0.36} Q ${discSize*0.86} ${discSize*0.42}, ${discSize*0.78} ${discSize*0.36} T ${discSize*0.66} ${discSize*0.28}`,
+                `M ${discSize*0.64} ${discSize*0.96} Q ${discSize*0.74} ${discSize*0.86}, ${discSize*0.82} ${discSize*0.92}`,
+                // Small terrain contour curves
+                `M ${discSize*0.36} ${discSize*0.44} Q ${discSize*0.44} ${discSize*0.40}, ${discSize*0.48} ${discSize*0.46}`,
+                `M ${discSize*0.54} ${discSize*0.70} Q ${discSize*0.62} ${discSize*0.66}, ${discSize*0.66} ${discSize*0.74}`,
+              ].map((d, i) => (
+                <path
+                  key={`geo-p-${i}`}
+                  d={d}
+                  fill="none"
+                  stroke="rgba(229,57,53,.16)"
+                  strokeWidth={0.8}
+                  strokeDasharray="4 4"
+                />
+              ))}
+              {/* Latitude parallels — subtle horizontal arcs suggesting a
+                  geographic projection overlay. Shifted off-centre so they
+                  don't line up with the concentric rings. */}
+              {[0.18, 0.32, 0.66, 0.80].map((y, i) => (
+                <path
+                  key={`lat-${i}`}
+                  d={`M ${discSize*0.05} ${discSize*y} Q ${discSize*0.5} ${discSize*(y + (i % 2 ? 0.025 : -0.025))}, ${discSize*0.95} ${discSize*y}`}
+                  fill="none"
+                  stroke="rgba(229,57,53,.13)"
+                  strokeWidth={0.7}
+                  strokeDasharray="2 8"
+                />
+              ))}
+              {/* Meridian-style curves — gentle vertical arcs */}
+              {[0.22, 0.38, 0.62, 0.78].map((x, i) => (
+                <path
+                  key={`mer-${i}`}
+                  d={`M ${discSize*x} ${discSize*0.05} Q ${discSize*(x + (i % 2 ? 0.03 : -0.03))} ${discSize*0.5}, ${discSize*x} ${discSize*0.95}`}
+                  fill="none"
+                  stroke="rgba(229,57,53,.12)"
+                  strokeWidth={0.7}
+                  strokeDasharray="2 8"
+                />
+              ))}
+            </svg>
+
+            {/* Concentric CIRCLES — symmetric inset gives a circle in a
+                square container. The outermost ring is the disc itself
+                (inset 0). Inner rings shrink toward the centre. The last
+                entry (0.92) is a tight inner ring wrapping the refresh
+                button, giving the classic radar-within-a-radar feel. */}
+            {[0, 0.2, 0.4, 0.6, 0.8, 0.92].map((pct, i) => (
               <div key={i} style={{
                 position:'absolute',
                 inset: `${pct * discSize / 2}px`,
                 borderRadius:'50%',
                 border:`1px ${i === 2 ? 'solid' : 'dashed'} ${RING}`,
-                opacity: booted ? 0.5 - i*0.07 : 0,
+                opacity: booted ? 0.5 - i*0.05 : 0,
                 transition:`opacity .5s ease ${.3 + i*.08}s`,
               }}/>
             ))}
@@ -404,18 +705,6 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
               position:'absolute', left:'50%', top:0, bottom:0, width:1,
               background:`linear-gradient(180deg, transparent 0%, ${RING} 20%, ${RING} 80%, transparent 100%)`,
               opacity: booted ? .7 : 0, transition:'opacity .5s ease .55s',
-            }}/>
-
-            {/* Subtle diagonals */}
-            <div style={{
-              position:'absolute', inset:0,
-              background:`linear-gradient(45deg,transparent 49.9%,rgba(229,57,53,.08) 49.9%,rgba(229,57,53,.08) 50.1%,transparent 50.1%)`,
-              opacity: booted ? 1 : 0, transition:'opacity .5s ease .6s',
-            }}/>
-            <div style={{
-              position:'absolute', inset:0,
-              background:`linear-gradient(-45deg,transparent 49.9%,rgba(229,57,53,.08) 49.9%,rgba(229,57,53,.08) 50.1%,transparent 50.1%)`,
-              opacity: booted ? 1 : 0, transition:'opacity .5s ease .65s',
             }}/>
 
             {/* Radar sweep wedge — visible only while refreshing. Performs
@@ -494,36 +783,48 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
               }}/>
             )}
 
-            {/* Contacts (blips) */}
+            {/* Contacts (blips) — dot size is proportional to count (7–17px).
+                Dots are flat solid colour; depth comes from a layered outer
+                shadow "wave" (concentric halos) rather than a 3D gradient. */}
             {placed.map((t, i) => {
               const isDetected = activeBlip === i;
               const isSelected = filter === t.word;
               const isSwept = sweptBlip === i;
               const isLit = isDetected || isSwept;
+              const ds = t.dotSize;
+              const BLIP_W = 74; // label container width — tight enough that 4 rings × 5 dots don't collide
               return (
                 <div key={`${t.word}-${i}`}
                   style={{
-                    position:'absolute', left:t.x-28, top:t.y-28, width:56, textAlign:'center',
+                    position:'absolute',
+                    left: t.x - BLIP_W / 2,
+                    top: t.y - ds / 2,
+                    width: BLIP_W,
+                    textAlign:'center',
                     cursor:'pointer',
-                    animation: booted ? `radar-blip-drop .5s cubic-bezier(.34,1.56,.64,1) ${0.6 + i*0.05}s both` : 'none',
+                    animation: booted ? `radar-blip-drop .5s cubic-bezier(.34,1.56,.64,1) ${0.6 + i*0.04}s both` : 'none',
                     transition:'transform .2s',
                     transform: isLit ? 'scale(1.15)' : 'scale(1)',
                     zIndex: 3,
                   }}
                   onClick={() => { Sound.tap(); setFilter(prev => prev === t.word ? null : t.word); }}>
                   <div style={{
-                    width: t.hot ? 10 : 7,
-                    height: t.hot ? 10 : 7,
+                    width: ds,
+                    height: ds,
                     borderRadius: '50%',
                     background: isSelected || isLit ? RED_BRIGHT : RED,
-                    margin: '0 auto 4px',
+                    margin: '0 auto 5px',
+                    // Shadow "wave" — two tight rings + two soft halos give the
+                    // dot a radiating feel without making it look 3D/spherical.
                     boxShadow: isSwept
-                      ? `0 0 22px ${RED_BRIGHT}, 0 0 44px rgba(255,102,89,.7), 0 0 70px rgba(229,57,53,.4)`
+                      ? `0 0 0 1.5px rgba(255,102,89,.7), 0 0 0 4px rgba(229,57,53,.35), 0 0 14px ${RED_BRIGHT}, 0 0 30px rgba(229,57,53,.45)`
                       : isDetected
-                        ? `0 0 16px ${RED_BRIGHT}, 0 0 32px rgba(229,57,53,.55)`
+                        ? `0 0 0 1.5px rgba(255,102,89,.6), 0 0 0 4px rgba(229,57,53,.3), 0 0 12px ${RED_BRIGHT}, 0 0 24px rgba(229,57,53,.4)`
                       : isSelected
-                        ? `0 0 14px ${RED_BRIGHT}, 0 0 28px rgba(229,57,53,.45)`
-                        : t.hot ? `0 0 10px rgba(229,57,53,.6)` : `0 0 6px rgba(229,57,53,.4)`,
+                        ? `0 0 0 1.5px rgba(255,102,89,.55), 0 0 0 4px rgba(229,57,53,.25), 0 0 10px ${RED_BRIGHT}, 0 0 20px rgba(229,57,53,.35)`
+                        : t.hot
+                          ? `0 0 0 1px rgba(255,102,89,.45), 0 0 0 3px rgba(229,57,53,.2), 0 0 8px rgba(229,57,53,.55), 0 0 16px rgba(229,57,53,.25)`
+                          : `0 0 0 1px rgba(255,102,89,.35), 0 0 0 3px rgba(229,57,53,.15), 0 0 6px rgba(229,57,53,.4), 0 0 12px rgba(229,57,53,.18)`,
                     animation: isDetected ? 'radar-detect .8s ease' : t.hot ? 'radar-ping 2.4s ease infinite' : 'none',
                     transition: isSwept ? 'box-shadow .15s, background .15s' : 'all .3s',
                   }}/>
@@ -554,43 +855,100 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
         </div>
       </div>
 
-      {/* Filter lock bar */}
-      {filter && (
+      {/* Sliding news panel — covers the lower ~85% of the radar when a blip
+          is selected, slides back down on CLEAR. Keeps the radar visible
+          above the panel so the user still has the "radar → dot → news"
+          mental model. */}
+      <div style={{
+        position:'fixed',
+        left:0, right:0, bottom:0,
+        top:'15%',
+        background:'linear-gradient(180deg, rgba(18,5,8,.96) 0%, rgba(8,2,4,.99) 40%)',
+        backdropFilter:'blur(14px)',
+        WebkitBackdropFilter:'blur(14px)',
+        borderTop:`1px solid ${RED_DIM}`,
+        borderTopLeftRadius:22,
+        borderTopRightRadius:22,
+        boxShadow: filter ? `0 -20px 60px rgba(0,0,0,.7), 0 -4px 40px rgba(229,57,53,.18)` : 'none',
+        transform: filter ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform .42s cubic-bezier(.22,1,.36,1)',
+        zIndex: 50,
+        display:'flex', flexDirection:'column',
+        pointerEvents: filter ? 'auto' : 'none',
+        direction:'rtl',
+      }}>
+        {/* Drag handle */}
+        <div style={{
+          padding:'10px 0 4px', display:'flex', justifyContent:'center',
+        }}>
+          <div style={{
+            width:40, height:4, borderRadius:2,
+            background:'rgba(255,255,255,.18)',
+          }}/>
+        </div>
+
+        {/* Panel header — filter name + close */}
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'12px 20px',
-          borderTop:`1px solid rgba(229,57,53,.2)`,
-          background:'rgba(229,57,53,.04)',
-          position:'relative', zIndex:5,
+          padding:'6px 20px 14px',
+          borderBottom:`1px solid rgba(229,57,53,.18)`,
         }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:RED, boxShadow:`0 0 8px ${RED}` }}/>
-            <span style={{ fontSize:10, color:RED, fontFamily:MONO, letterSpacing:1.3, fontWeight:700 }}>[ LOCK ]</span>
-            <span style={{ fontSize:14, fontWeight:700, color:'#fff' }}>{filter}</span>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,.5)', fontFamily:MONO }}>·{String(filtered.length).padStart(3,'0')}</span>
+          <div style={{ display:'flex', alignItems:'center', gap:9, minWidth:0 }}>
+            <div style={{
+              width:7, height:7, borderRadius:'50%', background:RED,
+              boxShadow:`0 0 10px ${RED}`,
+              animation:'radar-ping 2s ease infinite', flexShrink:0,
+            }}/>
+            <span style={{
+              fontSize:9, color:RED, fontFamily:MONO, letterSpacing:1.3, fontWeight:700,
+              padding:'2px 6px', border:`1px solid ${RED_DIM}`, borderRadius:2, flexShrink:0,
+            }}>LOCK</span>
+            <span style={{
+              fontSize:16, fontWeight:800, color:'#fff',
+              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+            }}>{filter}</span>
+            <span style={{
+              fontSize:10, color:'rgba(255,255,255,.45)', fontFamily:MONO, flexShrink:0,
+            }}>·{String(filtered.length).padStart(3,'0')}</span>
           </div>
-          <button onClick={() => setFilter(null)} style={{
-            background:'rgba(229,57,53,.08)', border:`1px solid ${RED_DIM}`,
-            borderRadius:3, padding:'4px 12px', fontSize:10, fontWeight:700, color:RED,
-            cursor:'pointer', fontFamily:MONO, letterSpacing:1.2,
-          }}>CLEAR</button>
-        </div>
-      )}
-
-      {/* Filtered articles */}
-      {filter && filtered.slice(0, 12).map(item => (
-        <div key={item.id}
-          onClick={() => { Sound.open(); onOpenArticle(item); }}
-          style={{
-            padding:'14px 20px',
-            borderBottom:'1px solid rgba(255,255,255,.04)',
-            cursor:'pointer', transition:'background .15s',
-            position:'relative', zIndex:5,
+          <button onClick={() => { Sound.tap(); setFilter(null); }} style={{
+            background:'rgba(229,57,53,.1)', border:`1px solid ${RED_DIM}`,
+            borderRadius:14, width:28, height:28, padding:0,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            cursor:'pointer', flexShrink:0,
           }}>
-          <div style={{ fontSize:14, fontWeight:700, color:'rgba(255,255,255,.9)', lineHeight:1.7, marginBottom:4 }}>{item.title}</div>
-          <div style={{ fontSize:10, color:'rgba(255,255,255,.4)', fontFamily:MONO, letterSpacing:.5 }}>{item.s?.n} · {item.t}</div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
         </div>
-      ))}
+
+        {/* Scrollable article list */}
+        <div style={{
+          flex:1, overflow:'auto', WebkitOverflowScrolling:'touch',
+        }}>
+          {filtered.length === 0 && (
+            <div style={{
+              padding:'40px 20px', textAlign:'center',
+              color:'rgba(255,255,255,.4)', fontSize:13,
+            }}>
+              لا توجد مقالات متطابقة
+            </div>
+          )}
+          {filtered.map((item, idx) => (
+            // Key includes index — some sources occasionally republish the
+            // same id (e.g. live blog updates), so item.id alone collides.
+            <div key={`${item.id}-${idx}`}
+              onClick={() => { Sound.open(); onOpenArticle(item); }}
+              style={{
+                padding:'14px 20px',
+                borderBottom:'1px solid rgba(255,255,255,.05)',
+                cursor:'pointer', transition:'background .15s',
+              }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'rgba(255,255,255,.92)', lineHeight:1.7, marginBottom:5 }}>{item.title}</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,.42)', fontFamily:MONO, letterSpacing:.5 }}>{item.s?.n} · {item.t}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

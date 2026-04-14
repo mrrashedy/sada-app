@@ -36,7 +36,6 @@ import { BookmarksView } from './components/bookmarks/BookmarksView';
 import { SettingsView } from './components/settings/SettingsView';
 import { NewsMap } from './components/map/NewsMap';
 import { NotificationPanel } from './components/notifications/NotificationPanel';
-import { Onboarding } from './components/onboarding/Onboarding';
 import { TrendingRadar, RadarView } from './components/trending/TrendingRadar';
 import { BreakingTicker } from './components/feed/BreakingTicker';
 import { AdminPanel } from './components/admin/AdminPanel';
@@ -56,8 +55,18 @@ export default function Sada() {
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); try { localStorage.setItem('sada-theme', theme); } catch {} }, [theme]);
   const toggleTheme = useCallback(() => setTheme(p => p === 'dark' ? 'light' : 'dark'), []);
 
-  const [obDone, setObDone] = useState(() => { try { return localStorage.getItem('sada-ob-done')==='1'; } catch { return false; } });
-  const [userPrefs, setUserPrefs] = useState(() => { try { return JSON.parse(localStorage.getItem('sada-prefs')||'{}'); } catch { return {}; } });
+  // Onboarding is no longer a first-run gate — new users go straight to the
+  // feed with sensible defaults. The sources/topics/regions picker lives in
+  // SettingsView so users can personalise on their own time.
+  const [userPrefs, setUserPrefs] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('sada-prefs') || 'null');
+      if (stored) return stored;
+    } catch {}
+    const defaults = { topics: [], regions: ['gulf'], sources: ['aljazeera','alarabiya','bbc','asharq_news','skynews'] };
+    try { localStorage.setItem('sada-prefs', JSON.stringify(defaults)); } catch {}
+    return defaults;
+  });
   const [nav, setNav]           = useState('home');
   const [feedTab, setFeedTab]   = useState('now');
   const [article, setArticle]   = useState(null);
@@ -112,8 +121,12 @@ export default function Sada() {
   const toggleSource = useCallback(i => { setSources(prev => { const next={...prev,[i]:prev[i]===false?true:false}; try { localStorage.setItem('sada-sources',JSON.stringify(next)); } catch {} return next; }); }, []);
 
   // Live feed
-  // Three independent feed hooks — each vertical has its own data pipeline
-  const { feed:liveFeed, loading, isLive, refresh } = useNews([], 'news', 15000);
+  // Three independent feed hooks — each vertical has its own data pipeline.
+  // radarOverrides (admin pin/hide/add decisions for the trending radar)
+  // flow only through the `news` vertical response, since fetchAdminLayer
+  // in functions/api/feeds.js only runs for kind=news. It's global state,
+  // not per-vertical, so the news feed is a fine carrier.
+  const { feed:liveFeed, loading, isLive, refresh, radarOverrides } = useNews([], 'news', 15000);
   const { feed:mapFeed } = useNews([], 'map', 30000);
   const { feed:radarFeed, refresh:radarRefresh } = useNews([], 'radar', 30000);
   useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); Sound.notify(); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
@@ -227,9 +240,54 @@ export default function Sada() {
     const id = setInterval(() => setTrendTick(t => t + 1), 60000);
     return () => clearInterval(id);
   }, []);
-  // Raw trending: pure rules pass. Shows immediately.
+
+  // Apply admin pin/hide/add decisions on top of a trending list.
+  //   hide → drop the word entirely
+  //   pin  → remove from wherever it sits, prepend at the front with pinned:true
+  //   add  → append at the end if not already present
+  // Idempotent — safe to call pre- and post-cluster. Pinned entries reuse
+  // the organic count/score if the word was already in the list, otherwise
+  // synthesize minimal fields from the override weight.
+  const applyRadarOverrides = useCallback((list, overrides) => {
+    if (!list) return [];
+    if (!overrides?.length) return list;
+    const hidden = new Set();
+    const pinnedByWord = new Map();
+    const addedByWord = new Map();
+    for (const o of overrides) {
+      if (o.action === 'hide') hidden.add(o.word);
+      else if (o.action === 'pin') pinnedByWord.set(o.word, o);
+      else if (o.action === 'add') addedByWord.set(o.word, o);
+    }
+    const afterHide = hidden.size ? list.filter(t => t.word && !hidden.has(t.word)) : list.slice();
+    const organic = pinnedByWord.size ? afterHide.filter(t => !pinnedByWord.has(t.word)) : afterHide;
+    const pinnedList = [];
+    for (const [word, o] of pinnedByWord) {
+      const existing = afterHide.find(t => t.word === word);
+      pinnedList.push(existing
+        ? { ...existing, pinned: true }
+        : { word, count: o.weight || 5, score: o.weight || 5, velocity: 0, type: 'other', pinned: true, manual: true }
+      );
+    }
+    const present = new Set([...pinnedList.map(t => t.word), ...organic.map(t => t.word)]);
+    const addedList = [];
+    for (const [word, o] of addedByWord) {
+      if (present.has(word) || hidden.has(word)) continue;
+      addedList.push({ word, count: o.weight || 5, score: o.weight || 5, velocity: 0, type: 'other', manual: true });
+    }
+    return [...pinnedList, ...organic, ...addedList];
+  }, []);
+
+  // Raw trending: pure rules pass, then admin overrides layered on top.
+  // Shows immediately while the AI cluster step runs in the background.
   // Radar trending uses its own dedicated feed (70% Arab + 30% global)
-  const rawTrending = useMemo(() => extractTrending(radarItems.length ? radarItems : allFeed), [trendTick, radarItems.length, allFeed.length]);
+  const rawTrending = useMemo(
+    () => applyRadarOverrides(
+      extractTrending(radarItems.length ? radarItems : allFeed),
+      radarOverrides
+    ),
+    [trendTick, radarItems.length, allFeed.length, radarOverrides, applyRadarOverrides]
+  );
   // Clustered trending: AI-merged version. Updates when /api/cluster returns.
   const [trending, setTrending] = useState([]);
   useEffect(() => {
@@ -277,19 +335,45 @@ export default function Sada() {
           if (ar !== br) return ar - br;
           return b.score - a.score;
         });
-        setTrending(merged);
+        // Re-apply admin overrides after clustering — the cluster step
+        // reconstructs entries from scratch (dropping pinned flags) and may
+        // absorb pinned words into type-tier groups, so we need to re-pull
+        // them to the front and re-inject manual adds.
+        setTrending(applyRadarOverrides(merged, radarOverrides));
       })
       .catch(() => {/* keep raw on failure */});
     return () => { cancelled = true; };
-  }, [rawTrending]);
+  }, [rawTrending, radarOverrides, applyRadarOverrides]);
 
   // Filter by enabled sources
   const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
   const userTopics = userPrefs.topics||[];
 
+  // Flagship sources that update slowly (aljazeera's Arc CMS feed, BBC Arabic)
+  // get outranked by fast-updating tier-2 regional papers under pure time sort
+  // and disappear below the fold. We guarantee each flagship has at least one
+  // item in the visible window (top 12) by splicing their newest item in at
+  // slot 4 if missing. Stale items are acceptable — the user specifically
+  // wants to see these trust-anchor sources.
+  const applyFlagshipBoost = useCallback((pool) => {
+    const FLAGSHIP_IDS = ['aljazeera','alarabiya','bbc','asharq_news','skynews','aawsat'];
+    const WINDOW = 12;
+    const INSERT_AT = 4;
+    const result = pool.slice();
+    for (const fid of FLAGSHIP_IDS) {
+      if (result.slice(0, WINDOW).some(x => x.s?.id === fid)) continue;
+      const idx = result.findIndex(x => x.s?.id === fid);
+      if (idx < 0) continue;
+      const [item] = result.splice(idx, 1);
+      result.splice(Math.min(INSERT_AT, result.length), 0, item);
+    }
+    return result;
+  }, []);
+
   // Build display feed based on active tab — each tab shows genuinely different content
   const displayFeed = useMemo(() => {
     let pool = [...sourcedFeed].sort((a,b) => (b.pubTs||0) - (a.pubTs||0));
+    pool = applyFlagshipBoost(pool);
     // Source filter overrides tab logic — show all articles from that source
     if(activeSource) return pool.filter(item => item.s?.n === activeSource);
     if(feedTab==='now'){
@@ -327,14 +411,20 @@ export default function Sada() {
     { id:'settings',label:'الإعدادات',icon:()=>auth.isLoggedIn?<div style={{width:22,height:22,borderRadius:'50%',background:'var(--rd)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:'#fff'}}>{(auth.profile?.display_name||'?')[0]}</div>:I.user()},
   ];
 
-  const resetOnboarding = () => { try { localStorage.removeItem('sada-ob-done'); localStorage.removeItem('sada-prefs'); } catch {} setObDone(false); setUserPrefs({}); };
-
-  if(!obDone) return <Onboarding onDone={(prefs)=>{ setUserPrefs(prefs); setObDone(true); }}/>;
+  const resetPrefs = () => {
+    const defaults = { topics: [], regions: ['gulf'], sources: ['aljazeera','alarabiya','bbc','asharq_news','skynews'] };
+    try { localStorage.setItem('sada-prefs', JSON.stringify(defaults)); } catch {}
+    setUserPrefs(defaults);
+  };
+  const updatePrefs = (next) => {
+    setUserPrefs(next);
+    try { localStorage.setItem('sada-prefs', JSON.stringify(next)); } catch {}
+  };
 
   return (
     <div className="app">
       {/* Header */}
-      {nav!=='radar'&&nav!=='admin'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
+      {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
         <div className="hdr-top">
           <div className="logo"><span className="logo-icon">غ</span>غرفة الأخبار</div>
           <div className="hdr-r">
@@ -348,7 +438,7 @@ export default function Sada() {
       </div>}
 
       {/* Main content */}
-      <div className={`content${nav==='radar'?' content-full':''}`} ref={contentRef} onScroll={(e)=>{onScroll(e);handleScroll();}}
+      <div className={`content${(nav==='radar'||nav==='map')?' content-full':''}`} ref={contentRef} onScroll={(e)=>{onScroll(e);handleScroll();}}
         onTouchStart={nav==='home'?onTouchStart:undefined}
         onTouchMove={nav==='home'?onTouchMove:undefined}
         onTouchEnd={nav==='home'?onTouchEnd:undefined}>
@@ -375,7 +465,7 @@ export default function Sada() {
 
           {/* Tab-specific headers */}
           {feedTab==='important'&&userTopics.length>0&&(<div className="topic-bar"><span style={{ fontSize:11,color:'var(--t4)',fontWeight:700,whiteSpace:'nowrap',flexShrink:0 }}>يُصفَّح حسب:</span>{userTopics.map(id=>{ const t=TOPICS.find(x=>x.id===id); return t?<span key={id} className="topic-pill on">{t.icon} {t.label}</span>:null; })}</div>)}
-          {feedTab==='important'&&userTopics.length===0&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)',display:'flex',justifyContent:'space-between',alignItems:'center' }}><span>لم تختر اهتمامات بعد — يُرتَّب حسب التفاعل</span><button onClick={resetOnboarding} style={{ fontSize:11,fontWeight:700,color:'var(--bk)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>اضبط ▸</button></div>)}
+          {feedTab==='important'&&userTopics.length===0&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)',display:'flex',justifyContent:'space-between',alignItems:'center' }}><span>لم تختر اهتمامات بعد — يُرتَّب حسب التفاعل</span><button onClick={()=>setNav('settings')} style={{ fontSize:11,fontWeight:700,color:'var(--bk)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>اضبط ▸</button></div>)}
           {feedTab==='context'&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)' }}>تحقيقات · تحليلات · تقارير معمّقة</div>)}
 
           {/* Feed */}
@@ -384,7 +474,7 @@ export default function Sada() {
           {!loading&&displayFeed.length===0&&feedTab==='important'&&userTopics.length>0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار تطابق اهتماماتك حالياً</div>}
           {!loading&&displayFeed.length===0&&feedTab==='context'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد تحليلات أو تقارير حالياً</div>}
           {!loading&&displayFeed.length===0&&feedTab==='now'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار عاجلة حالياً</div>}
-          {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={item.id} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} onInterest={toggleInterest} isInterested={interestedIds.has(item.id)} showImg={i>=4&&i%4!==3} reactionCounts={reactionCounts[item.id]} userReactions={userReactions[item.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[item.id]?.comment||0} onComment={handleComment}/>))}
+          {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={`${item.id}-${i}`} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} onInterest={toggleInterest} isInterested={interestedIds.has(item.id)} showImg={i>=4&&i%4!==3} reactionCounts={reactionCounts[item.id]} userReactions={userReactions[item.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[item.id]?.comment||0} onComment={handleComment}/>))}
           {!loading&&visibleCount<displayFeed.length&&(<div className="load-more"><div className="spinner" style={{ width:18,height:18,border:'2px solid var(--g2)',borderTopColor:'var(--t3)',borderRadius:'50%',animation:'spin .6s linear infinite',margin:'0 auto' }}/></div>)}
           <div style={{ height:20 }}/>
         </>)}
@@ -393,12 +483,12 @@ export default function Sada() {
         {nav==='photos'  && <PhotoGrid/>}
         {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={mapItems.length ? mapItems : allFeed}/>}
         {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}
-        {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onResetOnboarding={resetOnboarding} theme={theme} toggleTheme={toggleTheme} auth={auth} onOpenAuth={()=>setShowAuth(true)} onOpenProfile={()=>setShowProfile(true)} onOpenAdmin={()=>setNav('admin')}/>}
+        {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onUpdatePrefs={updatePrefs} onResetPrefs={resetPrefs} theme={theme} toggleTheme={toggleTheme} auth={auth} onOpenAuth={()=>setShowAuth(true)} onOpenProfile={()=>setShowProfile(true)} onOpenAdmin={()=>setNav('admin')}/>}
         {nav==='admin'   && <AdminPanel onClose={()=>setNav('settings')}/>}
       </div>
 
       {/* Bottom nav */}
-      {nav!=='radar'&&nav!=='admin'&&<div className={`bnav${barsHidden?' bnav-hide':''}`}>{navItems.map(item=>(<button key={item.id} aria-label={item.label} className={`bnav-item ${item.center?'bnav-center':''} ${nav===item.id?'on':''}`} onClick={()=>{Sound.tap();setNav(item.id);}}><span className="bnav-icon">{item.icon(nav===item.id)}</span></button>))}</div>}
+      {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`bnav${barsHidden?' bnav-hide':''}`}>{navItems.map(item=>(<button key={item.id} aria-label={item.label} className={`bnav-item ${item.center?'bnav-center':''} ${nav===item.id?'on':''}`} onClick={()=>{Sound.tap();setNav(item.id);}}><span className="bnav-icon">{item.icon(nav===item.id)}</span></button>))}</div>}
 
       {/* Overlays */}
       {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} onOpenRelated={(r)=>{setArticle(null);setTimeout(()=>setArticle(r),50);}} relatedArticles={allFeed}/>}

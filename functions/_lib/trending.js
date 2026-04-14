@@ -1,9 +1,16 @@
-// ─── Title-based trending NLP (client) ───
+// ─── Title-based trending NLP (server mirror of src/lib/trending.js) ───
 //
-// BYTE-FOR-BYTE MIRROR of functions/_lib/trending.js. The client bundle
-// imports this file; the Cloudflare Pages Function admin endpoint imports
-// its twin. Keep the two files in sync when editing — the logic must be
-// identical so the admin UI sees the same trending list users see.
+// Arabic news aggregator trending extractor — operates on article TITLES,
+// not categories. Implements stopword filtering, light stemming (strip ال +
+// common suffixes), a curated bigram whitelist, alef normalization for
+// spelling variants, adaptive time windows, and velocity detection.
+//
+// This file is a BYTE-FOR-BYTE MIRROR of src/lib/trending.js. The client
+// bundle imports from src/, the Cloudflare Pages Function bundle imports
+// from here. Keep the two files in sync when editing — the logic must be
+// identical so the admin UI sees the same trending list the users see.
+//
+// Pure JS, no browser APIs. Safe to run in workers/edge runtimes.
 
 // Stopwords — common Arabic words that aren't meaningful as topics
 const STOP = new Set(

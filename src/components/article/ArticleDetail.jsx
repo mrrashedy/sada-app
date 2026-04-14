@@ -67,9 +67,9 @@ export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCount
           {article.tag && <div className={`ptag ${article.brk ? 'brk' : ''}`} style={{ margin: 0 }}>{article.tag}</div>}
         </div>
         <div className="det-meta"><span>{article.t}</span></div>
-        <div className="det-title">{article.title}</div>
+        <div className="det-title" dir="auto">{article.title}</div>
 
-        {cleanBody && <div className="det-sub">{highlightText(cleanBody, highlightPhrases)}</div>}
+        {cleanBody && <div className="det-sub" dir="auto">{highlightText(cleanBody, highlightPhrases)}</div>}
 
         {/* Prominent CTA — drives traffic to the source outlet */}
         {article.link && article.link !== '#' && (
@@ -93,7 +93,7 @@ export function ArticleDetail({ article, onClose, onSave, isSaved, reactionCount
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)' }}>{r.s?.n}</span>
                   <span style={{ fontSize: 10, color: 'var(--t4)' }}>{r.t}</span>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.6, color: 'var(--t1)' }}>{r.title}</div>
+                <div dir="auto" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.6, color: 'var(--t1)' }}>{r.title}</div>
               </div>
             ))}
           </div>

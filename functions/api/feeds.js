@@ -6,7 +6,14 @@
 
 const SOURCES = {
   // Tier 1: Flagship Arabic broadcasters
-  aljazeera:       { name: "الجزيرة", initial: "ج", tier: 1, feeds: ["https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9"] },
+  // Al Jazeera Arabic: the UUID-based Arc CMS feed updates slowly (editor-
+  // curated Story List, ~3h latency). We add a Google News site-search as
+  // a fresh backup so aljazeera items always appear near the top of the feed.
+  // Both URLs are fetched in parallel and merged/deduplicated by title.
+  aljazeera:       { name: "الجزيرة", initial: "ج", tier: 1, feeds: [
+    "https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9",
+    "https://news.google.com/rss/search?q=site%3Aaljazeera.net&hl=ar&gl=SA&ceid=SA%3Aar",
+  ] },
   aljazeera_en:    { name: "الجزيرة EN", initial: "ج", tier: 3, lang: "en", feeds: ["https://www.aljazeera.com/xml/rss/all.xml"] },
   bbc:             { name: "BBC عربي", initial: "B", tier: 1, feeds: ["https://feeds.bbci.co.uk/arabic/rss.xml","https://feeds.bbci.co.uk/arabic/middleeast/rss.xml","https://feeds.bbci.co.uk/arabic/worldnews/rss.xml"] },
   skynews:         { name: "سكاي نيوز", initial: "S", tier: 1, feeds: ["https://www.skynewsarabia.com/rss.xml","https://www.skynewsarabia.com/rss/middle-east.xml","https://www.skynewsarabia.com/rss/world.xml"] },
@@ -18,6 +25,8 @@ const SOURCES = {
   alhurra:         { name: "الحرة", initial: "ح", tier: 1, feeds: ["https://alhurra.com/feed"] },
   // Tier 1 additions
   rt_ar:           { name: "روسيا اليوم", initial: "RT", tier: 1, feeds: ["https://arabic.rt.com/rss/"] },
+  alarabiya:       { name: "العربية", initial: "ع", tier: 1, feeds: ["https://www.alarabiya.net/.mrss/ar.xml"] },
+  asharq_news:     { name: "الشرق الإخبارية", initial: "شر", tier: 1, feeds: ["https://asharq.com/rss.xml"] },
 
   // Wire services + aggregators (Arabic Google News topics give broad coverage)
   gnews_world:     { name: "أخبار Google عالمي", initial: "GN", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/WORLD?hl=ar&gl=SA&ceid=SA:ar"] },
@@ -39,6 +48,29 @@ const SOURCES = {
   alquds:    { name: "القدس العربي", initial: "ق", tier: 2, feeds: ["https://www.alquds.co.uk/feed/"] },
   noonpost:  { name: "نون بوست", initial: "ن", tier: 2, feeds: ["https://www.noonpost.com/feed/"] },
 
+  // Tier 2: Levant — Lebanon, Syria, Jordan, Palestine
+  annahar:    { name: "النهار", initial: "نه", tier: 2, feeds: ["https://www.annahar.com/arabic/rss-feed"] },
+  lbci:       { name: "إل بي سي آي", initial: "LB", tier: 2, feeds: ["https://www.lbcgroup.tv/Rss/latest-news/ar"] },
+  roya:       { name: "رؤيا", initial: "ر", tier: 2, feeds: ["https://royanews.tv/rss"] },
+  almamlaka:  { name: "المملكة", initial: "مم", tier: 2, feeds: ["https://www.almamlakatv.com/rss.xml"] },
+  sana:       { name: "سانا", initial: "س", tier: 2, feeds: ["https://sana.sy/feed/"] },
+  alghad:     { name: "الغد", initial: "غ", tier: 2, feeds: ["https://alghad.com/rss"] },
+
+  // Tier 2: North Africa (Maghreb) — Morocco, Algeria, Tunisia
+  hespress:    { name: "هسبريس", initial: "هـ", tier: 2, feeds: ["https://www.hespress.com/feed"] },
+  le360_ar:    { name: "لو 360", initial: "360", tier: 2, feeds: ["https://ar.le360.ma/arc/outboundfeeds/rss/?outputType=xml"] },
+  snrt:        { name: "الأولى المغربية", initial: "SN", tier: 2, feeds: ["https://snrtnews.com/rss.xml"] },
+  echorouk:    { name: "الشروق الجزائرية", initial: "شج", tier: 2, feeds: ["https://www.echoroukonline.com/feed"] },
+  elkhabar:    { name: "الخبر", initial: "خب", tier: 2, feeds: ["https://www.elkhabar.com/feed"] },
+  ennahar_dz:  { name: "النهار الجزائرية", initial: "نج", tier: 2, feeds: ["https://www.ennaharonline.com/feed/"] },
+  mosaiquefm:  { name: "موزاييك إف إم", initial: "MFM", tier: 2, feeds: ["https://www.mosaiquefm.net/ar/rss"] },
+
+  // Tier 2: Sahel & Sudan & Libya
+  sahara_media: { name: "صحراء ميديا", initial: "صح", tier: 2, feeds: ["https://saharamedias.net/feed/"] },
+  sudan_tribune: { name: "سودان تريبيون", initial: "ST", tier: 2, feeds: ["https://sudantribune.net/feed/"] },
+  alsudani:     { name: "السوداني", initial: "سد", tier: 2, feeds: ["https://alsudaninews.com/?feed=rss2"] },
+  libya_ahrar:  { name: "ليبيا الأحرار", initial: "LY", tier: 2, feeds: ["https://libyaalahrar.net/feed/"] },
+
   // Tier 3: English sources (auto-translated)
   bbc_en:   { name: "BBC عالمي", initial: "BB", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/world/rss.xml"] },
   nyt:      { name: "نيويورك تايمز", initial: "NY", tier: 3, lang: "en", feeds: ["https://rss.nytimes.com/services/xml/rss/nyt/World.xml"] },
@@ -48,6 +80,16 @@ const SOURCES = {
   npr:      { name: "NPR عالمي", initial: "NP", tier: 3, lang: "en", feeds: ["https://feeds.npr.org/1004/rss.xml"] },
   abc_en:   { name: "ABC نيوز", initial: "AB", tier: 3, lang: "en", feeds: ["https://feeds.abcnews.com/abcnews/topstories"] },
   sky_en:   { name: "سكاي نيوز EN", initial: "SK", tier: 3, lang: "en", feeds: ["https://feeds.skynews.com/feeds/rss/world.xml"] },
+
+  // Tier 3: Gulf English-language press (auto-translated)
+  thenational:   { name: "ذا ناشيونال", initial: "TN", tier: 3, lang: "en", feeds: ["https://www.thenationalnews.com/arc/outboundfeeds/rss/?outputType=xml"] },
+  gulfnews:      { name: "غلف نيوز", initial: "GU", tier: 3, lang: "en", feeds: ["https://gulfnews.com/api/v1/collections/latest-news.rss"] },
+  arabnews:      { name: "عرب نيوز", initial: "AN", tier: 3, lang: "en", feeds: ["https://www.arabnews.com/rss.xml"] },
+  alarabiya_en:  { name: "العربية EN", initial: "عE", tier: 3, lang: "en", feeds: ["https://english.alarabiya.net/rss/en_default.xml"] },
+
+  // Tier 3: Maghreb French-language press (auto-translated, M2M-100)
+  hespress_fr:   { name: "هسبريس FR", initial: "HF", tier: 3, lang: "fr", feeds: ["https://fr.hespress.com/feed"] },
+  le360_fr:      { name: "لو 360 FR", initial: "36F", tier: 3, lang: "fr", feeds: ["https://fr.le360.ma/arc/outboundfeeds/rss/?outputType=xml"] },
 
   // Tier 4: Additional real-time firehose sources — major Western broadcasters
   guardian_w:   { name: "الغارديان", initial: "G", tier: 3, lang: "en", feeds: ["https://www.theguardian.com/world/rss"] },
@@ -151,6 +193,70 @@ function cleanText(str) {
     .trim();
 }
 
+// ─── Category Cleanup ───
+// Category strings from RSS and NewsData come unvalidated and often include
+// publisher-internal noise that is never a meaningful topic for users:
+//   • WordPress default taxonomy leaks ("lifestyle", "awards and recognitions")
+//     that 14+ Arab publishers emit on every article regardless of content
+//   • Internal site codes and publisher names ("fnc", "Fox News")
+//   • Content-type labels ("article", "news", "breaking", "top", "featured")
+//   • URL-path slugs from the publisher CMS ("fox-news/us/economy")
+//   • Generic placeholders ("آخر الاخبار", "منوعات", "الرئيسية", "home", "main")
+// `عاجل` is the one string we keep as a category — it's used downstream as
+// a breaking-news marker and is filtered out at display time.
+const MAX_CATEGORIES_PER_ITEM = 5;
+
+const JUNK_CATEGORIES = new Set([
+  // English: content-type, publisher internals, placeholders
+  'lifestyle', 'awards and recognitions', 'article', 'articles',
+  'fnc', 'fox news', 'news', 'breaking', 'top', 'top stories',
+  'featured', 'uncategorized', 'general', 'general news', 'home',
+  'latest', 'latest news', 'headline', 'headlines', 'main',
+  'misc', 'miscellaneous', 'others', 'other', 'all',
+  'press release', 'press releases', 'pr', 'sponsored',
+  // NewsData fixed-enum values that we drop when ai_tag is also present
+  // (handled in fetchNewsDataForKind), but kept here as a safety net for RSS:
+  'world', 'top news',
+  // Arabic: generic placeholders (not real topics)
+  'آخر الاخبار', 'آخر الأخبار', 'أخبار', 'الأخبار', 'اخبار',
+  'منوعات', 'الرئيسية', 'الصفحة الرئيسية',
+  'المزيد', 'متفرقات', 'عام', 'عاجل أخبار',
+  'الأكثر قراءة', 'الأكثر مشاهدة', 'مقالات', 'مقال',
+]);
+
+const JUNK_CATEGORY_PATTERNS = [
+  /^https?:/i,                  // full URLs leaked from publisher RSS
+  /^\/?fox-news\//i,            // Fox URL-slug style categories
+  /^\/[a-z]/i,                  // any leading-slash path
+  /^[a-z][a-z0-9_-]+\/[a-z]/i,  // generic slash-separated slug (path-like)
+];
+
+function isJunkCategory(raw) {
+  if (!raw) return true;
+  const trimmed = String(raw).trim();
+  if (trimmed.length < 2 || trimmed.length >= 30) return true;
+  if (trimmed === 'عاجل') return false; // breaking-news marker, never junk
+  const lower = trimmed.toLowerCase();
+  if (JUNK_CATEGORIES.has(lower)) return true;
+  if (JUNK_CATEGORY_PATTERNS.some(re => re.test(trimmed))) return true;
+  return false;
+}
+
+// Decode an XML response, handling rare UTF-16 feeds (e.g. annahar.com) that
+// don't advertise the correct charset. Sniffs the first 4 bytes for the
+// `<?xml` pattern in UTF-16 LE/BE; falls back to UTF-8 (which res.text()
+// would otherwise give us). The cost over plain res.text() is one extra
+// allocation, only on the small RSS payload.
+async function decodeXmlResponse(res) {
+  const buf = await res.arrayBuffer();
+  const b = new Uint8Array(buf);
+  if (b.length >= 2 && b[0] === 0xff && b[1] === 0xfe) return new TextDecoder('utf-16le').decode(buf);
+  if (b.length >= 2 && b[0] === 0xfe && b[1] === 0xff) return new TextDecoder('utf-16be').decode(buf);
+  if (b.length >= 4 && b[0] === 0x3c && b[1] === 0x00 && b[2] === 0x3f && b[3] === 0x00) return new TextDecoder('utf-16le').decode(buf);
+  if (b.length >= 4 && b[0] === 0x00 && b[1] === 0x3c && b[2] === 0x00 && b[3] === 0x3f) return new TextDecoder('utf-16be').decode(buf);
+  return new TextDecoder('utf-8').decode(buf);
+}
+
 function parseXML(xml) {
   const items = [];
 
@@ -194,8 +300,9 @@ function parseXML(xml) {
     const catRegex = /<category[^>]*(?:term=["']([^"']+)["'])?[^>]*>([\s\S]*?)<\/category>|<category[^>]+term=["']([^"']+)["'][^>]*\/>/g;
     let catMatch;
     while ((catMatch = catRegex.exec(block)) !== null) {
+      if (categories.length >= MAX_CATEGORIES_PER_ITEM) break;
       const c = cleanText(catMatch[1] || catMatch[2] || catMatch[3] || '');
-      if (c && c.length < 30) categories.push(c);
+      if (!isJunkCategory(c) && !categories.includes(c)) categories.push(c);
     }
 
     const isBreaking = title.includes('عاجل') || title.includes('breaking') || title.toLowerCase().includes('urgent');
@@ -269,10 +376,31 @@ async function fetchNewsDataForKind(env, feedCache, kind = 'news') {
       .filter(a => a.title && a.link && !a.duplicate)
       .map(a => {
         const ts = a.pubDate ? new Date(a.pubDate).getTime() : Date.now();
-        const apiCats = Array.isArray(a.category) ? a.category.filter(c => c && c !== 'top') : [];
-        const aiTags = Array.isArray(a.ai_tag) ? a.ai_tag : [];
-        const cats = [...new Set([...apiCats, ...aiTags])].slice(0, 5);
-        const isBreaking = (a.title || '').includes('عاجل') || (a.title || '').toLowerCase().includes('breaking') || cats.includes('breaking');
+        // Detect breaking BEFORE filtering junk, since a raw "breaking" tag
+        // from the upstream is a signal even though we'll drop it from display.
+        const rawApiCats = Array.isArray(a.category) ? a.category : [];
+        const rawAiTags  = Array.isArray(a.ai_tag) ? a.ai_tag : [];
+        const titleLower = (a.title || '').toLowerCase();
+        const isBreaking =
+          (a.title || '').includes('عاجل') ||
+          titleLower.includes('breaking') ||
+          [...rawApiCats, ...rawAiTags].some(c => (c || '').toLowerCase() === 'breaking');
+
+        // Tag selection — NewsData ships TWO tag fields and they're VERY different:
+        //
+        //   - category[]: a fixed enum (business, sports, health, world, top, etc.)
+        //     applied by keyword matching. Frequently misapplied — a war article
+        //     gets tagged "lifestyle", a Strait of Hormuz piece gets "business".
+        //
+        //   - ai_tag[]: LLM-generated specific topics (e.g. "مضيق هرمز",
+        //     "نادي الهلال السعودي"). Generally trustworthy when present.
+        //
+        // Strategy: if ai_tag is present, USE IT EXCLUSIVELY. The fixed enum
+        // adds no signal once we have a specific topic. Fall back to category[]
+        // only when ai_tag is empty.
+        const aiTags  = rawAiTags.filter(c => !isJunkCategory(c));
+        const apiCats = rawApiCats.filter(c => !isJunkCategory(c));
+        const cats = (aiTags.length > 0 ? aiTags : apiCats).slice(0, MAX_CATEGORIES_PER_ITEM);
         if (isBreaking && !cats.includes('عاجل')) cats.unshift('عاجل');
         const body = (a.content || a.description || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
         const itemLang = ND_LANG_MAP[a.language] || ND_LANG_MAP[(a.language || '').toLowerCase()] || 'en';
@@ -341,44 +469,47 @@ async function saveTranslationIndex(kv, index) {
   } catch {}
 }
 
-// In-memory apply: given an index, translate matching items with zero subrequests.
-// Quality check: reject translations that contain non-Arabic script leaks
-// (Latin letters, Cyrillic, etc. mixed into supposedly Arabic text).
-function isCleanArabic(text) {
+// In-memory apply: given an index, translate matching items with zero
+// subrequests. Translation target is English — Arabic and English items
+// are passed through unchanged. Everything else (French, German, etc.)
+// gets replaced with the English version from the index.
+// Quality check: reject translations that are still dominated by non-Latin
+// script, i.e. the translator passed through the source unchanged.
+function isCleanEnglish(text) {
   if (!text) return false;
-  // Count Arabic characters vs Latin/Cyrillic
-  const arabic = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g) || []).length;
-  const foreign = (text.match(/[a-zA-Zа-яА-Я]/g) || []).length;
-  // Allow up to 10% foreign chars (for names like "CNN", numbers, etc.)
-  return arabic > 0 && (foreign / (arabic + foreign)) < 0.15;
+  const latin = (text.match(/[a-zA-Z]/g) || []).length;
+  const foreign = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0400-\u04FF]/g) || []).length;
+  return latin > 0 && (foreign / (latin + foreign)) < 0.15;
 }
 
 function applyTranslationIndex(items, index) {
   if (!index) return items;
   return items.map(item => {
     if (item.translated) return item;
-    if (item.lang === 'ar') return item;
+    if (item.lang === 'ar' || item.lang === 'en') return item;
     const h = translationHash(item);
     const hit = index[h];
     if (!hit) return item;
-    // Only use the translation if it's clean Arabic — reject mixed-language garbage
-    if (!isCleanArabic(hit.t)) return item;
-    return { ...item, title: hit.t || item.title, description: hit.d || item.description, body: hit.t ? (hit.d || item.body) : item.body, translated: true };
+    if (!isCleanEnglish(hit.t)) return item;
+    // The item's effective language becomes English after translation.
+    return { ...item, title: hit.t || item.title, description: hit.d || item.description, body: hit.t ? (hit.d || item.body) : item.body, lang: 'en', translated: true };
   });
 }
 
 // AI call. No KV write — caller updates the in-memory index and writes once.
+// Target is always English. English items never reach here.
 async function fetchTranslation(item, ai) {
   if (!ai) return null;
   const f = translationFields(item);
+  if (f.lang === 'en') return null;
   const sourceLang = M2M_LANG[f.lang] || 'english';
   try {
-    const titleRes = await ai.run('@cf/meta/m2m100-1.2b', { text: f.title, source_lang: sourceLang, target_lang: 'arabic' });
+    const titleRes = await ai.run('@cf/meta/m2m100-1.2b', { text: f.title, source_lang: sourceLang, target_lang: 'english' });
     const t = titleRes?.translated_text || f.title;
     let d = f.description || '';
     if (d) {
       try {
-        const descRes = await ai.run('@cf/meta/m2m100-1.2b', { text: d, source_lang: sourceLang, target_lang: 'arabic' });
+        const descRes = await ai.run('@cf/meta/m2m100-1.2b', { text: d, source_lang: sourceLang, target_lang: 'english' });
         d = descRes?.translated_text || d;
       } catch {}
     }
@@ -386,15 +517,15 @@ async function fetchTranslation(item, ai) {
   } catch { return null; }
 }
 
-// Background pass: translate non-Arabic items not yet in the index.
-// Reads index once, writes once → 2 KV subrequests total regardless of count.
+// Background pass: translate non-Arabic, non-English items not yet in the
+// index. Reads index once, writes once → 2 KV subrequests regardless of count.
 async function warmTranslations(items, ai, kv, limit = 40) {
   if (!ai || !kv) return;
   const index = await loadTranslationIndex(kv);
   const pending = [];
   for (const item of items) {
     const f = translationFields(item);
-    if (f.lang === 'ar') continue;
+    if (f.lang === 'ar' || f.lang === 'en') continue;
     if (f.translated) continue;
     const h = translationHash(item);
     if (index[h]) continue;
@@ -435,7 +566,7 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
         });
         clearTimeout(timeout);
         if (!res.ok) return [];
-        const xml = await res.text();
+        const xml = await decodeXmlResponse(res);
         return parseXML(xml).map(item => ({
           ...item, sourceId: id, sourceName: source.name, sourceInitial: source.initial, sourceTier: source.tier, lang: source.lang || 'ar',
         }));
@@ -467,23 +598,32 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
   const arabic = allItems.filter(i => i.lang === 'ar');
   const nonArabic = allItems.filter(i => i.lang && i.lang !== 'ar');
 
-  // Dedup
-  const dedup = (items) => {
-    const seen = new Set();
-    return items.filter(item => {
-      const key = item.title.trim();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  // Drop Google-News feed-meta items. When we hit news.google.com with a
+  // `site:` query, Google sometimes returns the TARGET site's channel title
+  // as a self-referential "article" — e.g. "الجزيرة نت: آخر أخبار اليوم حول
+  // العالم - الجزيرة نت" with the link pointing back to the homepage. These
+  // are never real articles and look terrible at the top of the feed.
+  const isGoogleNewsChannelTitle = (item) => {
+    const isGN = (item.link || '').includes('news.google.com');
+    if (!isGN) return false;
+    const t = (item.title || '').trim();
+    // Common meta-title patterns (both Arabic and generic): "آخر أخبار اليوم",
+    // "أحدث الأخبار", "أخبار اليوم", "Latest news", "Top stories", etc. If the
+    // title is essentially the channel description, drop it.
+    return /آخر\s*الأخبار|آخر\s*أخبار\s*اليوم|أخبار\s*اليوم|أحدث\s*الأخبار|Latest\s*news|Top\s*stories/i.test(t);
   };
+  const preFiltered = allItems.filter(i => !isGoogleNewsChannelTitle(i));
+
+  // No dedup — every source should surface its full set of items even when
+  // multiple agencies cover the same story. Previously we deduped by title,
+  // which dropped aljazeera copies whenever another source was fetched first.
   const sortByTime = (a, b) => b.timestamp - a.timestamp;
 
   // Timestamp sort with per-source cap — newest first, but no single source
   // can take more than MAX_PER_SOURCE consecutive items. This prevents RT (100+
   // items) from flooding the top while ensuring NewsData items appear naturally
   // alongside RSS content.
-  const allDeduped = dedup([...allItems]).sort(sortByTime);
+  const allDeduped = [...preFiltered].sort(sortByTime);
   const LIMIT = 1200;
   const MAX_PER_SOURCE = 3; // max items from same source before forcing variety
   const mixed = [];
@@ -513,6 +653,34 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
     }
   }
 
+  // ── Flagship boost ─────────────────────────────────────────────────
+  // Some tier-1 sources publish via editor-curated Story Lists (aljazeera's
+  // Arc CMS feed, BBC Arabic) that update every few hours. Their freshest
+  // items can be 2-3h old while tier-2 regional papers push fresh content
+  // every minute — so the flagships fall below the fold under pure time sort.
+  // We guarantee each flagship source has at least one item in the top
+  // FLAGSHIP_WINDOW slots by splicing their newest (non-duplicate) item in
+  // if missing. Stale items are acceptable because the user specifically
+  // wants to see these flagships (they are the trust anchors of the feed).
+  if (kind !== 'photos') {
+    const FLAGSHIP_SOURCES = ['aljazeera', 'alarabiya', 'bbc', 'asharq_news', 'skynews', 'aawsat'];
+    const FLAGSHIP_WINDOW = 12;
+    const FLAGSHIP_INSERT_POS = 4;
+    for (const flagshipId of FLAGSHIP_SOURCES) {
+      // Already present in the visible window → nothing to do.
+      if (mixed.slice(0, FLAGSHIP_WINDOW).some(x => x.sourceId === flagshipId)) continue;
+      // Find newest item from this flagship anywhere in allDeduped.
+      const item = allDeduped.find(x => x.sourceId === flagshipId);
+      if (!item) continue;
+      // Remove any later copy of it so we don't duplicate.
+      const existingIdx = mixed.findIndex(x => x.title === item.title);
+      if (existingIdx >= 0) mixed.splice(existingIdx, 1);
+      // Splice into the visible window. Using a fixed slot keeps ordering
+      // predictable across refreshes so the UI doesn't jitter.
+      mixed.splice(Math.min(FLAGSHIP_INSERT_POS, mixed.length), 0, item);
+    }
+  }
+
   // Format for client
   const feed = mixed.map((item, i) => ({
     id: `${item.sourceId}-${item.timestamp}-${(item.link||item.title||'').split('').reduce((h,c)=>(((h<<5)-h)+c.charCodeAt(0))|0,0).toString(36)}`,
@@ -537,20 +705,24 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
   // Extract breaking articles for alerts
   const breaking = cleanFeed.filter(f => f.isBreaking).slice(0, 20);
 
-  // Extract trending (top tags by frequency)
-  const tagFreq = {};
-  feed.forEach(f => (f.categories || []).forEach(c => {
-    if (c !== 'عاجل' && c.length < 20) tagFreq[c] = (tagFreq[c] || 0) + 1;
-  }));
-  const trending = Object.entries(tagFreq).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([tag, count]) => ({ tag, count }));
+  // Trending is computed on the client from article titles (src/lib/trending.js
+  // extractTrending) — it does Arabic NLP: stopwords, stemming, bigram whitelist,
+  // velocity detection, clustering. The server no longer duplicates a weaker
+  // category-frequency version here. Admin curation of the radar still writes
+  // to `radar_overrides` and is applied per-request via fetchAdminLayer.
 
-  return { feed: cleanFeed, breaking, trending, stats: { total: cleanFeed.length, translated: cleanFeed.filter(f => f.translated).length, sources: Object.keys(SOURCES).length } };
+  return { feed: cleanFeed, breaking, stats: { total: cleanFeed.length, translated: cleanFeed.filter(f => f.translated).length, sources: Object.keys(SOURCES).length } };
 }
 
 // ─── Admin Curation Layer (applied per-request, not baked into KV cache) ───
-// Reads `article_overrides` and `manual_feed_items` from Supabase via the
-// public anon key (both tables have public-read RLS policies). Failures are
-// silent — feed always returns even if Supabase is unreachable.
+// Reads `article_overrides`, `manual_feed_items`, and `radar_overrides` from
+// Supabase via the public anon key (all three have public-read RLS policies).
+// Failures are silent — feed always returns even if Supabase is unreachable.
+//   • article_overrides  → hide / rewrite / pin / feature individual articles
+//   • manual_feed_items  → editor-authored items injected into the feed
+//   • radar_overrides    → pin / hide / add trending topics on the client radar
+//     (passed through to the client; the client applies them on top of its
+//      title-based NLP trending)
 
 async function fetchAdminLayer(env) {
   const url = env?.SUPABASE_URL;
@@ -559,13 +731,23 @@ async function fetchAdminLayer(env) {
 
   const headers = { apikey: key, authorization: `Bearer ${key}` };
   try {
-    const [overridesRes, manualRes] = await Promise.all([
+    const [overridesRes, manualRes, radarRes] = await Promise.all([
       fetch(`${url}/rest/v1/article_overrides?select=*`, { headers, cf: { cacheTtl: 10, cacheEverything: true } }),
       fetch(`${url}/rest/v1/manual_feed_items?select=*&order=created_at.desc&limit=50`, { headers, cf: { cacheTtl: 10, cacheEverything: true } }),
+      fetch(`${url}/rest/v1/radar_overrides?select=word,action,weight,expires_at`, { headers, cf: { cacheTtl: 10, cacheEverything: true } }),
     ]);
     if (!overridesRes.ok || !manualRes.ok) return null;
-    const [overrides, manualItems] = await Promise.all([overridesRes.json(), manualRes.json()]);
-    return { overrides, manualItems };
+    const [overrides, manualItems, radarRaw] = await Promise.all([
+      overridesRes.json(),
+      manualRes.json(),
+      radarRes.ok ? radarRes.json() : Promise.resolve([]),
+    ]);
+    // Drop expired radar overrides at the server so the client never sees them
+    const now = Date.now();
+    const radarOverrides = (radarRaw || []).filter(o =>
+      !o.expires_at || new Date(o.expires_at).getTime() > now
+    );
+    return { overrides, manualItems, radarOverrides };
   } catch {
     return null;
   }
@@ -650,7 +832,7 @@ function buildPayload(data, layer, limit, cacheMeta) {
     sources: data.sources || SOURCE_LIST,
     feed: curatedFeed.slice(0, limit),
     breaking,
-    trending: data.trending || [],
+    radarOverrides: layer?.radarOverrides || [],
     _cache: cacheMeta,
   };
 }

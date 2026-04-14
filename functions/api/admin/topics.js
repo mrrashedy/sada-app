@@ -14,6 +14,7 @@
 
 import { requireAdmin, supabaseService, logCuration } from '../../_lib/admin.js';
 import { jsonResponse, corsPreflight } from '../../_lib/auth.js';
+import { extractTrending } from '../../_lib/trending.js';
 
 const VALID_ACTIONS = ['pin', 'hide', 'add'];
 
@@ -41,52 +42,58 @@ export async function onRequest(context) {
 }
 
 // ── List: current trending merged with overrides ────────────────────
+// Computes trending the same way the client radar does — title-based NLP
+// (Arabic stopwords, stemming, bigram whitelist, velocity, adaptive windows)
+// via the shared `extractTrending` in functions/_lib/trending.js. This
+// guarantees the admin UI shows the same list users see on the radar, so
+// pin/hide/add decisions target real topics rather than a parallel view.
 async function handleList(env, sb) {
   const feedCache = env?.FEED_CACHE;
 
-  // 1. Compute live trending from cached feed (lightweight version)
+  // 1. Compute live trending from cached feed (same logic as client radar)
   let liveTrending = [];
   if (feedCache) {
     const cached = await feedCache.get('feed:latest', 'json');
     if (cached?.feed) {
-      const tagFreq = {};
-      cached.feed.forEach(f => (f.categories || []).forEach(c => {
-        if (c !== 'عاجل' && c.length > 1 && c.length < 25) {
-          tagFreq[c] = (tagFreq[c] || 0) + 1;
-        }
-      }));
-      liveTrending = Object.entries(tagFreq)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 50)
-        .map(([word, count]) => ({ word, count }));
+      // extractTrending expects `title` + `timestamp` (or `pubTs`) on each item.
+      // The cached feed already has both.
+      liveTrending = extractTrending(cached.feed, 50);
     }
   }
 
-  // 2. Pull all overrides
-  const overrides = await sb.select('radar_overrides', 'select=*&order=created_at.desc');
+  // 2. Pull all overrides (drop expired — client drops them too)
+  const now = Date.now();
+  const rawOverrides = await sb.select('radar_overrides', 'select=*&order=created_at.desc');
+  const overrides = (rawOverrides || []).filter(o =>
+    !o.expires_at || new Date(o.expires_at).getTime() > now
+  );
 
-  // 3. Annotate the live list with override state
-  const overrideByWord = new Map();
-  overrides.forEach(o => {
-    const key = `${o.word}|${o.action}`;
-    overrideByWord.set(key, o);
-  });
+  // 3. Annotate the live list with override state. `extractTrending` returns
+  //    { word, count, score, velocity } — we layer pin/hide flags on top.
+  const pinnedKeys = new Set(overrides.filter(o => o.action === 'pin').map(o => o.word));
+  const hiddenKeys = new Set(overrides.filter(o => o.action === 'hide').map(o => o.word));
 
   const annotated = liveTrending.map(t => ({
-    ...t,
-    pinned: overrideByWord.has(`${t.word}|pin`),
-    hidden: overrideByWord.has(`${t.word}|hide`),
+    word: t.word,
+    count: t.count,
+    score: t.score,
+    velocity: t.velocity,
+    pinned: pinnedKeys.has(t.word),
+    hidden: hiddenKeys.has(t.word),
   }));
 
-  // 4. Manual "add" topics that don't appear in live trending
+  // 4. Manual "add" topics that don't appear in live trending. These are
+  //    topics an admin force-injected that the NLP didn't surface organically.
   const liveWords = new Set(liveTrending.map(t => t.word));
   const manualAdds = overrides
     .filter(o => o.action === 'add' && !liveWords.has(o.word))
     .map(o => ({
       word: o.word,
       count: o.weight || 5,
-      pinned: false,
-      hidden: false,
+      score: o.weight || 5,
+      velocity: 0,
+      pinned: pinnedKeys.has(o.word),
+      hidden: hiddenKeys.has(o.word),
       manual: true,
     }));
 

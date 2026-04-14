@@ -13,6 +13,8 @@ export const SOURCES = [
   { n:"الشرق الأوسط", i:"ش",  id:"aawsat",        domain:"aawsat.com"            },
   { n:"الحرة",         i:"ح",  id:"alhurra",       domain:"alhurra.com"           },
   { n:"روسيا اليوم",    i:"RT", id:"rt_ar",         domain:"arabic.rt.com"         },
+  { n:"العربية",       i:"ع",  id:"alarabiya",     domain:"alarabiya.net"         },
+  { n:"الشرق الإخبارية",i:"شر", id:"asharq_news",   domain:"asharq.com"            },
   { n:"أخبار Google عالمي", i:"GN", id:"gnews_world", domain:"news.google.com"      },
   { n:"أخبار Google تقنية", i:"GT", id:"gnews_tech",  domain:"news.google.com"      },
   { n:"أخبار Google صحة",   i:"GH", id:"gnews_health",domain:"news.google.com"      },
@@ -29,6 +31,26 @@ export const SOURCES = [
   { n:"اليوم",         i:"ل",  id:"alyaum",        domain:"alyaum.com"            },
   { n:"القدس العربي",  i:"ق",  id:"alquds",        domain:"alquds.co.uk"          },
   { n:"نون بوست",      i:"ن",  id:"noonpost",      domain:"noonpost.com"          },
+  // مشرق عربي — لبنان، سوريا، الأردن، فلسطين
+  { n:"النهار",        i:"نه", id:"annahar",       domain:"annahar.com"           },
+  { n:"إل بي سي آي",   i:"LB", id:"lbci",          domain:"lbcgroup.tv"           },
+  { n:"رؤيا",          i:"ر",  id:"roya",          domain:"royanews.tv"           },
+  { n:"المملكة",       i:"مم", id:"almamlaka",     domain:"almamlakatv.com"       },
+  { n:"سانا",          i:"س",  id:"sana",          domain:"sana.sy"               },
+  { n:"الغد",          i:"غ",  id:"alghad",        domain:"alghad.com"            },
+  // مغرب عربي
+  { n:"هسبريس",        i:"هـ", id:"hespress",      domain:"hespress.com"          },
+  { n:"لو 360",        i:"360",id:"le360_ar",      domain:"ar.le360.ma"           },
+  { n:"الأولى المغربية",i:"SN", id:"snrt",          domain:"snrtnews.com"          },
+  { n:"الشروق الجزائرية",i:"شج",id:"echorouk",     domain:"echoroukonline.com"    },
+  { n:"الخبر",         i:"خب", id:"elkhabar",      domain:"elkhabar.com"          },
+  { n:"النهار الجزائرية",i:"نج",id:"ennahar_dz",   domain:"ennaharonline.com"     },
+  { n:"موزاييك إف إم", i:"MFM",id:"mosaiquefm",    domain:"mosaiquefm.net"        },
+  // ساحل وسودان وليبيا
+  { n:"صحراء ميديا",   i:"صح", id:"sahara_media",  domain:"saharamedias.net"      },
+  { n:"سودان تريبيون", i:"ST", id:"sudan_tribune", domain:"sudantribune.net"      },
+  { n:"السوداني",      i:"سد", id:"alsudani",      domain:"alsudaninews.com"      },
+  { n:"ليبيا الأحرار", i:"LY", id:"libya_ahrar",   domain:"libyaalahrar.net"      },
   // English sources (translated)
   { n:"BBC عالمي",     i:"BB", id:"bbc_en",        domain:"bbc.com"               },
   { n:"نيويورك تايمز", i:"NY", id:"nyt",           domain:"nytimes.com"           },
@@ -38,6 +60,14 @@ export const SOURCES = [
   { n:"NPR عالمي",     i:"NP", id:"npr",           domain:"npr.org"               },
   { n:"ABC نيوز",      i:"AB", id:"abc_en",        domain:"abcnews.go.com"        },
   { n:"سكاي نيوز EN",  i:"SK", id:"sky_en",        domain:"news.sky.com"          },
+  // الصحافة الخليجية الإنجليزية (مترجمة)
+  { n:"ذا ناشيونال",   i:"TN", id:"thenational",   domain:"thenationalnews.com"   },
+  { n:"غلف نيوز",      i:"GU", id:"gulfnews",      domain:"gulfnews.com"          },
+  { n:"عرب نيوز",      i:"AN", id:"arabnews",      domain:"arabnews.com"          },
+  { n:"العربية EN",    i:"عE", id:"alarabiya_en",  domain:"english.alarabiya.net" },
+  // الصحافة المغاربية الفرنسية (مترجمة)
+  { n:"هسبريس FR",     i:"HF", id:"hespress_fr",   domain:"fr.hespress.com"       },
+  { n:"لو 360 FR",     i:"36F",id:"le360_fr",      domain:"fr.le360.ma"           },
   // مصادر عالمية مترجمة
   { n:"الغارديان",     i:"G",  id:"guardian_w",    domain:"theguardian.com"       },
   { n:"واشنطن بوست",   i:"WP", id:"wapo_world",    domain:"washingtonpost.com"    },

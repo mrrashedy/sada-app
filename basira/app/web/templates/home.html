@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% macro doc_card(d) %}
+  <a class="card" href="{{ d.canonical_url }}" target="_blank" rel="noopener">
+    <div class="flex items-center gap-2 mb-2 text-xs flex-wrap">
+      <span class="chip cat-{{ d.source.category }}">{{ d.source.category.replace('_', ' ') }}</span>
+      <span class="chip tier-{{ d.source.priority[-1] }}">{{ d.source.priority }}</span>
+      {% if d.language == 'ar' %}
+        <span class="chip" style="color:#d4a84b; border-color: color-mix(in oklab, #d4a84b 40%, var(--line));">ع</span>
+      {% elif d.language == 'en' %}
+        <span class="chip">EN</span>
+      {% endif %}
+      <span class="ink2 truncate">{{ d.source.name }}</span>
+      {% if d.analysis_status == 'pending' %}
+        <span class="chip" style="color:#d4a84b; border-color: color-mix(in oklab, #d4a84b 40%, var(--line));">analysis pending</span>
+      {% elif d.analysis_status == 'failed' %}
+        <span class="chip" style="color:#e07b7b;">analysis failed</span>
+      {% endif %}
+    </div>
+    <div class="serif text-lg leading-snug"{% if d.language == 'ar' %} dir="rtl" lang="ar"{% endif %}>{{ d.title }}</div>
+    {% if d.analysis and d.analysis.thesis %}
+      <p class="mt-2 text-sm ink2 leading-relaxed">{{ d.analysis.thesis }}</p>
+    {% elif d.abstract %}
+      <p class="mt-2 text-sm ink2 leading-relaxed"{% if d.language == 'ar' %} dir="rtl" lang="ar"{% endif %}>{{ d.abstract[:220] }}{% if d.abstract|length > 220 %}…{% endif %}</p>
+    {% endif %}
+  </a>
+{% endmacro %}
+
+{% block content %}
+<section class="mb-10">
+  <h1 class="serif text-4xl md:text-5xl leading-tight">
+    How the world works — not what happened today.
+  </h1>
+  <p class="mt-4 ink2 max-w-2xl leading-relaxed">
+    Basira is an independent geopolitical research engine. It monitors think
+    tanks, official sources, multilateral institutions, universities, long-form
+    media, datasets, and major conferences — and extracts the analytical
+    scaffolding behind each piece. Less emotional, more logical. Less spotlight,
+    more enlightenment.
+  </p>
+</section>
+
+<section class="mb-10 grid grid-cols-2 md:grid-cols-5 gap-3">
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">Sources</div>
+    <div class="serif text-3xl mt-1">{{ source_count }}</div>
+  </div>
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">Documents</div>
+    <div class="serif text-3xl mt-1">{{ document_count }}</div>
+  </div>
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">Arabic</div>
+    <div class="serif text-3xl mt-1" style="color: var(--accent);">{{ arabic_count }}</div>
+  </div>
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">English</div>
+    <div class="serif text-3xl mt-1">{{ english_count }}</div>
+  </div>
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">Tier 1 sources</div>
+    <div class="serif text-3xl mt-1">{{ by_tier.get('Tier 1', 0) }}</div>
+  </div>
+</section>
+
+{% if arabic_docs %}
+<section class="mb-12">
+  <div class="flex items-baseline justify-between mb-4">
+    <h2 class="serif text-2xl">تحليلات بالعربية</h2>
+    <span class="text-xs ink2">Arabic-language analyses</span>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {% for d in arabic_docs %}
+      {{ doc_card(d) }}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if think_tank_docs %}
+<section class="mb-12">
+  <div class="flex items-baseline justify-between mb-4">
+    <h2 class="serif text-2xl">Think tanks &amp; research</h2>
+    <span class="text-xs ink2">think_tank · specialized · university</span>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {% for d in think_tank_docs %}
+      {{ doc_card(d) }}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if media_docs %}
+<section class="mb-12">
+  <div class="flex items-baseline justify-between mb-4">
+    <h2 class="serif text-2xl">Long-form media</h2>
+    <span class="text-xs ink2">analytical journalism</span>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {% for d in media_docs %}
+      {{ doc_card(d) }}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="mb-12">
+  <div class="flex items-baseline justify-between mb-4">
+    <h2 class="serif text-2xl">Latest across all sources</h2>
+    <span class="text-xs ink2">by published date</span>
+  </div>
+  {% if latest_docs %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for d in latest_docs %}
+        {{ doc_card(d) }}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="p-8 rounded-lg border line text-center">
+      <p class="ink2">No documents yet. The ingestion pipeline hasn't run.</p>
+    </div>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="serif text-2xl mb-4">Source diet</h2>
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+    {% for cat, n in by_category.items() %}
+    <div class="p-3 rounded-md border line">
+      <div class="text-xs ink2 uppercase tracking-wider cat-{{ cat }}">{{ cat.replace('_', ' ') }}</div>
+      <div class="serif text-xl mt-1">{{ n }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

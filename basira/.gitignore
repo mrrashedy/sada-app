@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# uv
+.python-version
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+data/basira.db
+data/basira.db-journal
+data/basira.db-wal
+data/basira.db-shm
+*.db
+*.db-journal
+
+# Cached documents (keep dir, not contents)
+data/documents/*
+!data/documents/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,64 @@
+{# Overview fragment — totals. Kept intentionally flat so it works both as an
+   included partial and as an HTMX swap target. #}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">Active sources</div>
+    <div class="serif text-3xl mt-1">{{ overview.active_sources }}</div>
+    <div class="text-xs ink2 mt-1">of {{ overview.total_sources }} total</div>
+  </div>
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">Never polled</div>
+    <div class="serif text-3xl mt-1">{{ overview.never_polled }}</div>
+    <div class="text-xs ink2 mt-1">active sources with no runs yet</div>
+  </div>
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">Documents</div>
+    <div class="serif text-3xl mt-1">{{ overview.total_docs }}</div>
+    <div class="text-xs ink2 mt-1">in the corpus</div>
+  </div>
+  <div class="p-4 rounded-lg border line">
+    <div class="text-xs ink2 uppercase tracking-wider">Analyzed</div>
+    <div class="serif text-3xl mt-1">{{ overview.docs_done }}</div>
+    <div class="text-xs ink2 mt-1">
+      {{ overview.docs_pending }} pending · {{ overview.docs_failed }} failed · {{ overview.docs_skipped }} skipped
+    </div>
+  </div>
+</div>
+
+<div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+  <div class="p-3 rounded-md border line">
+    <div class="ink2 uppercase tracking-wider">Run status</div>
+    <div class="mt-1 leading-relaxed">
+      <span style="color:#6fbf85;">success {{ overview.runs_success }}</span> ·
+      <span style="color:#d4a84b;">empty {{ overview.runs_empty }}</span> ·
+      <span style="color:#e07b7b;">error {{ overview.runs_error }}</span>
+    </div>
+  </div>
+  <div class="p-3 rounded-md border line">
+    <div class="ink2 uppercase tracking-wider">Analyzed tiers</div>
+    <div class="mt-1">
+      {% for t in overview.analyze_tiers %}<span class="chip mr-1">{{ t }}</span>{% endfor %}
+      {% if not overview.analyze_tiers %}<span class="ink2">none</span>{% endif %}
+    </div>
+  </div>
+  <div class="p-3 rounded-md border line">
+    <div class="ink2 uppercase tracking-wider">Anthropic</div>
+    <div class="mt-1">
+      {% if overview.anthropic_configured %}
+        <span style="color:#6fbf85;">configured</span>
+      {% else %}
+        <span style="color:#e07b7b;">not set</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="p-3 rounded-md border line">
+    <div class="ink2 uppercase tracking-wider">Voyage</div>
+    <div class="mt-1">
+      {% if overview.voyage_configured %}
+        <span style="color:#6fbf85;">configured</span>
+      {% else %}
+        <span style="color:#e07b7b;">not set</span>
+      {% endif %}
+    </div>
+  </div>
+</div>

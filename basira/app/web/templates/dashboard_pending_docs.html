@@ -1,0 +1,44 @@
+{# Pending documents fragment. Click the ID to fire an analyze action. #}
+{% if pending_docs %}
+<div class="rounded-lg border line overflow-hidden">
+  <table class="w-full text-xs">
+    <thead>
+      <tr class="ink2 text-left">
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">ID</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Title / Source</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Tier</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Fetched</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in pending_docs %}
+      <tr class="border-t line align-top">
+        <td class="px-3 py-2">
+          <button
+            class="chip hover:text-white"
+            hx-post="/dashboard/actions/analyze/{{ d.id }}"
+            hx-target="#action-result"
+            hx-swap="innerHTML"
+            title="analyze document {{ d.id }}"
+          >{{ d.id }}</button>
+        </td>
+        <td class="px-3 py-2">
+          <div class="truncate max-w-[20rem]">{{ d.title }}</div>
+          <div class="ink2 text-[10px] mt-0.5">
+            <span class="cat-{{ d.category }}">{{ d.category }}</span> · {{ d.source_name }}
+          </div>
+        </td>
+        <td class="px-3 py-2 ink2">{{ d.priority }}</td>
+        <td class="px-3 py-2 ink2 text-[10px]">
+          {{ d.fetched_at.strftime('%m-%d %H:%M') if d.fetched_at else '—' }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="p-6 rounded-lg border line text-center ink2 text-sm">
+  No pending documents. Everything is analyzed, skipped, or failed.
+</div>
+{% endif %}

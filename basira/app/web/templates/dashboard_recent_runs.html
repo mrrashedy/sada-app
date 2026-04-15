@@ -1,0 +1,55 @@
+{# Recent ingest runs fragment. Dense table. #}
+{% if recent_runs %}
+<div class="rounded-lg border line overflow-hidden">
+  <table class="w-full text-xs">
+    <thead>
+      <tr class="ink2 text-left">
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Source</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Status</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Found</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">New</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Dur</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Started</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in recent_runs %}
+      <tr class="border-t line align-top">
+        <td class="px-3 py-2">
+          <div class="truncate max-w-[14rem]">{{ r.source_name }}</div>
+          <div class="ink2 text-[10px]">{{ r.strategy }}</div>
+        </td>
+        <td class="px-3 py-2">
+          {% if r.status == 'success' %}
+            <span style="color:#6fbf85;">● success</span>
+          {% elif r.status == 'empty' %}
+            <span style="color:#d4a84b;">● empty</span>
+          {% elif r.status == 'error' %}
+            <span style="color:#e07b7b;">● error</span>
+          {% elif r.status == 'running' %}
+            <span class="ink2">● running</span>
+          {% else %}
+            <span class="ink2">● {{ r.status }}</span>
+          {% endif %}
+          {% if r.error %}
+            <div class="ink2 text-[10px] mt-1 break-words max-w-[14rem]">{{ r.error }}</div>
+          {% endif %}
+        </td>
+        <td class="px-3 py-2">{{ r.found }}</td>
+        <td class="px-3 py-2">{{ r.new }}</td>
+        <td class="px-3 py-2 ink2">
+          {% if r.duration_ms is not none %}{{ r.duration_ms }}ms{% else %}—{% endif %}
+        </td>
+        <td class="px-3 py-2 ink2 text-[10px]">
+          {{ r.started_at.strftime('%m-%d %H:%M') if r.started_at else '—' }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="p-6 rounded-lg border line text-center ink2 text-sm">
+  No ingest runs yet. Run an action or wait for the scheduler.
+</div>
+{% endif %}

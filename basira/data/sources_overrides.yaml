@@ -1,0 +1,111 @@
+# Per-source operational overlay.
+#
+# Keyed by source slug (see slugs in the DB — they're derived from the CSV 'name' column
+# by slugify). The master CSV stays the source-of-truth for name/category/region/priority.
+# This file adds engine-specific knobs the CSV doesn't carry.
+#
+# Schema per entry:
+#   feeds:                        # list of feed URLs (RSS or Atom)
+#     - {type: rss, url: "..."}
+#   scrape_strategy: rss_first    # rss_first | html_list | universal_fallback | pdf_only
+#   list_selector: ".view-row"    # for html_list: CSS selector for the article listing
+#   link_selector: "h3 a"         # for html_list: CSS selector for the link inside a row
+#   custom_scraper: brookings     # points to app/ingest/scrapers/{name}.py
+#   polling_cadence: "1h"         # overrides tier-based default
+#   min_poll_interval_seconds: 900
+#   active: true
+
+# ==== Verified working RSS feeds ====
+# Each feed URL below was probed live (HTTP 200 + feedparser returned >0 entries)
+# before being added. Sources whose default /feed/ returns 0 items are NOT listed
+# here — they fall through to universal_fallback.
+
+# --- Think tanks ---
+brookings-institution:
+  feeds:
+    - {type: rss, url: "https://www.brookings.edu/feed/"}
+  scrape_strategy: rss_first
+
+atlantic-council:
+  feeds:
+    # Main site feed (all categories)
+    - {type: rss, url: "https://www.atlanticcouncil.org/feed/"}
+    # MENASource feed — 100 entries, by far the highest-volume MENA-focused feed we have
+    - {type: rss, url: "https://www.atlanticcouncil.org/category/blogs/menasource/feed/"}
+  scrape_strategy: rss_first
+
+middle-east-institute:
+  feeds:
+    - {type: rss, url: "https://mei.edu/feed/"}
+  scrape_strategy: rss_first
+
+european-council-on-foreign-relations:
+  feeds:
+    - {type: rss, url: "https://ecfr.eu/feed/"}
+  scrape_strategy: rss_first
+
+arab-center-washington-dc:
+  feeds:
+    - {type: rss, url: "https://arabcenterdc.org/feed/"}
+  scrape_strategy: rss_first
+
+# --- Data / barometers ---
+arab-barometer:
+  feeds:
+    - {type: rss, url: "https://www.arabbarometer.org/feed/"}
+  scrape_strategy: rss_first
+
+# --- Long-form / analytical media ---
+# NOTE: The New Arab was removed — its RSS is pure wire news ("Drone strike
+# hits Kurds", "Gaza civil defence says toddler killed"). Wire feeds violate
+# the editorial rule even when the outlet also publishes occasional analysis.
+
+foreign-policy:
+  feeds:
+    - {type: rss, url: "https://foreignpolicy.com/feed/"}
+  scrape_strategy: rss_first
+
+foreign-affairs:
+  feeds:
+    - {type: rss, url: "https://www.foreignaffairs.com/rss.xml"}
+  scrape_strategy: rss_first
+
+project-syndicate:
+  feeds:
+    - {type: rss, url: "https://www.project-syndicate.org/rss"}
+  scrape_strategy: rss_first
+
+# ==== Arabic-script feeds ====
+# These publish predominantly in Arabic. Language detection in the pipeline
+# will auto-tag them as `ar`.
+#
+# Strictly analytical sources only — research centers, think tanks, policy
+# institutes. NO news agencies or daily newspapers. Basira's editorial rule
+# is "educate, don't alert": wire services and headline outlets do not belong
+# in this corpus even when their output is in Arabic.
+
+# --- Arabic-language think tanks ---
+al-zaytouna-centre-for-studies-and-consultations:
+  feeds:
+    - {type: rss, url: "https://www.alzaytouna.net/feed/"}
+  scrape_strategy: rss_first
+
+egyptian-center-for-thought-and-strategic-studies:
+  feeds:
+    - {type: rss, url: "https://ecss.com.eg/feed/"}
+  scrape_strategy: rss_first
+
+center-for-arab-unity-studies:
+  feeds:
+    - {type: rss, url: "https://caus.org.lb/feed/"}
+  scrape_strategy: rss_first
+
+# ==== Universal fallback ====
+# Everything else uses the universal fallback scraper by default — no config needed.
+# Sources that consistently produce low-quality output will get hand-wired overrides
+# here over time.
+#
+# NOTE on Arabic-language sources: many Arab government ministries (MFA Saudi,
+# MFA UAE, MFA Egypt, etc.) do not publish RSS and render their content via JS.
+# The universal fallback will try each one; expect mixed success. Hand-written
+# scrapers may be needed for the most important ones eventually.

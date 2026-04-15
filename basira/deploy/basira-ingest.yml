@@ -1,0 +1,97 @@
+name: basira-ingest
+
+# Hourly headless worker for the Basira depth vertical.
+#
+# This is the entire "server" for the engine in Option B: no Railway, no
+# Fly.io, no laptop tunnels. GitHub runs `python -m app.worker` on a cron,
+# the worker polls the 309 sources, writes new documents to Supabase, and
+# drains up to N pending analyses through Claude Haiku. Sada reads the
+# result directly from Supabase via the anon key.
+#
+# Secrets required (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL                — https://<project>.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY   — the service-role key (bypasses RLS)
+#   ANTHROPIC_API_KEY           — optional; if unset, docs stay "pending"
+#
+# Manual run: Actions tab → basira-ingest → "Run workflow". Useful for
+# debugging after CSV edits or prompt changes.
+
+on:
+  schedule:
+    # Every hour at :07 past the hour. Offset from :00 so we don't fight
+    # with every other GitHub cron that fires on the hour mark.
+    - cron: "7 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "which pass to run"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - full
+          - ingest-only
+          - analyze-only
+      analyze_budget:
+        description: "max docs to analyze this run"
+        required: false
+        default: "40"
+
+# Only one worker at a time — no overlapping runs. If a run is still going
+# when the next cron fires, the new one waits (or is cancelled via
+# cancel-in-progress if you prefer).
+concurrency:
+  group: basira-ingest
+  cancel-in-progress: false
+
+jobs:
+  run-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Tunable knobs — override in repo vars if you want different defaults.
+      BASIRA_MAX_SOURCES: ${{ vars.BASIRA_MAX_SOURCES || '999' }}
+      BASIRA_MAX_PER_SOURCE: ${{ vars.BASIRA_MAX_PER_SOURCE || '20' }}
+      BASIRA_ANALYZE_BUDGET: ${{ github.event.inputs.analyze_budget || vars.BASIRA_ANALYZE_BUDGET || '40' }}
+      BASIRA_MINIMAL_MODEL: ${{ vars.BASIRA_MINIMAL_MODEL || 'claude-haiku-4-5' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      # We only need the runtime deps the headless worker touches. The
+      # worker imports fastapi transitively via some legacy modules, so a
+      # full `uv sync` is simplest and still fast thanks to uv's cache.
+      - name: Install dependencies
+        working-directory: basira
+        run: uv sync --frozen || uv sync
+
+      - name: Run worker
+        working-directory: basira
+        run: |
+          MODE="${{ github.event.inputs.mode || 'full' }}"
+          case "$MODE" in
+            ingest-only)
+              uv run python -m app.worker --ingest-only
+              ;;
+            analyze-only)
+              uv run python -m app.worker --analyze-only
+              ;;
+            *)
+              uv run python -m app.worker
+              ;;
+          esac

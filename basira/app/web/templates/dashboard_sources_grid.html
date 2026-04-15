@@ -1,0 +1,67 @@
+{# Per-source health grid. Click a row to force-refresh it. #}
+<div class="text-xs ink2 mb-2">{{ sources_grid|length }} sources</div>
+<div class="rounded-lg border line overflow-hidden">
+  <table class="w-full text-xs">
+    <thead>
+      <tr class="ink2 text-left">
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Health</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Source</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Category</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Tier</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Strategy</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Docs</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Last polled</th>
+        <th class="px-3 py-2 font-normal uppercase tracking-wider">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sources_grid %}
+      <tr class="border-t line align-top">
+        <td class="px-3 py-2">
+          {% if s.health == 'green' %}
+            <span style="color:#6fbf85;">●</span>
+          {% elif s.health == 'yellow' %}
+            <span style="color:#d4a84b;">●</span>
+          {% elif s.health == 'red' %}
+            <span style="color:#e07b7b;">●</span>
+          {% else %}
+            <span class="ink2">●</span>
+          {% endif %}
+        </td>
+        <td class="px-3 py-2">
+          <div class="truncate max-w-[18rem]">{{ s.name }}</div>
+          <div class="ink2 text-[10px]">{{ s.slug }}</div>
+          {% if s.last_error %}
+            <div class="text-[10px] mt-1 break-words max-w-[18rem]" style="color:#e07b7b;">{{ s.last_error }}</div>
+          {% endif %}
+        </td>
+        <td class="px-3 py-2">
+          <span class="cat-{{ s.category }}">{{ s.category }}</span>
+          <div class="ink2 text-[10px]">{{ s.region }}</div>
+        </td>
+        <td class="px-3 py-2 ink2">{{ s.priority }}</td>
+        <td class="px-3 py-2 ink2">
+          {{ s.strategy }}{% if s.has_feeds %} <span class="text-[10px]">(rss)</span>{% endif %}
+        </td>
+        <td class="px-3 py-2 ink2">{{ s.doc_count }}</td>
+        <td class="px-3 py-2 ink2 text-[10px]">
+          {% if s.last_polled_at %}
+            {{ s.last_polled_at.strftime('%m-%d %H:%M') }}
+          {% else %}
+            never
+          {% endif %}
+        </td>
+        <td class="px-3 py-2">
+          <button
+            class="chip hover:text-white"
+            hx-post="/dashboard/actions/refresh/{{ s.slug }}"
+            hx-target="#action-result"
+            hx-swap="innerHTML"
+            title="force-poll {{ s.slug }}"
+          >refresh</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

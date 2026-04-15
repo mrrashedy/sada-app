@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Basira{% endblock %}
+
+{% block content %}
+<div class="flex items-baseline justify-between mb-6">
+  <div>
+    <h1 class="serif text-3xl">Operations</h1>
+    <p class="ink2 text-sm mt-1">
+      Per-source health, queue state, manual actions. Polls every 30 seconds.
+    </p>
+  </div>
+  <form action="/dashboard/logout" method="post">
+    <button type="submit" class="chip hover:text-white">sign out</button>
+  </form>
+</div>
+
+<!-- Action result landing zone. HTMX actions swap their output here. -->
+<div id="action-result" class="mb-6"></div>
+
+<!-- Overview -->
+<section class="mb-10">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="serif text-xl">Overview</h2>
+    <span class="text-xs ink2" id="overview-pulse">auto-refresh 30s</span>
+  </div>
+  <div
+    id="overview"
+    hx-get="/dashboard/fragments/overview"
+    hx-trigger="every 30s"
+    hx-swap="innerHTML"
+  >
+    {% include "dashboard_overview.html" %}
+  </div>
+</section>
+
+<!-- Actions -->
+<section class="mb-10">
+  <h2 class="serif text-xl mb-3">Actions</h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+    <!-- Reload sources -->
+    <div class="p-4 rounded-lg border line">
+      <div class="text-xs ink2 uppercase tracking-wider">Reload sources</div>
+      <p class="text-xs ink2 mt-2 leading-relaxed">
+        Re-read <code>context_engine_sources_master.csv</code> and
+        <code>sources_overrides.yaml</code>. Upserts new/updated rows;
+        deactivates rows dropped from the CSV.
+      </p>
+      <button
+        class="mt-3 chip hover:text-white"
+        hx-post="/dashboard/actions/reload-sources"
+        hx-target="#action-result"
+        hx-swap="innerHTML"
+      >reload now</button>
+    </div>
+
+    <!-- Force-refresh a source -->
+    <div class="p-4 rounded-lg border line">
+      <div class="text-xs ink2 uppercase tracking-wider">Force-refresh a source</div>
+      <p class="text-xs ink2 mt-2 leading-relaxed">
+        Poll one source immediately, regardless of cadence. Uses the source's
+        configured strategy (RSS first, then universal fallback).
+      </p>
+      <form
+        class="mt-3 flex gap-2"
+        hx-post=""
+        hx-target="#action-result"
+        hx-swap="innerHTML"
+        onsubmit="this.setAttribute('hx-post', '/dashboard/actions/refresh/' + encodeURIComponent(this.elements.slug.value.trim())); htmx.process(this); return true;"
+      >
+        <input
+          name="slug"
+          type="text"
+          placeholder="source-slug"
+          class="flex-1 bg-transparent border line rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
+        />
+        <button class="chip hover:text-white">refresh</button>
+      </form>
+    </div>
+
+    <!-- Force-analyze a document -->
+    <div class="p-4 rounded-lg border line">
+      <div class="text-xs ink2 uppercase tracking-wider">Force-analyze a document</div>
+      <p class="text-xs ink2 mt-2 leading-relaxed">
+        Run Claude analysis on one document by ID. Requires
+        <code>ANTHROPIC_API_KEY</code>. Bypasses the tier gate when forced.
+      </p>
+      <form
+        class="mt-3 flex gap-2"
+        hx-post=""
+        hx-target="#action-result"
+        hx-swap="innerHTML"
+        onsubmit="this.setAttribute('hx-post', '/dashboard/actions/analyze/' + encodeURIComponent(this.elements.doc_id.value.trim())); htmx.process(this); return true;"
+      >
+        <input
+          name="doc_id"
+          type="number"
+          placeholder="document id"
+          class="flex-1 bg-transparent border line rounded px-2 py-1 text-sm focus:outline-none focus:border-amber-500"
+        />
+        <button class="chip hover:text-white">analyze</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- Recent runs + pending docs -->
+<section class="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="serif text-xl">Recent ingest runs</h2>
+      <span class="text-xs ink2">auto-refresh 30s</span>
+    </div>
+    <div
+      id="recent-runs"
+      hx-get="/dashboard/fragments/recent-runs"
+      hx-trigger="every 30s"
+      hx-swap="innerHTML"
+    >
+      {% include "dashboard_recent_runs.html" %}
+    </div>
+  </div>
+
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="serif text-xl">Pending documents</h2>
+      <span class="text-xs ink2">click ID to analyze</span>
+    </div>
+    <div
+      id="pending-docs"
+      hx-get="/dashboard/fragments/pending-docs"
+      hx-trigger="every 30s"
+      hx-swap="innerHTML"
+    >
+      {% include "dashboard_pending_docs.html" %}
+    </div>
+  </div>
+</section>
+
+<!-- Sources grid -->
+<section class="mb-10">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="serif text-xl">Source health</h2>
+    <div class="flex gap-2 text-xs ink2 flex-wrap">
+      <span class="chip" style="color:#6fbf85; border-color: color-mix(in oklab, #6fbf85 40%, var(--line));">green — polled OK</span>
+      <span class="chip" style="color:#d4a84b; border-color: color-mix(in oklab, #d4a84b 40%, var(--line));">yellow — empty</span>
+      <span class="chip" style="color:#e07b7b; border-color: color-mix(in oklab, #e07b7b 40%, var(--line));">red — error</span>
+      <span class="chip">grey — never polled</span>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-2 mb-3 text-xs">
+    <span class="ink2">filter:</span>
+    <button class="chip hover:text-white"
+      hx-get="/dashboard/fragments/sources-grid"
+      hx-target="#sources-grid"
+      hx-swap="innerHTML">all</button>
+    <button class="chip hover:text-white"
+      hx-get="/dashboard/fragments/sources-grid?health=green"
+      hx-target="#sources-grid"
+      hx-swap="innerHTML">green</button>
+    <button class="chip hover:text-white"
+      hx-get="/dashboard/fragments/sources-grid?health=yellow"
+      hx-target="#sources-grid"
+      hx-swap="innerHTML">yellow</button>
+    <button class="chip hover:text-white"
+      hx-get="/dashboard/fragments/sources-grid?health=red"
+      hx-target="#sources-grid"
+      hx-swap="innerHTML">red</button>
+    <button class="chip hover:text-white"
+      hx-get="/dashboard/fragments/sources-grid?health=grey"
+      hx-target="#sources-grid"
+      hx-swap="innerHTML">never polled</button>
+    <span class="mx-2 ink2">|</span>
+    <button class="chip hover:text-white"
+      hx-get="/dashboard/fragments/sources-grid?priority=Tier+1"
+      hx-target="#sources-grid"
+      hx-swap="innerHTML">Tier 1</button>
+    <button class="chip hover:text-white"
+      hx-get="/dashboard/fragments/sources-grid?priority=Tier+2"
+      hx-target="#sources-grid"
+      hx-swap="innerHTML">Tier 2</button>
+    <button class="chip hover:text-white"
+      hx-get="/dashboard/fragments/sources-grid?priority=Tier+3"
+      hx-target="#sources-grid"
+      hx-swap="innerHTML">Tier 3</button>
+  </div>
+
+  <div id="sources-grid">
+    {% include "dashboard_sources_grid.html" %}
+  </div>
+</section>
+{% endblock %}

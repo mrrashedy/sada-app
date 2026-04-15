@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}المصادر — Basira{% endblock %}
+
+{% block content %}
+<section class="mb-8">
+  <h1 class="serif text-3xl mb-2">Monitored sources</h1>
+  <p class="ink2">{{ sources|length }} active sources across 9 categories.</p>
+</section>
+
+<section>
+  {% set by_cat = {} %}
+  {% for s in sources %}
+    {% if s.category not in by_cat %}{% set _ = by_cat.update({s.category: []}) %}{% endif %}
+    {% set _ = by_cat[s.category].append(s) %}
+  {% endfor %}
+
+  {% for cat, items in by_cat.items() %}
+  <div class="mb-10">
+    <h2 class="serif text-xl mb-3 cat-{{ cat }}">{{ cat.replace('_', ' ').title() }} <span class="ink2 text-sm font-normal">({{ items|length }})</span></h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+      {% for s in items %}
+      <div class="p-3 rounded-md border line">
+        <div class="flex items-center gap-2 text-xs mb-1">
+          <span class="chip tier-{{ s.priority[-1] }}">{{ s.priority }}</span>
+          <span class="ink2">{{ s.region }}</span>
+        </div>
+        <a href="{{ s.url }}" target="_blank" rel="noopener" class="text-sm leading-snug hover:underline">{{ s.name }}</a>
+        <div class="text-xs ink2 mt-1">{{ s.language }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

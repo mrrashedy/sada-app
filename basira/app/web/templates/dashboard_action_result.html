@@ -1,0 +1,22 @@
+{# Small result banner for HTMX action responses. #}
+<div
+  class="p-3 rounded-md border line text-sm flex items-start gap-3"
+  {% if ok %}
+    style="border-color: color-mix(in oklab, #6fbf85 40%, var(--line));"
+  {% else %}
+    style="border-color: color-mix(in oklab, #e07b7b 40%, var(--line));"
+  {% endif %}
+>
+  <span
+    {% if ok %}style="color:#6fbf85;"{% else %}style="color:#e07b7b;"{% endif %}
+    class="mt-0.5"
+  >{% if ok %}✓{% else %}✗{% endif %}</span>
+  <div class="flex-1">
+    <div class="font-medium">{{ title }}</div>
+    <div class="ink2 text-xs mt-1 break-words">{{ detail }}</div>
+  </div>
+  <button
+    class="chip hover:text-white"
+    onclick="this.closest('#action-result').innerHTML=''"
+  >dismiss</button>
+</div>

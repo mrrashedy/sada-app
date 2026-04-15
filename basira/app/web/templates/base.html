@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}Basira — بصيرة{% endblock %}</title>
+  <meta name="description" content="An independent geopolitical research engine. Educate, don't alert." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --bg2: #12151a;
+      --ink: #e8ecf1;
+      --ink2: #a0a9b5;
+      --line: #1e232b;
+      --accent: #d4a84b;
+    }
+    html, body { background: var(--bg); color: var(--ink); }
+    body {
+      font-family: "IBM Plex Sans Arabic", "IBM Plex Serif", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-feature-settings: "ss01", "cv11";
+    }
+    .serif { font-family: "IBM Plex Serif", Georgia, serif; }
+    .line { border-color: var(--line); }
+    .ink2 { color: var(--ink2); }
+    .chip {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .15rem .5rem; border-radius: .375rem;
+      background: var(--bg2); border: 1px solid var(--line);
+      font-size: .72rem; color: var(--ink2); letter-spacing: .02em;
+    }
+    .tier-1 { border-color: color-mix(in oklab, var(--accent) 50%, var(--line)); color: var(--accent); }
+    .tier-2 { border-color: color-mix(in oklab, #7ea8d4 40%, var(--line)); color: #9bb8d9; }
+    .tier-3 { border-color: var(--line); color: var(--ink2); }
+    a.card {
+      display: block; padding: 1rem; background: var(--bg2);
+      border: 1px solid var(--line); border-radius: .5rem;
+      transition: border-color .15s ease, transform .15s ease;
+    }
+    a.card:hover { border-color: color-mix(in oklab, var(--accent) 40%, var(--line)); transform: translateY(-1px); }
+    .cat-official       { color: #c39666; }
+    .cat-multilateral   { color: #7ea8d4; }
+    .cat-think_tank     { color: #d4a84b; }
+    .cat-specialized    { color: #a3b88c; }
+    .cat-university     { color: #b98ab8; }
+    .cat-media          { color: #e07b7b; }
+    .cat-data           { color: #7abfb8; }
+    .cat-conference     { color: #c8a386; }
+    .cat-think_tank_media { color: #c39666; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="border-b line">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-baseline gap-3">
+        <span class="serif text-2xl tracking-tight">بصيرة</span>
+        <span class="ink2 text-sm uppercase tracking-widest">basira</span>
+      </a>
+      <nav class="flex items-center gap-6 text-sm ink2">
+        <a href="/" class="hover:text-white">الرئيسية</a>
+        <a href="/sources" class="hover:text-white">المصادر</a>
+        <a href="/dashboard" class="hover:text-white">Ops</a>
+        <a href="/api/docs" class="hover:text-white">API</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-10">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="border-t line mt-16">
+    <div class="max-w-6xl mx-auto px-6 py-6 text-xs ink2">
+      <p class="serif italic leading-relaxed">
+        A patient, analytical companion that reads the world's most thoughtful
+        geopolitical papers so that when you sit down to think, you are
+        thinking with the field, not against it.
+      </p>
+      <p class="mt-3">Basira v0.1 · Educate, don't alert.</p>
+    </div>
+  </footer>
+</body>
+</html>

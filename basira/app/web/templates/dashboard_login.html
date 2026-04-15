@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Sign in — Basira{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-20">
+  <h1 class="serif text-3xl mb-2">Operations sign-in</h1>
+  <p class="ink2 text-sm mb-6">
+    Paste the <code>BASIRA_ADMIN_TOKEN</code> from <code>.env</code>. A cookie
+    is set for 7 days.
+  </p>
+
+  {% if error %}
+    <div class="p-3 rounded border mb-4" style="color:#e07b7b; border-color: color-mix(in oklab, #e07b7b 40%, var(--line));">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  {% if show_form %}
+    <form action="/dashboard/login" method="post" class="p-4 rounded-lg border line">
+      <label class="block text-xs ink2 uppercase tracking-wider mb-2">Admin token</label>
+      <input
+        type="password"
+        name="token"
+        autofocus
+        required
+        class="w-full bg-transparent border line rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+      />
+      <button type="submit" class="mt-4 chip hover:text-white">sign in</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

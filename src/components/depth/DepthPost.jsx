@@ -135,7 +135,7 @@ export function DepthPost({ item, delay = 0, index = 0, onOpen }) {
   // institutional language stripped". Fall back to legacy `thesis` when
   // analytical_conclusion isn't present (e.g. items analyzed under v1).
   const flagship = item.analytical_conclusion || item.thesis;
-  const hasAnalysis = !!(flagship || item.core_argument || item.supporting_logic);
+  const hasAnalysis = !!(flagship || item.core_argument);
 
   // The best single quote, if the analyst picked one out.
   const topQuote =
@@ -143,26 +143,14 @@ export function DepthPost({ item, delay = 0, index = 0, onOpen }) {
       ? item.key_quotes[0]
       : null;
 
-  // ── Alternation ─────────────────────────────────────────────────────
-  // Instead of showing ALL secondary elements (quote + tension +
-  // supporting_logic) on every card — which makes the timeline
-  // monotonous — we pick ONE per card based on its position. The card
-  // cycles through: quote → tension → "why it matters", creating visual
-  // variety as the reader scrolls. Only kicks in when we actually have
-  // the enriched fields; falls back to showing whatever is available.
-  // Two alternating secondary elements: quote ↔ relevance.
-  // Even-indexed cards show the quote, odd-indexed show relevance.
-  // Falls back to whichever is available if one is missing.
+  // ── Secondary slot ──────────────────────────────────────────────────
+  // Editorial scope (Apr 2026): the only secondary surface a depth card
+  // shows is a quote, and only when the analyst actually pulled one. No
+  // relevance line, no supporting_logic — the conclusion carries the
+  // card on its own. Quotes are deliberately occasional, not on every
+  // card, so the timeline keeps visual rhythm.
   const hasQuote = !!topQuote;
-  const hasRelevance = !!item.supporting_logic;
-  let activeSecondary = null;
-  if (hasQuote && hasRelevance) {
-    activeSecondary = index % 2 === 0 ? 'quote' : 'relevance';
-  } else if (hasQuote) {
-    activeSecondary = 'quote';
-  } else if (hasRelevance) {
-    activeSecondary = 'relevance';
-  }
+  const activeSecondary = hasQuote ? 'quote' : null;
 
   // Assumptions are stored as an array on the v2 schema. Show up to 3.
   const assumptions =
@@ -263,12 +251,6 @@ export function DepthPost({ item, delay = 0, index = 0, onOpen }) {
             <figcaption dir="auto">{topQuote.context}</figcaption>
           )}
         </figure>
-      )}
-
-      {activeSecondary === 'relevance' && (
-        <Section label="الصلة" className="depth-relevance">
-          {item.supporting_logic}
-        </Section>
       )}
 
       {/* ─────────── Structured brief ───────────

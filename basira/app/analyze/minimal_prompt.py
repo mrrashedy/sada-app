@@ -54,21 +54,14 @@ Respond with JSON only, matching this schema exactly:
 {
   "analytical_conclusion": "<one sentence, 20-50 words>",
   "key_quote": "<one verbatim sentence from the body OR null>",
-  "key_quote_context": "<one phrase explaining why this quote matters OR null>",
-  "relevance": "<one sentence: why this piece matters RIGHT NOW — \
-what current situation, decision, or trend does it illuminate? \
-Connect it to something the reader is already watching.>"
+  "key_quote_context": "<one phrase explaining why this quote matters OR null>"
 }
 
 Rules:
 - key_quote must be a sentence that appears LITERALLY in the body. If \
 no single quote carries the argument cleanly, set key_quote and \
-key_quote_context to null. Do NOT invent or paraphrase.
-- relevance: always required. Not "this is important because..." — \
-instead, name the specific live situation it speaks to. Example: \
-"Directly relevant to the stalled JCPOA talks resuming in June" or \
-"Reframes the Saudi-Iran rapprochement as economic rather than \
-diplomatic." One sentence, concrete, present-tense."""
+key_quote_context to null. Do NOT invent or paraphrase. Quotes are \
+optional — only surface one when it genuinely carries the argument."""
 
 
 def _build_user_message(doc: dict[str, Any]) -> str:
@@ -174,12 +167,9 @@ def analyze_document_minimal(doc: dict[str, Any]) -> dict[str, Any]:
     if quote:
         quotes = [{"quote": quote, "context": quote_ctx}]
 
-    relevance = (parsed.get("relevance") or "").strip() or None
-
     return {
         "analytical_conclusion": conclusion,
         "key_quotes": quotes,
-        "relevance": relevance,
         "model": model,
         "input_tokens": getattr(msg.usage, "input_tokens", None),
         "output_tokens": getattr(msg.usage, "output_tokens", None),

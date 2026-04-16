@@ -237,7 +237,6 @@ def analyze_pass(*, budget: int) -> dict[str, int]:
             "prompt_variant": "minimal",
             "analytical_conclusion": result.get("analytical_conclusion"),
             "key_quotes_json": result.get("key_quotes") or None,
-            "supporting_logic": result.get("relevance"),
             "model": result.get("model", "claude-haiku-4-5"),
             "prompt_version": "minimal-v2",
             "input_tokens": result.get("input_tokens"),

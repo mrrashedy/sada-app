@@ -121,6 +121,12 @@ export function useDepth({ limit = 60, category, priority } = {}) {
       let query = supabase
         .from('depth_feed')
         .select('*', { count: 'exact' })
+        // Only show docs the analyst has actually processed. Newly-ingested
+        // docs without an analytical_conclusion are still in the analysis
+        // queue (the worker drains ~200/run) — surfacing them as blank
+        // cards looks broken. Filtering here means the user always sees
+        // populated cards, even if the very newest doc is still pending.
+        .not('analytical_conclusion', 'is', null)
         .order('published_at', { ascending: false, nullsFirst: false })
         .limit(limit);
 

@@ -26,6 +26,8 @@ export function ManualFeedEditor() {
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [scrapeUrl, setScrapeUrl] = useState('');
+  const [scraping, setScraping] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +48,7 @@ export function ManualFeedEditor() {
     setForm(EMPTY);
     setEditingId(null);
     setShowForm(false);
+    setScrapeUrl('');
   };
 
   const startCreate = () => {
@@ -89,6 +92,34 @@ export function ManualFeedEditor() {
       setError(e.message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Paste URL → auto-fill form by hitting /api/admin/scrape-url.
+  // Only overwrites a field if the scrape returned something for it, so the
+  // editor can pre-fill, then paste, then tweak without losing work.
+  const fetchFromUrl = async () => {
+    const url = scrapeUrl.trim();
+    if (!url) return;
+    setScraping(true);
+    setError(null);
+    try {
+      const data = await adminApi.scrapeFromUrl(url);
+      setForm(prev => ({
+        ...prev,
+        title: data.title || prev.title,
+        body: data.description || prev.body,
+        image: data.image || prev.image,
+        link: data.url || url,
+        source_name: data.siteName || prev.source_name,
+        source_initial: data.siteName
+          ? data.siteName.trim().charAt(0)
+          : prev.source_initial,
+      }));
+    } catch (e) {
+      setError(`استخراج: ${e.message}`);
+    } finally {
+      setScraping(false);
     }
   };
 
@@ -152,6 +183,48 @@ export function ManualFeedEditor() {
             fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace',
           }}>{editingId ? 'تعديل عنصر' : 'عنصر جديد'}</div>
 
+          {!editingId && (
+            <div style={{
+              background: 'var(--bg)', border: '.5px dashed var(--g1)',
+              borderRadius: 8, padding: 10, marginBottom: 12,
+            }}>
+              <div style={{
+                fontSize: 10, color: 'var(--t4)', marginBottom: 6,
+                fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace',
+                letterSpacing: '.3px', direction: 'rtl',
+              }}>استخراج من رابط — ألصق رابط المقال</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="url"
+                  value={scrapeUrl}
+                  onChange={e => setScrapeUrl(e.target.value)}
+                  placeholder="https://example.com/article"
+                  disabled={scraping}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); fetchFromUrl(); } }}
+                  style={{
+                    flex: 1, boxSizing: 'border-box', minWidth: 0,
+                    background: 'var(--bg)', color: 'var(--t1)',
+                    border: '.5px solid var(--g1)', borderRadius: 6,
+                    padding: '8px 10px', fontSize: 12,
+                    direction: 'ltr', fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace',
+                  }}
+                />
+                <button
+                  onClick={fetchFromUrl}
+                  disabled={scraping || !scrapeUrl.trim()}
+                  style={{
+                    background: 'var(--bk)', color: 'var(--bg)',
+                    border: 'none', borderRadius: 6,
+                    padding: '8px 14px', fontSize: 11, fontWeight: 700,
+                    cursor: scraping ? 'wait' : 'pointer',
+                    opacity: scraping || !scrapeUrl.trim() ? 0.5 : 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >{scraping ? '…' : 'استخراج'}</button>
+              </div>
+            </div>
+          )}
+
           <Input label="العنوان *" value={form.title} onChange={v => setForm({ ...form, title: v })} required />
           <Textarea label="النص" value={form.body} onChange={v => setForm({ ...form, body: v })} rows={4} />
 
@@ -163,10 +236,14 @@ export function ManualFeedEditor() {
             <Input label="التصنيف" value={form.category} onChange={v => setForm({ ...form, category: v })} />
           </div>
 
-          <div style={{ display: 'flex', gap: 16, margin: '10px 0', direction: 'rtl' }}>
-            <Toggle label="عاجل" checked={form.is_breaking} onChange={v => setForm({ ...form, is_breaking: v })} />
-            <Toggle label="مثبت" checked={form.pinned} onChange={v => setForm({ ...form, pinned: v })} />
-          </div>
+          <ModeSelector
+            mode={form.is_breaking ? 'breaking' : form.pinned ? 'pinned' : 'normal'}
+            onChange={m => setForm({
+              ...form,
+              is_breaking: m === 'breaking',
+              pinned: m === 'pinned',
+            })}
+          />
 
           <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
             <button onClick={submit} disabled={busy || !form.title.trim()} style={{
@@ -282,19 +359,54 @@ function Textarea({ label, value, onChange, rows = 3 }) {
   );
 }
 
-function Toggle({ label, checked, onChange }) {
+// Three-way mode selector: عاجل (breaking) / مثبت (pinned) / عادي (normal flow).
+// The three modes are mutually exclusive and map to the underlying booleans:
+//   breaking → { is_breaking: true,  pinned: false } — shows in breaking bar,
+//                                                      flows into feed by timestamp
+//   pinned   → { is_breaking: false, pinned: true  } — always at top of feed
+//   normal   → { is_breaking: false, pinned: false } — flows into feed at its
+//                                                      created_at timestamp
+function ModeSelector({ mode, onChange }) {
+  const options = [
+    { value: 'breaking', label: 'عاجل', hint: 'يظهر في شريط العاجل + تسلسل زمني' },
+    { value: 'pinned',   label: 'مثبت', hint: 'مثبّت دائماً أعلى الخلاصة' },
+    { value: 'normal',   label: 'عادي', hint: 'يظهر في موقعه الزمني الطبيعي' },
+  ];
   return (
-    <label style={{
-      display: 'flex', alignItems: 'center', gap: 6,
-      cursor: 'pointer', fontSize: 13, color: 'var(--t1)',
-    }}>
-      <input
-        type="checkbox" checked={checked}
-        onChange={e => onChange(e.target.checked)}
-        style={{ width: 16, height: 16 }}
-      />
-      {label}
-    </label>
+    <div style={{ margin: '10px 0' }}>
+      <div style={{
+        fontSize: 10, color: 'var(--t4)', marginBottom: 6,
+        fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace',
+        letterSpacing: '.3px', direction: 'rtl',
+      }}>النمط</div>
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6,
+        direction: 'rtl',
+      }}>
+        {options.map(opt => {
+          const active = mode === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              title={opt.hint}
+              style={{
+                background: active ? 'var(--bk)' : 'var(--bg)',
+                color: active ? 'var(--bg)' : 'var(--t2)',
+                border: active ? '.5px solid var(--bk)' : '.5px solid var(--g1)',
+                borderRadius: 6,
+                padding: '8px 10px',
+                fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', direction: 'rtl',
+                fontFamily: 'inherit',
+                transition: 'background .12s, color .12s',
+              }}
+            >{opt.label}</button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

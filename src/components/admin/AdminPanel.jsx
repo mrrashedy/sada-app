@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { NewsMonitor } from './sections/NewsMonitor';
 import { RadarTopicsEditor } from './sections/RadarTopicsEditor';
 import { ManualFeedEditor } from './sections/ManualFeedEditor';
+import { DepthCurate } from '../depth/DepthCurate';
 
 const TABS = [
   { id: 'dashboard', label: 'لوحة' },

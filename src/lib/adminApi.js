@@ -69,4 +69,10 @@ export const adminApi = {
     `/api/admin/items?id=${encodeURIComponent(id)}`,
     { method: 'DELETE' },
   ),
+
+  // Auto-extract metadata (title / description / image) from an arbitrary
+  // article URL. Used by ManualFeedEditor's "paste URL → auto-fill form" flow.
+  scrapeFromUrl: (url) => adminFetch(
+    `/api/admin/scrape-url?url=${encodeURIComponent(url)}`,
+  ),
 };

@@ -12,7 +12,7 @@ import { useInfiniteScroll } from './hooks/useInfiniteScroll';
 import { useReactions } from './hooks/useReactions';
 
 // Lib
-import { scoreByTopics, isOpinionOrSentimental, isDeepInvestigative } from './lib/filters';
+import { scoreByTopics, isOpinionOrSentimental } from './lib/filters';
 import { detectFlags } from './lib/countryFlags';
 import { Sound } from './lib/sounds';
 import { extractTrending } from './lib/trending';
@@ -39,7 +39,8 @@ import { NotificationPanel } from './components/notifications/NotificationPanel'
 import { TrendingRadar, RadarView } from './components/trending/TrendingRadar';
 import { BreakingTicker } from './components/feed/BreakingTicker';
 import { AdminPanel } from './components/admin/AdminPanel';
-import { PhotoGrid } from './components/photos/PhotoGrid';
+import { DepthFeed } from './components/depth/DepthFeed';
+import { DepthDetail } from './components/depth/DepthDetail';
 
 export default function Sada() {
   const auth = useAuth();
@@ -70,6 +71,11 @@ export default function Sada() {
   const [nav, setNav]           = useState('home');
   const [feedTab, setFeedTab]   = useState('now');
   const [article, setArticle]   = useState(null);
+  // Depth (Basira) documents open in their own detail surface because the
+  // shape is totally different from news (analytical scaffold + summaries
+  // instead of headline/image/reactions). Kept in its own state slot so
+  // the two modals never collide.
+  const [depthDoc, setDepthDoc] = useState(null);
   const [srch, setSrch]         = useState(false);
   const [notifs, setNotifs]     = useState(false);
   const [seenTs, setSeenTs]     = useState(() => { try { return parseInt(localStorage.getItem('sada-seen-ts'))||0; } catch { return 0; } });
@@ -384,9 +390,6 @@ export default function Sada() {
       if(userTopics.length===0 && !hasInterests) return [];
       return pool.map(item=>({...item,_score:scoreByTopics(item,userTopics,interests)})).filter(i=>i._score>0).sort((a,b)=>b._score-a._score||(b.pubTs||0)-(a.pubTs||0));
     }
-    if(feedTab==='context'){
-      return pool.filter(item => isDeepInvestigative(item));
-    }
     return pool;
   }, [feedTab, sourcedFeed, userTopics.join(','), activeSource, interests]);
 
@@ -402,12 +405,14 @@ export default function Sada() {
 
   // Navigation — radar is the center button (index 2 of 5), styled bigger.
   // RTL flex order: index 0 = rightmost, index 4 = leftmost.
-  // So map (index 1) sits visually to the right of radar, photos (index 3) to its left.
+  // So map (index 1) sits visually to the right of radar, depth (index 3) to its left.
+  // The 'depth' slot is where the photos feature used to live. It now opens
+  // the Basira vertical — long-form analytical studies for deep readers.
   const navItems = [
-    { id:'home', label:'الرئيسية', icon:f=>I.home(f) },
+    { id:'home', label:'الرئيسية', icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.home(f)}<span className="home-dot" style={{position:'absolute',top:-1,right:-2,width:9,height:9,borderRadius:'50%',background:'#FF8C00',border:'2px solid var(--bg)'}}/></span> },
     { id:'map',  label:'خريطة',    icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.map(f)}<span className="map-dot" style={{position:'absolute',top:0,right:-1,width:9,height:9,borderRadius:'50%',background:'var(--bl)',border:'2px solid var(--bg)'}}/></span> },
     { id:'radar',label:'رادار',    center:true, icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.radar(f)}<span className="radar-dot" style={{position:'absolute',top:-1,right:-2,width:10,height:10,borderRadius:'50%',background:'#E53935',border:'2px solid var(--bg)'}}/></span> },
-    { id:'photos',label:'صور',     icon:f=>I.photos(f) },
+    { id:'depth',label:'دراسات',   icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.depth(f)}<span className="depth-dot" style={{position:'absolute',top:-1,right:-2,width:9,height:9,borderRadius:'50%',background:'#7E57C2',border:'2px solid var(--bg)'}}/></span> },
     { id:'settings',label:'الإعدادات',icon:()=>auth.isLoggedIn?<div style={{width:22,height:22,borderRadius:'50%',background:'var(--rd)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:'#fff'}}>{(auth.profile?.display_name||'?')[0]}</div>:I.user()},
   ];
 
@@ -433,8 +438,8 @@ export default function Sada() {
             <button className={`ib ${allFeed.some(f=>f.pubTs>seenTs)?'ndot':''}`} onClick={()=>{Sound.tap();setNotifs(true); const now=Date.now(); setSeenTs(now); try{localStorage.setItem('sada-seen-ts',String(now));}catch{}; }}>{I.bell()}</button>
           </div>
         </div>
-        {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'},{id:'context',l:'سياق'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>{Sound.tap();setFeedTab(t.id);setActiveSource(null);}}>{t.l}</button>))}</div>)}
-        {nav!=='home'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}{nav==='photos'&&'صور من العالم'}</div>)}
+        {nav==='home'&&(<div className="tabs">{[{id:'now',l:'هنا والآن'},{id:'important',l:'مهم'}].map(t=>(<button key={t.id} className={`tab ${feedTab===t.id?'on':''}`} onClick={()=>{Sound.tap();setFeedTab(t.id);setActiveSource(null);}}>{t.l}</button>))}</div>)}
+        {nav!=='home'&&nav!=='depth'&&(<div style={{ padding:'0 20px 12px',fontSize:20,fontWeight:800,color:'var(--bk)',borderBottom:'.5px solid var(--g1)' }}>{nav==='saved'&&'المحفوظات'}{nav==='settings'&&'الإعدادات'}{nav==='map'&&'خريطة الأخبار'}</div>)}
       </div>}
 
       {/* Main content */}
@@ -466,13 +471,11 @@ export default function Sada() {
           {/* Tab-specific headers */}
           {feedTab==='important'&&userTopics.length>0&&(<div className="topic-bar"><span style={{ fontSize:11,color:'var(--t4)',fontWeight:700,whiteSpace:'nowrap',flexShrink:0 }}>يُصفَّح حسب:</span>{userTopics.map(id=>{ const t=TOPICS.find(x=>x.id===id); return t?<span key={id} className="topic-pill on">{t.icon} {t.label}</span>:null; })}</div>)}
           {feedTab==='important'&&userTopics.length===0&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)',display:'flex',justifyContent:'space-between',alignItems:'center' }}><span>لم تختر اهتمامات بعد — يُرتَّب حسب التفاعل</span><button onClick={()=>setNav('settings')} style={{ fontSize:11,fontWeight:700,color:'var(--bk)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>اضبط ▸</button></div>)}
-          {feedTab==='context'&&(<div style={{ padding:'10px 20px',background:'var(--f1)',fontSize:12,color:'var(--t3)',borderBottom:'.5px solid var(--g1)' }}>تحقيقات · تحليلات · تقارير معمّقة</div>)}
 
           {/* Feed */}
           {loading&&!refreshing&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>جاري تحميل الأخبار…</div>}
           {!loading&&displayFeed.length===0&&feedTab==='important'&&userTopics.length===0&&Object.keys(interests).length===0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>اضغط "يهمني" على الأخبار لتعليم التطبيق ما يهمك</div>}
           {!loading&&displayFeed.length===0&&feedTab==='important'&&userTopics.length>0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار تطابق اهتماماتك حالياً</div>}
-          {!loading&&displayFeed.length===0&&feedTab==='context'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد تحليلات أو تقارير حالياً</div>}
           {!loading&&displayFeed.length===0&&feedTab==='now'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار عاجلة حالياً</div>}
           {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={`${item.id}-${i}`} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} onInterest={toggleInterest} isInterested={interestedIds.has(item.id)} showImg={i>=4&&i%4!==3} reactionCounts={reactionCounts[item.id]} userReactions={userReactions[item.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[item.id]?.comment||0} onComment={handleComment}/>))}
           {!loading&&visibleCount<displayFeed.length&&(<div className="load-more"><div className="spinner" style={{ width:18,height:18,border:'2px solid var(--g2)',borderTopColor:'var(--t3)',borderRadius:'50%',animation:'spin .6s linear infinite',margin:'0 auto' }}/></div>)}
@@ -480,7 +483,7 @@ export default function Sada() {
         </>)}
 
         {nav==='radar'   && <RadarView trending={trending} allFeed={radarItems.length ? radarItems : allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}} onRefresh={radarRefresh || refresh} refreshing={loading}/>}
-        {nav==='photos'  && <PhotoGrid/>}
+        {nav==='depth'   && <DepthFeed onOpen={setDepthDoc}/>}
         {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={mapItems.length ? mapItems : allFeed}/>}
         {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}
         {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onUpdatePrefs={updatePrefs} onResetPrefs={resetPrefs} theme={theme} toggleTheme={toggleTheme} auth={auth} onOpenAuth={()=>setShowAuth(true)} onOpenProfile={()=>setShowProfile(true)} onOpenAdmin={()=>setNav('admin')}/>}
@@ -492,6 +495,7 @@ export default function Sada() {
 
       {/* Overlays */}
       {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} onOpenRelated={(r)=>{setArticle(null);setTimeout(()=>setArticle(r),50);}} relatedArticles={allFeed}/>}
+      {depthDoc&&<DepthDetail doc={depthDoc} onClose={()=>{Sound.close();setDepthDoc(null);}}/>}
       {srch&&<SearchView onClose={()=>{Sound.close();setSrch(false);}} feed={allFeed} onOpen={setArticle} onOpenProfile={id=>{ setSrch(false); setProfileUserId(id); }}/>}
       {notifs&&<NotificationPanel allFeed={allFeed} onClose={()=>{Sound.close();setNotifs(false);}} onOpen={setArticle}/>}
       {commentArticle&&<CommentSheet articleId={commentArticle.id} onClose={()=>setCommentArticle(null)} onOpenAuth={()=>setShowAuth(true)} onCommentAdded={()=>incrementCommentCount(commentArticle.id)} onCommentRemoved={()=>incrementCommentCount(commentArticle.id,-1)}/>}

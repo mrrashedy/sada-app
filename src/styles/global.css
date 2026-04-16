@@ -146,6 +146,13 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
   animation-delay:-30s;  /* offset 30s so radar/map alternate */
   transform-origin:center;
 }
+.home-dot{
+  --blip-strong:rgba(255,140,0,.75);
+  --blip-fade:rgba(255,140,0,0);
+  animation:nav-3blip 60s linear infinite;
+  animation-delay:-15s;  /* stagger so home/radar/map alternate */
+  transform-origin:center;
+}
 
 /* Article detail */
 .detail{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:100;overflow-y:auto;animation:sl .3s cubic-bezier(.25,.46,.45,.94);direction:rtl;font-family:var(--ft)}
@@ -330,3 +337,191 @@ textarea.auth-input{line-height:1.6}
 .pgrid-back-meta{font-size:10px;color:var(--t4);display:flex;gap:6px;align-items:center}
 
 .pgrid-empty{text-align:center;color:var(--t3);padding:60px 20px;font-size:13px;direction:rtl;line-height:1.7;grid-column:1/-1}
+
+/* ============================================================
+   Depth vertical (Basira integration)
+   ============================================================
+   A denser, more argument-forward block style for the 'دراسات'
+   tab. No category filters — single unified stream. Each block
+   renders the full v2 decomposition (flagship claim, core
+   argument, supporting logic, assumptions, frame, tensions,
+   if-correct-then, key quote, scaffolding chips). Purple accent
+   (#7E57C2) distinguishes the vertical from the news feed's
+   orange/red palette.
+   ============================================================ */
+
+/* Paper-grid background — a very faint graph-paper pattern that lives
+   under the whole depth feed so it reads as a different surface from
+   the main news feed the moment you tap into the vertical. The grid
+   cells are sized to ~22px so every body-text line (13px × 1.8 line-height)
+   lands close to a grid row, giving the content a subtle ledger rhythm
+   without the distraction of a visible rule. Base color is a warm
+   cream (#fdfbf4) and the lines are a low-opacity sepia so the whole
+   block reads as "manuscript paper" rather than "engineering drawing". */
+.depth-root{padding:0 0 24px;direction:rtl;background-color:#fdfbf4;background-image:linear-gradient(to right,rgba(120,90,40,.055) 1px,transparent 1px),linear-gradient(to bottom,rgba(120,90,40,.055) 1px,transparent 1px);background-size:22px 22px;background-position:0 0}
+
+.depth-intro{padding:16px 20px 14px;border-bottom:.5px solid var(--g1);background:linear-gradient(180deg,var(--f1),var(--bg))}
+.depth-intro-ar{font-size:13px;line-height:1.8;color:var(--t2);font-weight:500}
+.depth-intro-en{font-size:11px;line-height:1.6;color:var(--t4);margin-top:4px;direction:ltr;text-align:left;font-style:italic}
+.depth-count-bar{margin-top:8px;font-size:10px;color:var(--t4);font-weight:600;letter-spacing:.2px}
+
+.depth-list{display:flex;flex-direction:column}
+
+/* ---------- Block ---------- */
+.depth-post{padding:22px 20px 18px;border-bottom:.5px solid var(--g1);animation:fu .45s ease both;cursor:pointer;transition:background .15s ease}
+.depth-post:hover{background:var(--f1)}
+.depth-post:active{background:var(--g1)}
+
+/* ---------- Header row (source + chips) ---------- */
+.depth-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.depth-src{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--t2);margin-inline-end:4px}
+.depth-src-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;filter:grayscale(.6) contrast(1.1)}
+.depth-src-name{font-size:12px;font-weight:700;color:var(--t1)}
+
+.depth-chip{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px;border:1px solid var(--g1);color:var(--t3);background:var(--bg);letter-spacing:.2px;line-height:1.6}
+.depth-tier-1{border-color:rgba(126,87,194,.35);color:#7E57C2}
+.depth-tier-2{border-color:rgba(21,101,192,.25);color:#1565C0}
+.depth-tier-3{border-color:var(--g1);color:var(--t4)}
+.depth-doctype{background:var(--f1);color:var(--t3)}
+.depth-pending{border-color:rgba(255,109,0,.3);color:var(--or);background:rgba(255,109,0,.06)}
+
+/* ---------- Title ---------- */
+.depth-title{font-size:15px;font-weight:700;line-height:1.5;color:var(--t1);margin:0 0 12px;word-break:break-word;letter-spacing:-.05px}
+.depth-title[lang="ar"]{font-size:16px;line-height:1.65;font-weight:700}
+
+/* ---------- Flagship pullquote (the real claim, stripped) ---------- */
+.depth-flagship{position:relative;font-size:15px;line-height:1.8;color:var(--t1);padding:14px 18px 14px 16px;margin:0 0 14px;background:linear-gradient(180deg,rgba(126,87,194,.08),rgba(126,87,194,.03));border-inline-start:3px solid #7E57C2;border-radius:0 8px 8px 0;font-weight:600}
+.depth-flagship-mark{display:block;font-size:9px;font-weight:800;color:#7E57C2;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-style:normal}
+
+/* ---------- Labeled analytical sections ---------- */
+.depth-section{margin:0 0 12px;padding:0}
+.depth-section-label{font-size:9px;font-weight:800;color:#7E57C2;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px}
+.depth-section-body{font-size:13.5px;line-height:1.8;color:var(--t2);font-weight:500}
+.depth-section-list{list-style:none;margin:4px 0 0;padding:0}
+.depth-section-list li{position:relative;font-size:13px;line-height:1.75;color:var(--t2);padding:2px 0 2px 0;padding-inline-start:14px;font-weight:500}
+.depth-section-list li::before{content:"—";position:absolute;inset-inline-start:0;color:#7E57C2;font-weight:800}
+
+/* Category accents for specific sections */
+.depth-core-arg .depth-section-body{color:var(--t1);font-weight:600}
+.depth-tensions .depth-section-body{color:var(--t2);font-style:italic;border-inline-start:2px solid rgba(176,78,78,.3);padding-inline-start:10px;border-radius:0 4px 4px 0;background:rgba(176,78,78,.03)}
+.depth-brief-rows{margin:8px 0 14px;display:flex;flex-direction:column;gap:0}
+.depth-brief-rows .depth-section-label{margin-bottom:8px}
+.depth-brief-row{display:flex;flex-direction:column;gap:2px;padding:9px 0 10px;border-bottom:.5px dashed rgba(120,90,40,.22)}
+.depth-brief-row:last-child{border-bottom:none;padding-bottom:2px}
+.depth-brief-row-label{font-size:9px;font-weight:800;color:#7E57C2;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:2px}
+.depth-brief-row-text{font-size:13.5px;line-height:1.85;color:var(--t1);font-weight:500;word-break:break-word}
+[data-theme='dark'] .depth-brief-row{border-bottom-color:rgba(179,157,219,.18)}
+[data-theme='dark'] .depth-brief-row-label{color:#B39DDB}
+.depth-tensions .depth-section-label{color:#B04E4E}
+.depth-if-then .depth-section-body{color:var(--t1);padding-inline-start:10px;border-inline-start:2px solid rgba(63,106,168,.4);background:rgba(63,106,168,.04);padding:8px 10px;border-radius:0 4px 4px 0}
+.depth-if-then .depth-section-label{color:#3F6AA8}
+.depth-assumptions{background:var(--f1);padding:10px 12px;border-radius:6px;border:.5px solid var(--g1)}
+.depth-assumptions .depth-section-label{color:var(--t3)}
+
+/* ---------- Representative quote ---------- */
+.depth-quote{margin:0 0 14px;padding:14px 16px;background:var(--bg);border:.5px solid var(--g1);border-radius:8px;position:relative}
+.depth-quote::before{content:"\201C";position:absolute;top:-6px;inset-inline-start:12px;font-size:36px;font-family:Georgia,serif;color:#7E57C2;line-height:1;font-weight:700}
+.depth-quote blockquote{margin:0;padding:0 0 0 16px;font-size:13.5px;line-height:1.8;color:var(--t1);font-style:italic;font-weight:500}
+.depth-quote figcaption{margin-top:6px;font-size:10.5px;color:var(--t4);font-weight:600;letter-spacing:.2px}
+
+/* ---------- Brief (fallback when no analysis) ---------- */
+.depth-brief{font-size:13px;line-height:1.8;color:var(--t2);margin:0 0 12px;word-break:break-word}
+
+/* ---------- Body (long-form content, paragraph preserved) ---------- */
+.depth-body{margin:0 0 14px;display:flex;flex-direction:column;gap:9px}
+.depth-body p{font-size:13px;line-height:1.85;color:var(--t2);word-break:break-word;margin:0;font-weight:450}
+.depth-body p:first-of-type{color:var(--t1);font-weight:500}
+
+/* ---------- Scaffolding row: frameworks/regions/actors ---------- */
+.depth-scaffold{display:flex;flex-direction:column;gap:6px;margin:12px 0;padding:10px 0 2px;border-top:.5px dashed var(--g1)}
+.depth-scaffold-row{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+.depth-scaffold-label{font-size:9px;font-weight:800;color:var(--t4);letter-spacing:1px;text-transform:uppercase;margin-inline-end:4px;min-width:56px}
+.depth-tag-framework{color:#7E57C2;border-color:rgba(126,87,194,.3);background:rgba(126,87,194,.06)}
+.depth-tag-region{color:#3E8E86;border-color:rgba(62,142,134,.3);background:rgba(62,142,134,.05)}
+.depth-tag-actor{color:#B88A2E;border-color:rgba(184,138,46,.3);background:rgba(184,138,46,.05)}
+
+/* ---------- Footer: topic tags + read link ---------- */
+.depth-foot{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:.5px solid var(--g1)}
+.depth-topics{display:flex;flex-wrap:wrap;gap:5px}
+.depth-tag{font-size:10px;font-weight:600;color:var(--t3);background:var(--f1);border:.5px solid var(--g1);padding:2px 8px;border-radius:4px;letter-spacing:.2px;white-space:nowrap}
+.depth-read{margin-inline-start:auto;font-size:11px;font-weight:700;color:#7E57C2;letter-spacing:.3px;white-space:nowrap}
+
+/* ---------- Empty / loading / error states ---------- */
+.depth-empty{padding:60px 24px;text-align:center;color:var(--t3);direction:rtl}
+.depth-empty-title{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:10px}
+.depth-empty-body{font-size:13px;line-height:1.8;color:var(--t3);max-width:380px;margin:0 auto 14px}
+.depth-empty-hint{display:inline-block;font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#7E57C2;text-decoration:none;padding:6px 10px;background:var(--f1);border:.5px solid var(--g1);border-radius:6px;direction:ltr}
+.depth-empty-hint:hover{border-color:#7E57C2}
+
+/* ─────────── DepthDetail — full-screen reading surface ───────────
+   Reuses the .detail slide-in shell (position:absolute + .3s animation
+   + sticky .det-hdr) and overrides only the body container so we can
+   paint the same manuscript-paper grid as the feed, tune the type for
+   deliberate long reading, and widen the content column a little so
+   the flagship pullquote has room to breathe. Every sub-section just
+   re-uses .depth-section / .depth-flagship / .depth-quote / etc. so we
+   don't duplicate the v2 visual language. */
+.depth-detail{background-color:#fdfbf4;background-image:linear-gradient(to right,rgba(120,90,40,.055) 1px,transparent 1px),linear-gradient(to bottom,rgba(120,90,40,.055) 1px,transparent 1px);background-size:22px 22px}
+.depth-detail .det-hdr{background:rgba(253,251,244,.92);backdrop-filter:saturate(1.2) blur(8px);-webkit-backdrop-filter:saturate(1.2) blur(8px);border-bottom:.5px solid rgba(120,90,40,.15)}
+.depth-detail-body{padding:22px 28px 120px;max-width:720px}
+
+/* Title — bigger, bolder, high-contrast. This is the reading surface,
+   so the headline carries more weight than it does on the card. */
+.depth-detail-title{font-size:24px;font-weight:800;line-height:1.45;color:var(--t1);margin:0 0 20px;letter-spacing:-.3px;word-break:break-word}
+.depth-detail-title[lang="ar"]{font-size:26px;line-height:1.55;font-weight:800;letter-spacing:0}
+
+/* Flagship pullquote — slightly larger than the card version to anchor
+   the eye. The purple bar + cream tint + "الخلاصة" label already do
+   most of the work; here we just scale them up. */
+.depth-detail-flagship{font-size:17px;line-height:1.85;padding:18px 22px 18px 20px;margin:0 0 22px;background:linear-gradient(180deg,rgba(126,87,194,.1),rgba(126,87,194,.04));border-inline-start-width:4px}
+.depth-detail-flagship .depth-flagship-mark{font-size:10px;margin-bottom:8px}
+
+/* Body text — larger and airier for long reads. First paragraph stays
+   slightly bolder/darker (same treatment as the card) to lead the eye in. */
+.depth-detail-body-text{margin:18px 0 22px;gap:12px}
+.depth-detail-body-text p{font-size:15px;line-height:1.95;font-weight:450;color:var(--t2)}
+.depth-detail-body-text p:first-of-type{font-size:15.5px;color:var(--t1);font-weight:500}
+
+/* Quotes block — when there's more than one key quote, stack them with
+   more separation than the single-quote card version. */
+.depth-detail-quotes{display:flex;flex-direction:column;gap:12px;margin:18px 0}
+
+/* Long-form summary blocks — the ar/en paragraphs the analyst wrote.
+   A soft cream card with a purple label, sitting separate from the
+   section blocks so it reads as a second pass of analysis. */
+.depth-detail-summary{margin:18px 0;padding:16px 18px;background:rgba(255,255,255,.55);border:.5px solid rgba(120,90,40,.18);border-radius:10px}
+.depth-detail-summary .depth-section-label{color:#7E57C2;margin-bottom:8px}
+.depth-detail-summary-body{font-size:14px;line-height:1.9;color:var(--t2);font-weight:450}
+
+/* CTA at the bottom — same shell as .det-cta but tinted to match the
+   depth purple so it reads as part of the vertical, not the news app. */
+.depth-detail-cta{margin-top:28px;background:rgba(126,87,194,.06);border-color:rgba(126,87,194,.35);color:#7E57C2;font-weight:700}
+.depth-detail-cta:active{background:rgba(126,87,194,.14)}
+
+/* Dark-mode overrides — near-black paper, lavender grid, lavender accents */
+[data-theme='dark'] .depth-detail{background-color:#0b0b0e;background-image:linear-gradient(to right,rgba(179,157,219,.035) 1px,transparent 1px),linear-gradient(to bottom,rgba(179,157,219,.035) 1px,transparent 1px)}
+[data-theme='dark'] .depth-detail .det-hdr{background:rgba(11,11,14,.88);border-bottom-color:rgba(179,157,219,.15)}
+[data-theme='dark'] .depth-detail-flagship{background:linear-gradient(180deg,rgba(149,117,205,.16),rgba(149,117,205,.05));border-inline-start-color:#9575CD}
+[data-theme='dark'] .depth-detail-summary{background:rgba(179,157,219,.04);border-color:rgba(179,157,219,.18)}
+[data-theme='dark'] .depth-detail-summary .depth-section-label{color:#B39DDB}
+[data-theme='dark'] .depth-detail-cta{background:rgba(149,117,205,.08);border-color:rgba(149,117,205,.35);color:#B39DDB}
+[data-theme='dark'] .depth-detail-cta:active{background:rgba(149,117,205,.18)}
+
+/* ---------- Dark theme overrides ---------- */
+/* Dark-mode paper grid: the cream-paper base flips to a near-black surface
+   and the sepia rule-lines flip to a faint lavender that echoes the purple
+   analytical accent used across the depth vertical. Opacity drops to ~3%
+   so the grid is visible without competing with body text in dark mode. */
+[data-theme='dark'] .depth-root{background-color:#0b0b0e;background-image:linear-gradient(to right,rgba(179,157,219,.035) 1px,transparent 1px),linear-gradient(to bottom,rgba(179,157,219,.035) 1px,transparent 1px)}
+[data-theme='dark'] .depth-flagship{background:linear-gradient(180deg,rgba(149,117,205,.14),rgba(149,117,205,.04));border-inline-start-color:#9575CD;color:var(--t1)}
+[data-theme='dark'] .depth-flagship-mark{color:#B39DDB}
+[data-theme='dark'] .depth-section-label{color:#B39DDB}
+[data-theme='dark'] .depth-section-list li::before{color:#B39DDB}
+[data-theme='dark'] .depth-tensions .depth-section-body{background:rgba(229,115,115,.05);border-inline-start-color:rgba(229,115,115,.4)}
+[data-theme='dark'] .depth-tensions .depth-section-label{color:#E57373}
+[data-theme='dark'] .depth-if-then .depth-section-body{background:rgba(100,149,237,.06);border-inline-start-color:rgba(100,149,237,.5)}
+[data-theme='dark'] .depth-if-then .depth-section-label{color:#64B5F6}
+[data-theme='dark'] .depth-quote::before{color:#B39DDB}
+[data-theme='dark'] .depth-tier-1{color:#B39DDB;border-color:rgba(179,157,219,.4)}
+[data-theme='dark'] .depth-read{color:#B39DDB}
+[data-theme='dark'] .depth-tag-framework{color:#B39DDB;border-color:rgba(179,157,219,.35);background:rgba(179,157,219,.07)}

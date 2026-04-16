@@ -194,6 +194,39 @@ def fetch_source(src: Source, max_docs: int = 10) -> list[CandidateDocument]:
             if not title or not body or len(body) < 300:
                 continue
 
+            # Quality filter: reject index/listing pages that trafilatura
+            # still happily extracts (homepage, /publications, /press-releases,
+            # /news/, etc.). These show up as cards in the UI but contain no
+            # actual argument — just a list of links to the real articles.
+            # Signals:
+            #   - Title is a generic nav label ("News", "Publications",
+            #     "الروابط الرئيسية", "Press Releases", etc.)
+            #   - URL path ends in a bare listing segment
+            #   - Body is suspiciously link-dense relative to its length
+            tl = title.lower().strip()
+            nav_titles = {
+                "news", "publications", "press releases", "press release",
+                "articles", "research", "reports", "analysis", "publication",
+                "blog", "home", "about", "contact", "events", "media",
+                "الروابط الرئيسية", "الرئيسية", "الأخبار", "أخبار",
+                "المنشورات", "الإصدارات", "البيانات الصحفية", "البيانات",
+                "التقارير", "الأبحاث", "المقالات",
+            }
+            if tl in nav_titles or title in nav_titles:
+                logger.debug("skip nav-title page: %s (%s)", title, url)
+                continue
+            # URL ending in a listing segment with nothing specific after it
+            from urllib.parse import urlparse as _urlparse
+            path_tail = _urlparse(url).path.rstrip("/").rsplit("/", 1)[-1].lower()
+            listing_tails = {
+                "publications", "publication", "press-releases", "press-release",
+                "news", "reports", "articles", "research", "analysis",
+                "publicaciones", "actualites", "actualités",
+            }
+            if path_tail in listing_tails:
+                logger.debug("skip listing-URL page: %s", url)
+                continue
+
             authors = []
             author_val = extracted.get("author")
             if isinstance(author_val, list):

@@ -66,7 +66,11 @@ const SOURCES = {
   // contains 0 items (likely datacenter IPs blocked). Google News proxy is the fallback.
   masrawy:   { name: "مصراوي", initial: "مص", tier: 1, feeds: ["https://www.masrawy.com/rss/feed/25/%D8%A3%D8%AE%D8%A8%D8%A7%D8%B1","https://news.google.com/rss/search?q=site%3Amasrawy.com&hl=ar&gl=SA&ceid=SA:ar"] },
   ahram_en:  { name: "الأهرام EN", initial: "AH", tier: 1, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aenglish.ahram.org.eg&hl=en&gl=US&ceid=US:en"] },
-  youm7:     { name: "اليوم السابع", initial: "٧", tier: 1, feeds: ["https://www.youm7.com/RSS/SectionRss?SectionID=97","https://www.youm7.com/RSS/SectionRss?SectionID=203"] },
+  // youm7 direct feeds redirect (www ↔ m) and currently return 0 items from
+  // Cloudflare Workers despite working from regular browsers. Both section
+  // feeds (97 = main, 203 = politics) kept as primary; Google News added as
+  // fallback so this Tier 1 source actually surfaces in the feed.
+  youm7:     { name: "اليوم السابع", initial: "٧", tier: 1, feeds: ["https://www.youm7.com/RSS/SectionRss?SectionID=97","https://www.youm7.com/RSS/SectionRss?SectionID=203","https://news.google.com/rss/search?q=site%3Ayoum7.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // egyptindependent.com returns 200 but 0 items from CF Workers. Add GN fallback.
   egypt_ind: { name: "Egypt Independent", initial: "EI", tier: 2, lang: "en", feeds: ["https://www.egyptindependent.com/feed/","https://news.google.com/rss/search?q=site%3Aegyptindependent.com&hl=en&gl=US&ceid=US:en"] },
   okaz:      { name: "عكاظ", initial: "ك", tier: 2, feeds: ["https://www.okaz.com.sa/rssFeed/0"] },

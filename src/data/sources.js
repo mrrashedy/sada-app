@@ -90,6 +90,7 @@ export const SOURCES = [
   { n:"لو 360 FR",     i:"36F",id:"le360_fr",      domain:"fr.le360.ma"           },
   // مصادر عالمية مترجمة
   { n:"الغارديان",     i:"G",  id:"guardian_w",    domain:"theguardian.com"       },
+  { n:"رويترز EN",     i:"RE", id:"reuters_en",    domain:"reuters.com"           },
   { n:"واشنطن بوست",   i:"WP", id:"wapo_world",    domain:"washingtonpost.com"    },
   { n:"بلومبرغ",       i:"BL", id:"bloomberg",     domain:"bloomberg.com"         },
   { n:"CNN عالمي",     i:"CN", id:"cnn_en",        domain:"cnn.com"               },

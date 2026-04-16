@@ -172,6 +172,11 @@ const SOURCES = {
 
   // Tier 4: Additional real-time firehose sources — major Western broadcasters
   guardian_w:   { name: "الغارديان", initial: "G", tier: 3, lang: "en", feeds: ["https://www.theguardian.com/world/rss"] },
+  // Reuters English wire — international breaking news. Sister to the existing
+  // reuters_ar (Arabic-translated). Both run because Reuters EN sometimes
+  // breaks stories the Arabic feed lags or omits, and the en→ar translation
+  // pipeline normalizes the language for the user.
+  reuters_en:   { name: "رويترز EN", initial: "RE", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/OfVnHSMzG81M03AF.xml"] },
   // washingtonpost.com direct feed 403s/timeouts from CF Workers. Google News proxy.
   wapo_world:   { name: "واشنطن بوست", initial: "WP", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Awashingtonpost.com+world&hl=en&gl=US&ceid=US:en"] },
   bloomberg:    { name: "بلومبرغ", initial: "BL", tier: 3, lang: "en", feeds: ["https://feeds.bloomberg.com/politics/news.rss"] },

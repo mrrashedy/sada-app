@@ -470,12 +470,11 @@ export default function Sada() {
               misleading because the user couldn't tell when (or whether)
               new items had actually arrived. */}
 
-          {/* X-style refresh pill — round orange chip, centered, sticky at
-              the top of the feed. Appears ONLY when pendingCount > 0,
-              meaning genuine new items (newer-by-timestamp than what's
-              already shown) have arrived. Tap → flushPending() merges
-              them in and smooth-scrolls to top. */}
-          {pendingCount>0 && (
+          {/* X-style refresh pill — appears ONLY when at least 5 genuinely-
+              new items have piled up. Subtle frosted-glass chip in the app's
+              dark palette (no bright orange) — calm, doesn't compete with
+              feed content. Tap → flushPending() + smooth-scroll to top. */}
+          {pendingCount>=5 && (
             <div style={{ position:'sticky', top:8, zIndex:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
               <button
                 onClick={() => {
@@ -485,16 +484,18 @@ export default function Sada() {
                 }}
                 style={{
                   pointerEvents:'auto',
-                  background:'#FF6B00',
-                  color:'#fff',
-                  fontSize:13,
-                  fontWeight:700,
+                  background:'rgba(10,10,10,.65)',
+                  backdropFilter:'blur(12px)',
+                  WebkitBackdropFilter:'blur(12px)',
+                  color:'rgba(255,255,255,.92)',
+                  fontSize:11,
+                  fontWeight:600,
                   fontFamily:'var(--ft)',
-                  padding:'8px 22px',
+                  padding:'5px 14px',
                   borderRadius:'999px',
-                  border:'none',
+                  border:'1px solid rgba(255,255,255,.08)',
                   cursor:'pointer',
-                  boxShadow:'0 4px 14px rgba(255,107,0,.4)',
+                  boxShadow:'0 1px 4px rgba(0,0,0,.12)',
                 }}
               >
                 تحديث

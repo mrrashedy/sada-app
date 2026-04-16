@@ -119,15 +119,52 @@ def known_dedupe_hashes() -> set[str]:
     return hashes
 
 
+# Client-side id assignment. The initial Supabase migration declared
+# depth_documents.id as a plain bigint primary key (not identity), so
+# inserts without an explicit id hit a NOT NULL violation. Rather than
+# require the user to run a schema fix before the worker can run, we
+# assign ids client-side: at worker start-up, fetch max(id) once and
+# increment per insert. Single worker, single thread, so no race.
+_NEXT_ID_CACHE: dict[str, int] = {}
+
+
+def _next_id(table: str) -> int:
+    """Return the next unused id for a Supabase table, cached per run.
+
+    Fetches max(id) once, then increments in memory. Cheap because the
+    worker only inserts a few dozen rows per run. If the worker ever
+    goes multi-threaded or multi-process, replace with a SELECT + INSERT
+    in a single transaction or run the identity schema fix.
+    """
+    if table in _NEXT_ID_CACHE:
+        _NEXT_ID_CACHE[table] += 1
+        return _NEXT_ID_CACHE[table]
+    sb = get_client()
+    res = (
+        sb.table(table)
+        .select("id")
+        .order("id", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = res.data or []
+    start = (rows[0]["id"] if rows else 0) + 1
+    _NEXT_ID_CACHE[table] = start
+    return start
+
+
 def insert_document(doc_row: dict[str, Any]) -> int | None:
     """Insert one depth_documents row, return the new id (None on conflict).
 
-    Relies on the `depth_documents_dedupe_hash_key` unique constraint to
-    drop duplicates. If another worker already inserted the same doc
-    between our in-memory cache build and this insert, on_conflict
-    do-nothing will return zero rows and we return None.
+    Assigns id client-side (see _next_id). Relies on the
+    `depth_documents_dedupe_hash_key` unique constraint to drop
+    duplicates. If another worker already inserted the same doc between
+    our in-memory cache build and this insert, on_conflict do-nothing
+    will return zero rows and we return None.
     """
     sb = get_client()
+    if "id" not in doc_row or doc_row["id"] is None:
+        doc_row = {**doc_row, "id": _next_id("depth_documents")}
     try:
         res = (
             sb.table("depth_documents")

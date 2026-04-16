@@ -102,7 +102,10 @@ const SOURCES = {
   // Source is the Telegram channel @Qudsn_hebrew, fed via rss.app.
   qudsn_heb:   { name: "ترجمات عبرية", initial: "عب", tier: 2, feeds: ["https://rss.app/feeds/ZkMAVoRAYNluzgla.xml"] },
   // Tier 2: additional Egypt & Gulf flagships
-  ahram:       { name: "الأهرام", initial: "هر", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Agate.ahram.org.eg&hl=ar&gl=SA&ceid=SA:ar"] },
+  // الأهرام — Egypt's flagship daily (founded 1875, most-circulated). Upgraded
+  // from Google News proxy to direct rss.app feed (~1min lag instead of 5-15min)
+  // and promoted to Tier 1. GN proxy kept as fallback in case rss.app feed dies.
+  ahram:       { name: "الأهرام", initial: "هر", tier: 1, feeds: ["https://rss.app/feeds/gXGjA0WaERLJ5Sot.xml","https://news.google.com/rss/search?q=site%3Agate.ahram.org.eg&hl=ar&gl=SA&ceid=SA:ar"] },
   mada_masr:   { name: "مدى مصر", initial: "مد", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amadamasr.com&hl=ar&gl=SA&ceid=SA:ar"] },
   alain_ar:    { name: "العين الإخبارية", initial: "عن", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aal-ain.com&hl=ar&gl=SA&ceid=SA:ar"] },
 

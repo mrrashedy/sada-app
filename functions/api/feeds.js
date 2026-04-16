@@ -853,6 +853,44 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
       // Splice into the very top so flagships are guaranteed at position 0.
       mixed.splice(0, 0, item);
     }
+
+    // ── Diversity floor ───────────────────────────────────────────────
+    // Generalized version of the flagship boost. Reuters publishes 1-3
+    // items/hour as an agency, while RT publishes 100/hour — pure time-sort
+    // pushes Reuters past position 400 even though its newest item is
+    // recent. Same problem applies to every low-volume source we add.
+    //
+    // Floor: every source with at least one item in allDeduped must have
+    // its NEWEST item in the top DIVERSITY_WINDOW slots. Sources already
+    // present (by sourceId) in the window are skipped — we only inject the
+    // missing ones. Insertion is at the END of the window so high-recency
+    // items at the top stay put; the missing source's item lands at slot
+    // ~DIVERSITY_WINDOW-1.
+    const DIVERSITY_WINDOW = 100;
+    const presentInWindow = new Set(
+      mixed.slice(0, DIVERSITY_WINDOW).map(m => m.sourceId)
+    );
+    // Iterate sources in registry order so promotion is deterministic.
+    for (const sid of Object.keys(SOURCES)) {
+      if (presentInWindow.has(sid)) continue;
+      const item = allDeduped.find(x => x.sourceId === sid);
+      if (!item) continue;
+      // Title-dedup against the entire mixed array (not just window) so we
+      // don't promote a duplicate of a story already shown elsewhere.
+      const itemTkey = (item.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const dup = itemTkey && mixed.some(m =>
+        (m.title || '').replace(/\s+/g, ' ').trim().toLowerCase() === itemTkey
+      );
+      if (dup) continue;
+      // Remove this item's earlier (deeper) occurrence if any, then insert
+      // at the end of the diversity window so it's visible without bumping
+      // the very-recent items off-screen.
+      const existing = mixed.findIndex(m => m === item || m.link === item.link);
+      if (existing >= 0) mixed.splice(existing, 1);
+      const insertAt = Math.min(DIVERSITY_WINDOW - 1, mixed.length);
+      mixed.splice(insertAt, 0, item);
+      presentInWindow.add(sid);
+    }
   }
 
   // Format for client

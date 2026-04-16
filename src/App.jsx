@@ -83,6 +83,7 @@ export default function Sada() {
   const [activeSource, setActiveSource] = useState(null);
   const [newCount, setNewCount] = useState(0);
   const prevLen                 = useRef(0);
+  const prevIds                 = useRef(new Set()); // tracks ids we've already shown — replaces broken length-based new-detection
   const contentRef              = useRef(null);
   const lastScrollY             = useRef(0);
   const [barsHidden, setBarsHidden] = useState(false);
@@ -132,10 +133,35 @@ export default function Sada() {
   // flow only through the `news` vertical response, since fetchAdminLayer
   // in functions/api/feeds.js only runs for kind=news. It's global state,
   // not per-vertical, so the news feed is a fine carrier.
-  const { feed:liveFeed, loading, isLive, refresh, radarOverrides } = useNews([], 'news', 15000);
+  const { feed:liveFeed, loading, isLive, refresh, radarOverrides } = useNews([], 'news', 6000);
   const { feed:mapFeed } = useNews([], 'map', 30000);
   const { feed:radarFeed, refresh:radarRefresh } = useNews([], 'radar', 30000);
-  useEffect(() => { if(liveFeed.length>prevLen.current && prevLen.current>0){ setNewCount(liveFeed.length-prevLen.current); Sound.notify(); setTimeout(()=>setNewCount(0),4000); } prevLen.current=liveFeed.length; }, [liveFeed.length]);
+  // New-items detector — counts items with IDs we haven't shown before.
+  // The previous length-based version was broken once the feed reached its
+  // 500-item cap (length stops growing even as new items pour in), which is
+  // why new items arrived silently with no pill / no notification ping —
+  // the feed felt "dead" even when it was updating every 6 seconds.
+  // Now we diff item IDs against a remembered set: anything new gets counted,
+  // pills the floating "↑ N خبر جديد" banner, and pings the notify sound.
+  useEffect(() => {
+    if (liveFeed.length === 0) return;
+    const currentIds = new Set(liveFeed.map(f => f.id));
+    if (prevIds.current.size === 0) {
+      // First load — just remember the IDs, don't count them as "new".
+      prevIds.current = currentIds;
+      prevLen.current = liveFeed.length;
+      return;
+    }
+    let added = 0;
+    for (const id of currentIds) if (!prevIds.current.has(id)) added++;
+    if (added > 0) {
+      setNewCount(prev => prev + added);
+      Sound.notify();
+      setTimeout(() => setNewCount(0), 8000);
+    }
+    prevIds.current = currentIds;
+    prevLen.current = liveFeed.length;
+  }, [liveFeed]);
 
   // Bottom-nav indicator pulses — every 60s each indicator fires 3 quick blips
   // in sync with its CSS animation. Map is offset 30s from radar so the two

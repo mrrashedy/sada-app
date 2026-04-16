@@ -32,7 +32,10 @@ function checkSourceDrift(apiSources) {
 
 // No sample data — this is a production app
 
-export function useNews(sources = [], kind = 'news', pollInterval = 15000) {
+// Default poll dropped from 15000 → 6000ms. Requests are cached server-side
+// (KV TTL 15s, cron warms every ~45s), so polling at 6s feels live without
+// adding meaningful load — most requests are cache HITs that return in ~50ms.
+export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

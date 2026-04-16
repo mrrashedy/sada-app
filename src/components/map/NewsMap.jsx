@@ -129,6 +129,32 @@ function buildMapSpots(feed) {
   return Object.values(spots).sort((a,b) => b.stories.length-a.stories.length);
 }
 
+// ────────────────────────────────────────────────────────────
+// Minimal digital clock — HH:MM with city name below.
+function DigitalClock({ tz, city, time }) {
+  let display = '--:--';
+  try {
+    display = new Intl.DateTimeFormat('en-u-nu-latn', {
+      timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
+    }).format(time);
+  } catch {}
+
+  return (
+    <div style={{ textAlign:'center', pointerEvents:'none', minWidth:52 }}>
+      <div style={{
+        fontSize:18, color:'rgba(255,255,255,.92)', fontWeight:700,
+        fontVariantNumeric:'tabular-nums', fontFeatureSettings:'"tnum"',
+        fontFamily:'var(--ft)', letterSpacing:'.04em', lineHeight:1,
+      }}>{display}</div>
+      <div style={{
+        fontSize:9, color:'rgba(255,255,255,.48)', marginTop:4,
+        letterSpacing:'.02em', fontWeight:600,
+        fontFamily:'var(--ft)', direction:'rtl',
+      }}>{city}</div>
+    </div>
+  );
+}
+
 function playBlip() {
   try {
     const ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -179,24 +205,8 @@ export function NewsMap({ onClose, liveFeed=[] }) {
   const spots = useMemo(() => buildMapSpots(liveFeed), [spotsKey]);
   const spotsRef = useRef(spots);
   useEffect(() => { spotsRef.current = spots; }, [spots]);
-  const geojsonData = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: spots.map(spot => ({
-      type: 'Feature',
-      properties: { weight: spot.stories.length, id: spot.id },
-      geometry: { type: 'Point', coordinates: [spot.lng, spot.lat] },
-    })),
-  }), [spots]);
-
-  const topSpot = spots[0];
-  const totalStories = spots.reduce((a,s)=>a+s.stories.length,0);
 
   const activeClock = REGION_CLOCKS[detectRegion(sel)] || REGION_CLOCKS.default;
-
-  const fmt = (tz) => {
-    try { return new Intl.DateTimeFormat('en-u-nu-latn',{timeZone:tz,hour:'numeric',minute:'2-digit',hour12:true}).format(time); }
-    catch { return '--:--'; }
-  };
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -223,6 +233,9 @@ export function NewsMap({ onClose, liveFeed=[] }) {
         style: {
           version: 8,
           sources: {
+            // Editorial atlas — monochrome base tile + reference labels
+            // layer on top so country/major-city names stay readable
+            // without the heatmap or terrain clutter.
             'dark': {
               type: 'raster',
               tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
@@ -233,73 +246,125 @@ export function NewsMap({ onClose, liveFeed=[] }) {
               tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
               tileSize: 256, maxzoom: 16,
             },
-            'hillshade-src': {
-              type: 'raster-dem',
-              tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-              tileSize: 256, maxzoom: 14, encoding: 'terrarium',
-            },
           },
-          terrain: { source: 'hillshade-src', exaggeration: 3.0 },
           layers: [
-            { id: 'dark', type: 'raster', source: 'dark', paint: { 'raster-saturation': 0.4, 'raster-contrast': 0.15, 'raster-brightness-min': 0.25, 'raster-brightness-max': 0.9 } },
-            { id: 'hillshade', type: 'hillshade', source: 'hillshade-src', paint: { 'hillshade-exaggeration': 0.5, 'hillshade-shadow-color': 'rgba(0,15,0,0.25)', 'hillshade-highlight-color': 'rgba(0,255,100,0.15)', 'hillshade-illumination-direction': 315 } },
-            { id: 'ref', type: 'raster', source: 'ref', paint: { 'raster-opacity': 0.95 } },
+            {
+              id: 'dark',
+              type: 'raster',
+              source: 'dark',
+              paint: {
+                'raster-saturation': -1,
+                'raster-contrast': 0.05,
+                'raster-brightness-min': 0.18,
+                'raster-brightness-max': 0.78,
+              },
+            },
+            {
+              id: 'ref',
+              type: 'raster',
+              source: 'ref',
+              paint: {
+                'raster-opacity': 0.92,
+                'raster-brightness-min': 0.5,
+                'raster-brightness-max': 1.0,
+              },
+            },
           ],
         },
-        center: [38, 28], zoom: 3.2, pitch: 50, bearing: -15,
-        attributionControl: false, maxPitch: 75,
+        center: [38, 28], zoom: 3.2, pitch: 0, bearing: 0,
+        minZoom: 1.8, maxZoom: 10,
+        attributionControl: false, maxPitch: 0,
+        dragRotate: false, pitchWithRotate: false, touchPitch: false,
+        renderWorldCopies: false,
       });
 
       mapRef.current = map;
 
+      // ── Touch UX ─────────────────────────────────────────────
+      // Lock rotation + pitch so the map stays flat. Everything else
+      // uses MapLibre's built-in defaults — they're already tuned for
+      // smooth inertial panning and pinch-zoom. Don't override them.
+      try { map.touchZoomRotate.disableRotation(); } catch {}
+
+      // ── Idle drift ──────────────────────────────────────────────
+      // Uses MapLibre's own easeTo (long-duration, linear easing) so
+      // the engine handles its own render loop instead of us fighting
+      // it with per-frame jumpTo calls. Each leg is a 25-second ease
+      // to a new waypoint on a Lissajous orbit.
+      let idleRunning = false;
+      let idleLeg = 0;
+      let idleTimer = null;
+
+      const nextIdleWaypoint = () => {
+        idleLeg++;
+        const t = idleLeg * 0.9;
+        return [
+          38 + Math.sin(t * 0.35) * 6,
+          28 + Math.cos(t * 0.25) * 3,
+          3.2 + Math.sin(t * 0.18) * 0.25,
+        ];
+      };
+
+      const driftLeg = () => {
+        if (!idleRunning || !map || map._removed) return;
+        const [lng, lat, z] = nextIdleWaypoint();
+        map.easeTo({
+          center: [lng, lat], zoom: z, duration: 25000,
+          easing: t => t, // linear — constant, smooth motion
+        });
+      };
+
+      const startIdle = () => {
+        if (idleRunning) return;
+        idleRunning = true;
+        driftLeg();
+        // Chain legs: every time one finishes, start the next
+        map.on('moveend', onIdleMoveEnd);
+      };
+
+      const onIdleMoveEnd = () => {
+        if (idleRunning) driftLeg();
+      };
+
+      const stopIdle = () => {
+        idleRunning = false;
+        if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+        map.stop(); // cancel any in-progress easeTo
+        map.off('moveend', onIdleMoveEnd);
+      };
+
+      const scheduleIdle = () => {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(startIdle, 4000);
+      };
+
+      // Only real user gestures stop the drift — canvas-level events,
+      // not map-internal moveend/zoomstart events.
+      const canvas = map.getCanvas();
+      const onWheel = () => { stopIdle(); scheduleIdle(); };
+      canvas.addEventListener('mousedown', stopIdle, { passive: true });
+      canvas.addEventListener('touchstart', stopIdle, { passive: true });
+      canvas.addEventListener('wheel', onWheel, { passive: true });
+      canvas.addEventListener('mouseup', scheduleIdle, { passive: true });
+      canvas.addEventListener('touchend', scheduleIdle, { passive: true });
+
+      // Begin drift 2s after map init
+      const initIdleTimeout = setTimeout(startIdle, 2000);
+
+      // Expose for cross-closure access (marker click handler, cleanup)
+      map._idleStop = stopIdle;
+      map._idleSchedule = scheduleIdle;
+      map._cleanupCanvas = () => {
+        clearTimeout(initIdleTimeout);
+        canvas.removeEventListener('mousedown', stopIdle);
+        canvas.removeEventListener('touchstart', stopIdle);
+        canvas.removeEventListener('wheel', onWheel);
+        canvas.removeEventListener('mouseup', scheduleIdle);
+        canvas.removeEventListener('touchend', scheduleIdle);
+      };
+
       map.on('load', () => {
         setMapReady(true);
-        map.addSource('news-heat', { type: 'geojson', data: geojsonData });
-
-        // Outer glow layer — softer, wider
-        map.addLayer({
-          id: 'news-glow',
-          type: 'heatmap',
-          source: 'news-heat',
-          paint: {
-            'heatmap-weight': ['get', 'weight'],
-            'heatmap-intensity': ['interpolate',['linear'],['zoom'], 0,0.3, 5,0.6, 9,1.0],
-            'heatmap-color': [
-              'interpolate',['linear'],['heatmap-density'],
-              0,    'rgba(0,0,0,0)',
-              0.15, 'rgba(255,140,0,0.08)',
-              0.4,  'rgba(255,80,0,0.15)',
-              0.7,  'rgba(255,40,0,0.2)',
-              1.0,  'rgba(255,20,0,0.25)',
-            ],
-            'heatmap-radius': ['interpolate',['linear'],['zoom'], 0,50, 3,80, 5,110, 8,150, 12,200],
-            'heatmap-opacity': 0.9,
-          },
-        });
-
-        // Core heatmap — intense, tight
-        map.addLayer({
-          id: 'news-heatmap',
-          type: 'heatmap',
-          source: 'news-heat',
-          paint: {
-            'heatmap-weight': ['get', 'weight'],
-            'heatmap-intensity': ['interpolate',['linear'],['zoom'], 0,0.6, 5,1.2, 9,2.0],
-            'heatmap-color': [
-              'interpolate',['linear'],['heatmap-density'],
-              0,    'rgba(0,0,0,0)',
-              0.08, 'rgba(255,200,50,0.2)',
-              0.2,  'rgba(255,160,0,0.4)',
-              0.35, 'rgba(255,120,0,0.55)',
-              0.5,  'rgba(255,80,0,0.65)',
-              0.65, 'rgba(255,50,0,0.75)',
-              0.8,  'rgba(240,35,0,0.85)',
-              1.0,  'rgba(255,60,20,0.95)',
-            ],
-            'heatmap-radius': ['interpolate',['linear'],['zoom'], 0,25, 3,40, 5,55, 8,75, 12,100],
-            'heatmap-opacity': 0.85,
-          },
-        });
 
         // Click fallback for low-zoom (when DOM markers are small/clustered)
         map.on('click', (e) => {
@@ -316,11 +381,13 @@ export function NewsMap({ onClose, liveFeed=[] }) {
           });
           if (nearest) {
             playBlip();
+            try { navigator.vibrate && navigator.vibrate(12); } catch {}
+            try { map._idleStop && map._idleStop(); } catch {}
             setSel(nearest);
             map.flyTo({
-              center: [nearest.lng, nearest.lat-1.5], zoom:5.8, pitch:58,
-              bearing: (Math.random()-0.5)*25, duration:1600,
-              easing: t => t<0.5 ? 4*t*t*t : (t-1)*(2*t-2)*(2*t-2)+1,
+              center: [nearest.lng, nearest.lat-1.2], zoom:6, pitch:0, bearing:0,
+              duration:1600,
+              easing: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
             });
           }
         });
@@ -334,40 +401,18 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       script.onload = initMap;
       document.head.appendChild(script);
     }
-    return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } setMapReady(false); };
+    return () => {
+      if (mapRef.current) {
+        try { mapRef.current._idleStop && mapRef.current._idleStop(); } catch {}
+        try { mapRef.current._cleanupCanvas && mapRef.current._cleanupCanvas(); } catch {}
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      setMapReady(false);
+    };
   }, []);
 
-  useEffect(() => {
-    if (!mapReady || !mapRef.current) return;
-    const source = mapRef.current.getSource('news-heat');
-    if (source) source.setData(geojsonData);
-  }, [mapReady, geojsonData]);
-
-  // Breathing pulse
-  useEffect(() => {
-    if (!mapReady || !mapRef.current) return;
-    const map = mapRef.current;
-    let frame, last = 0;
-    const animate = (now) => {
-      if (now - last > 33) {
-        last = now;
-        const t = 0.5 + 0.5 * Math.sin((now / 2200) * Math.PI * 2);
-        try {
-          if (map.getLayer('news-heatmap')) {
-            map.setPaintProperty('news-heatmap','heatmap-opacity', 0.75 + 0.15 * t);
-          }
-          if (map.getLayer('news-glow')) {
-            map.setPaintProperty('news-glow','heatmap-opacity', 0.7 + 0.25 * t);
-          }
-        } catch(e) {}
-      }
-      frame = requestAnimationFrame(animate);
-    };
-    frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
-  }, [mapReady]);
-
-  // Snapchat-style DOM markers — circular avatar per spot, ring color by heat
+  // Editorial markers — simple dots sized by story count
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const ML = window.maplibregl;
@@ -376,72 +421,72 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     const markers = [];
 
     spots.forEach((spot) => {
-      const heat = spot.heat || 1;
-      const size = heat >= 3 ? 52 : heat >= 2 ? 44 : 38;
-      const ringColor = heat >= 3 ? '#E53935' : heat >= 2 ? '#FF9800' : '#FFC107';
-      const glowRgba = heat >= 3 ? 'rgba(229,57,53,.55)' : heat >= 2 ? 'rgba(255,152,0,.5)' : 'rgba(255,193,7,.45)';
-      const hasBreaking = spot.stories.some(s => s.brk);
-      const top = spot.stories[0] || {};
-      const avatar = top.img || top.logo || '';
+      const n = spot.stories.length;
+      // Size scale: 1 story = 7px, many stories = up to 18px
+      const size = Math.max(7, Math.min(18, 6 + n * 1.4));
+      // Editorial accent — single desaturated orange across all spots
+      const accent = '#FF9500';
+      const accentGlow = 'rgba(255,149,0,.38)';
+
+      // Tight finger-sized hit target. The wrapper is pointer-events:
+      // none so pans/pinches pass through empty space, and only the
+      // hit circle absorbs taps. We keep it small so even at zoom 3
+      // with 30+ spots visible, most of the map stays pannable.
+      const hitSize = 20;
 
       const el = document.createElement('div');
-      el.className = `nm-marker${heat >= 3 ? ' hot' : ''}`;
-      // Don't set position here — maplibre sets `position: absolute` on the
-      // marker element to anchor it to geo coordinates. Children use their
-      // own absolute positioning, which still resolves against this element.
-      el.style.cssText = `width:${size}px;height:${size}px;--mk-glow:${glowRgba};`;
-
-      const avatarInner = avatar
-        ? `<img src="${avatar}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.parentElement.style.background='#222';this.parentElement.innerHTML='<div style=&quot;color:#fff;font-size:16px;font-weight:900;&quot;>${(top.src||'?')[0]||'?'}</div>'+this.parentElement.innerHTML;"/>`
-        : `<div style="color:#fff;font-size:${Math.round(size*0.4)}px;font-weight:900;font-family:var(--ft);">${(top.src||'?')[0]||'?'}</div>`;
+      el.className = 'nm-marker';
+      // Wrapper is a bit wider than the hit circle just so the label
+      // has breathing room — but the wrapper itself is non-hittable.
+      const wrap = 40;
+      el.style.cssText = `
+        width:${wrap}px;height:${wrap}px;
+        pointer-events:none;
+        -webkit-user-select:none; user-select:none;
+        -webkit-touch-callout:none;
+        -webkit-tap-highlight-color:transparent;
+      `;
 
       el.innerHTML = `
-        <div class="nm-marker-avatar" style="
-          width:${size}px;height:${size}px;border-radius:50%;
-          background:#0b0d11;border:3px solid ${ringColor};
-          box-shadow:0 0 18px ${glowRgba},0 4px 14px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,255,255,.12);
-          overflow:hidden;display:flex;align-items:center;justify-content:center;
-          position:relative;
+        <div class="nm-marker-hit" style="
+          position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+          width:${hitSize}px; height:${hitSize}px; border-radius:50%;
+          pointer-events:auto; cursor:pointer;
+          display:flex; align-items:center; justify-content:center;
+          -webkit-tap-highlight-color:transparent;
         ">
-          ${avatarInner}
+          <div class="nm-marker-dot" style="
+            width:${size}px; height:${size}px; border-radius:50%;
+            background:${accent};
+            box-shadow:
+              0 0 0 1px rgba(0,0,0,.55),
+              0 0 ${Math.round(size * 1.4)}px ${accentGlow},
+              0 1px 4px rgba(0,0,0,.6);
+          "></div>
         </div>
-        ${spot.stories.length > 1 ? `
-          <div style="
-            position:absolute;top:-4px;right:-4px;z-index:2;
-            background:${ringColor};color:#fff;
-            font-size:10px;font-weight:800;font-family:var(--ft);
-            min-width:18px;height:18px;border-radius:9px;
-            display:flex;align-items:center;justify-content:center;padding:0 5px;
-            border:2px solid #020408;letter-spacing:.02em;
-          ">${spot.stories.length}</div>
-        ` : ''}
-        ${hasBreaking ? `
-          <div style="
-            position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);z-index:2;
-            background:#E53935;color:#fff;
-            font-size:8px;font-weight:900;font-family:var(--ft);letter-spacing:.08em;
-            padding:2px 6px;border-radius:3px;
-            border:1.5px solid #020408;
-            box-shadow:0 0 8px rgba(229,57,53,.6);
-          ">LIVE</div>
-        ` : ''}
         <div class="nm-marker-label" style="
-          position:absolute;top:${size + (hasBreaking ? 12 : 6)}px;left:50%;transform:translateX(-50%);
-          font-size:10px;font-weight:800;color:#fff;font-family:var(--ft);
-          background:rgba(0,0,0,.78);padding:3px 8px;border-radius:6px;
-          white-space:nowrap;pointer-events:none;letter-spacing:.02em;
-          border:.5px solid rgba(255,255,255,.1);
+          position:absolute; left:50%; top:calc(50% + ${Math.round(size/2) + 6}px);
+          transform:translateX(-50%);
+          font-size:10px; font-weight:700; color:rgba(255,255,255,.88);
+          font-family:var(--ft); direction:rtl;
+          background:rgba(10,12,16,.86); padding:2px 7px; border-radius:4px;
+          white-space:nowrap; pointer-events:none; letter-spacing:.02em;
+          border:.5px solid rgba(255,255,255,.09);
         ">${spot.city}</div>
       `;
 
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         playBlip();
+        // Haptic feedback on supported devices
+        try { navigator.vibrate && navigator.vibrate(12); } catch {}
+        // Stop idle drift
+        try { map._idleStop && map._idleStop(); } catch {}
         setSel(spot);
         map.flyTo({
-          center: [spot.lng, spot.lat - 1.5], zoom: 5.8, pitch: 58,
-          bearing: (Math.random() - 0.5) * 25, duration: 1600,
-          easing: t => t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1,
+          center: [spot.lng, spot.lat - 1.2], zoom: 6, pitch: 0, bearing: 0,
+          duration: 1600,
+          easing: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
         });
       });
 
@@ -456,7 +501,14 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
   const handleClose = () => {
     setSel(null);
-    if (mapRef.current) mapRef.current.flyTo({ center:[38,28], zoom:3.2, pitch:50, bearing:-15, duration:1000 });
+    if (mapRef.current) {
+      try { mapRef.current._idleStop && mapRef.current._idleStop(); } catch {}
+      mapRef.current.flyTo({
+        center:[38,28], zoom:3.2, pitch:0, bearing:0,
+        duration:1400,
+        easing: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
+      });
+    }
     onClose();
   };
 
@@ -467,87 +519,52 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       opacity: entered ? 1 : 0, transition:'opacity .5s ease',
     }}>
 
-      {/* ─── CINEMATIC VIGNETTE ─── */}
+      {/* ─── SOFT VIGNETTE ─── */}
       <div style={{ position:'absolute', inset:0, zIndex:10, pointerEvents:'none',
-        background:'radial-gradient(ellipse 70% 60% at 50% 45%, transparent 0%, rgba(2,4,8,0.3) 60%, rgba(2,4,8,0.85) 100%)',
+        background:'radial-gradient(ellipse 80% 70% at 50% 48%, transparent 0%, rgba(2,4,8,0.35) 65%, rgba(2,4,8,0.8) 100%)',
       }}/>
 
-      {/* ─── TOP HEADER ─── */}
+      {/* ─── DIGITAL CLOCKS (glass pill) ─── */}
       <div style={{
         position:'absolute', top:0, left:0, right:0, zIndex:100,
-        padding:'max(44px, env(safe-area-inset-top, 44px)) 16px 20px',
-        background:'linear-gradient(180deg, rgba(2,4,8,0.97) 0%, rgba(2,4,8,0.88) 50%, rgba(2,4,8,0.4) 80%, transparent 100%)',
+        padding:'max(18px, env(safe-area-inset-top, 18px)) 16px 0',
+        display:'flex', justifyContent:'center',
         pointerEvents:'none',
       }}>
-        {/* Title row */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', pointerEvents:'auto' }}>
-          <div style={{ direction:'rtl' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ fontSize:20, fontWeight:900, color:'#fff', letterSpacing:'-0.02em' }}>خريطة الأخبار</div>
-              {/* LIVE badge */}
-              <div style={{
-                display:'flex', alignItems:'center', gap:4,
-                background:'rgba(229,57,53,0.15)', border:'1px solid rgba(229,57,53,0.3)',
-                borderRadius:6, padding:'2px 8px',
-              }}>
-                <div style={{
-                  width:6, height:6, borderRadius:'50%', background:'#E53935',
-                  animation:'nm-glow 1.5s ease-in-out infinite',
-                }}/>
-                <span style={{ fontSize:10, fontWeight:800, color:'#E53935', letterSpacing:'0.05em' }}>LIVE</span>
-              </div>
-            </div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,.4)', marginTop:3 }}>
-              {spots.length} منطقة · {totalStories} خبر مباشر
-            </div>
-          </div>
-          <button onClick={handleClose} style={{
-            background:'rgba(255,255,255,0.06)',
-            border:'1px solid rgba(255,255,255,.08)', cursor:'pointer',
-            color:'rgba(255,255,255,.6)', padding:10, borderRadius:'50%', display:'flex',
-            pointerEvents:'auto', transition:'all .2s',
-          }}>{I.close()}</button>
-        </div>
-
-        {/* Accent line */}
         <div style={{
-          height:1, marginTop:12,
-          background:'linear-gradient(90deg, transparent 0%, rgba(229,57,53,0.5) 20%, rgba(255,140,0,0.3) 50%, rgba(229,57,53,0.5) 80%, transparent 100%)',
-          animation:'nm-line .8s ease-out forwards', transformOrigin:'center',
-        }}/>
-
-        {/* World clocks — change by region */}
-        <div style={{ display:'flex', gap:5, marginTop:10, justifyContent:'center', pointerEvents:'auto', transition:'all .3s ease' }}>
-          {activeClock.map((c,i) => (
-            <div key={c.tz} style={{
-              background:'rgba(255,255,255,0.04)',
-              borderRadius:8, padding:'6px 10px', border:'1px solid rgba(255,255,255,.06)',
-              textAlign:'center', minWidth:68, transition:'all .3s ease',
-            }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,.9)', fontVariantNumeric:'tabular-nums', fontFeatureSettings:'"tnum"', whiteSpace:'nowrap' }}>{fmt(c.tz)}</div>
-              <div style={{ fontSize:9, color:'rgba(255,255,255,.3)', marginTop:2, letterSpacing:'0.02em' }}>{c.city}</div>
+          display:'flex', gap:6,
+          background:'rgba(10,12,16,.72)',
+          backdropFilter:'blur(14px) saturate(1.4)',
+          WebkitBackdropFilter:'blur(14px) saturate(1.4)',
+          border:'1px solid rgba(255,255,255,.10)',
+          borderRadius:16, padding:'10px 16px',
+          boxShadow:'0 4px 24px rgba(0,0,0,.45)',
+        }}>
+          {activeClock.map((c, i) => (
+            <div key={c.tz} style={{ display:'flex', alignItems:'center', gap:6 }}>
+              {i > 0 && (
+                <div style={{ width:1, height:24, background:'rgba(255,255,255,.10)', flexShrink:0 }}/>
+              )}
+              <DigitalClock tz={c.tz} city={c.city} time={time}/>
             </div>
           ))}
         </div>
-
-        {/* Trending spot ticker */}
-        {topSpot && (
-          <div style={{
-            marginTop:10, display:'flex', alignItems:'center', gap:6,
-            direction:'rtl', overflow:'hidden',
-          }}>
-            <div style={{
-              fontSize:9, fontWeight:700, color:'#E53935', letterSpacing:'0.04em',
-              background:'rgba(229,57,53,0.1)', padding:'2px 6px', borderRadius:4, flexShrink:0,
-            }}>
-              الأكثر تغطية
-            </div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,.55)', fontWeight:600, whiteSpace:'nowrap' }}>
-              {topSpot.city} — {topSpot.stories.length} خبر
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* ─── FLOATING CLOSE BUTTON ─── */}
+      <button onClick={handleClose} style={{
+        position:'absolute',
+        top:'max(22px, env(safe-area-inset-top, 22px))',
+        left:16, zIndex:110,
+        background:'rgba(10,12,16,.78)',
+        border:'1px solid rgba(255,255,255,.10)',
+        cursor:'pointer', color:'rgba(255,255,255,.72)',
+        padding:10, borderRadius:'50%', display:'flex',
+        backdropFilter:'blur(10px) saturate(1.4)',
+        WebkitBackdropFilter:'blur(10px) saturate(1.4)',
+        transition:'all .2s',
+      }}>{I.close()}</button>
+
 
       {/* ─── MAP ─── */}
       <div ref={mapContainerRef} style={{ flex:1, width:'100%' }}/>

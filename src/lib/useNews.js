@@ -112,6 +112,7 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
         // top — it does NOT gate when items appear. User's clarification:
         // 'feed is to put them actually there, not store them until they get five.'
         const ts = (item) => item.pubTs || item.timestamp || 0;
+        const isFirstLoad = feed.length === 0;
         const prevIds = new Set(feed.map(p => p.id));
         const freshIds = data.feed.filter(f => !prevIds.has(f.id));
         const added = freshIds.length;
@@ -128,7 +129,13 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
             return merged.slice(0, 500);
           });
         }
-        setNewCount(prev => prev + added);
+        // Only increment the new-items counter on SUBSEQUENT polls. On the
+        // first load every item is technically 'fresh to the empty buffer,'
+        // which previously caused the pill to fire on app start with a
+        // count of 1200+. Skip that.
+        if (!isFirstLoad) {
+          setNewCount(prev => prev + added);
+        }
         setIsLive(true);
         setLastFetchAt(Date.now());
 

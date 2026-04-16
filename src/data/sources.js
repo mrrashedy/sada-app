@@ -32,6 +32,7 @@ export const SOURCES = [
   { n:"أخبار Google علوم",  i:"GS", id:"gnews_science",domain:"news.google.com"     },
   { n:"العربي الجديد", i:"ع",  id:"alaraby",       domain:"newarab.com"           },
   { n:"المصري اليوم",  i:"م",  id:"almasry",       domain:"almasryalyoum.com"     },
+  { n:"بوابة الشروق",  i:"شو", id:"shorouk_eg",    domain:"shorouknews.com"       },
   { n:"مصراوي",        i:"مص", id:"masrawy",       domain:"masrawy.com"           },
   { n:"الأهرام EN",    i:"AH", id:"ahram_en",      domain:"english.ahram.org.eg"  },
   { n:"اليوم السابع",   i:"٧",  id:"youm7",         domain:"youm7.com"             },

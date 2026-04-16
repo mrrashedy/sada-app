@@ -36,63 +36,29 @@ function checkSourceDrift(apiSources) {
 // (KV TTL 15s, cron warms every ~45s), so polling at 6s feels live without
 // adding meaningful load — most requests are cache HITs that return in ~50ms.
 export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
-  // X-style buffered feed:
-  //   • `feed` (displayed) — what the user actually sees. Stable. Never moves
-  //     under the user's finger. The only way new items enter is via flushPending().
-  //   • `pendingFeed` — items the server has returned but we haven't shown yet.
-  //     Accumulates silently between user actions.
-  //   • `pendingCount` — exposed as a banner number ('5 new posts ↑').
-  //
-  // On poll: any server item NOT already in displayed `feed` and NOT already in
-  // `pendingFeed` is appended to `pendingFeed`. Items in displayed `feed` are
-  // never touched (no reorder, no in-place updates). Items the server has dropped
-  // remain in displayed feed until they fall off the 500-item cap naturally.
-  //
-  // First load is special — there's nothing to "preserve," so we drop the entire
-  // server response straight into the displayed feed, no pending pile.
+  // Auto-updating feed. New items arrive automatically into the displayed
+  // list — no pending buffer, no manual flush. The X-style buffered design
+  // I tried earlier conflated two separate concerns:
+  //   • Reducing flicker (UX) — solved by killing the .post / .post-new
+  //     animations in styles/global.css.
+  //   • Pausing updates (a behavior change the user did NOT ask for).
+  // Reverted to auto-merge so the feed actually keeps populating as the
+  // server returns fresh items. Flicker stays gone because animations are
+  // off and React keys (item.id) keep DOM nodes stable across reorderings.
   const [feed, setFeed] = useState([]);
-  const [pendingFeed, setPendingFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLive, setIsLive] = useState(false);
   const [serverBreaking, setServerBreaking] = useState([]);
-  // Admin pin/hide/add decisions for the trending radar — applied client-side
-  // on top of extractTrending() output in App.jsx.
   const [radarOverrides, setRadarOverrides] = useState([]);
   const [cacheAge, setCacheAge] = useState(null);
-  // Wall-clock timestamp of the LAST successful poll. Used by the UI to
-  // show 'آخر تحديث: منذ X ث' so the user can feel the polling pulse even
-  // when no new items have arrived (slow news cycle). Without this, the
-  // X-style buffered feed combined with the 5-item pill threshold means
-  // the user sees zero visible activity during quiet periods and assumes
-  // the feed has stopped.
+  // newCount — items added in the most recent poll. Used by the live
+  // indicator ('· N جديد') so the user sees activity per poll.
+  const [newCount, setNewCount] = useState(0);
+  // lastFetchAt — wall-clock ms of the last successful poll. The live
+  // indicator's 'تحديث منذ X ث' label ticks off this.
   const [lastFetchAt, setLastFetchAt] = useState(null);
   const abortRef = useRef(null);
-  // Refs hold the latest state for the fetch closure to read without recreating
-  // the callback on every state change (which would recreate the interval).
-  const feedRef = useRef([]);
-  const pendingRef = useRef([]);
-  feedRef.current = feed;
-  pendingRef.current = pendingFeed;
-
-  // flushPending — merges all pending items into the displayed feed by
-  // TIMESTAMP (not arrival order). Critical: pending items aren't necessarily
-  // newer than displayed by timestamp — e.g. Google News may surface a
-  // 10-hour-old article we hadn't seen, which is "new to us" but old in time.
-  // Prepending such items would put 10h-old content at position 0 after a
-  // refresh, which is what the user reported. Time-merge keeps the displayed
-  // feed in true reverse-chronological order across the merge.
-  const flushPending = useCallback(() => {
-    setFeed(prev => {
-      const prevIds = new Set(prev.map(p => p.id));
-      const fresh = pendingRef.current.filter(p => !prevIds.has(p.id));
-      if (fresh.length === 0) return prev;
-      const merged = [...fresh, ...prev];
-      merged.sort((a, b) => (b.pubTs || b.timestamp || 0) - (a.pubTs || a.timestamp || 0));
-      return merged.slice(0, 500);
-    });
-    setPendingFeed([]);
-  }, []);
 
   const fetchNews = useCallback(async (silent = false, forceRefresh = false) => {
     if (abortRef.current) abortRef.current.abort();
@@ -140,40 +106,29 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
       const data = await res.json();
       checkSourceDrift(data.sources);
       if (data.ok && Array.isArray(data.feed) && data.feed.length > 0) {
-        let newCount = 0;
-        const displayedIds = new Set(feedRef.current.map(f => f.id));
-        const isFirstLoad = feedRef.current.length === 0;
-
-        if (isFirstLoad) {
-          // First load — nothing to preserve, drop the whole response in.
-          setFeed(data.feed.slice(0, 500));
-          setPendingFeed([]);
-        } else {
-          // Subsequent polls — pending is ONLY items NEWER (by timestamp)
-          // than what we already showed. Without this threshold, pending
-          // would immediately fill with items 501-1200 that the server
-          // returned but we never displayed (the feed slices at 500), so
-          // the user would see '↑ 500 خبر جديد' on the second poll even
-          // though nothing genuinely new had arrived.
-          const ts = (item) => item.pubTs || item.timestamp || 0;
-          const newestDisplayedTs = feedRef.current.reduce(
-            (max, f) => Math.max(max, ts(f)), 0
-          );
-          const pendingIds = new Set(pendingRef.current.map(p => p.id));
-          const fresh = data.feed.filter(
-            f => ts(f) > newestDisplayedTs &&
-                 !displayedIds.has(f.id) &&
-                 !pendingIds.has(f.id)
-          );
-          if (fresh.length > 0) {
-            setPendingFeed(prev => {
-              const prevIds = new Set(prev.map(p => p.id));
-              const dedupedFresh = fresh.filter(f => !prevIds.has(f.id));
-              return [...dedupedFresh, ...prev].slice(0, 500);
-            });
-          }
-          newCount = fresh.length;
+        // Auto-merge: every new item from the server goes straight into the
+        // displayed feed by timestamp order. The pill is just a NOTIFICATION
+        // that 5+ new items have piled up since the user last looked at the
+        // top — it does NOT gate when items appear. User's clarification:
+        // 'feed is to put them actually there, not store them until they get five.'
+        const ts = (item) => item.pubTs || item.timestamp || 0;
+        const prevIds = new Set(feed.map(p => p.id));
+        const freshIds = data.feed.filter(f => !prevIds.has(f.id));
+        const added = freshIds.length;
+        if (added > 0) {
+          setFeed(prev => {
+            const _prevIds = new Set(prev.map(p => p.id));
+            const fresh = data.feed.filter(f => !_prevIds.has(f.id));
+            if (fresh.length === 0) return prev;
+            // Merge by timestamp so late-arriving older items (Google News
+            // discovering a 10h-old story) land at their actual chronological
+            // position instead of getting pinned to the top.
+            const merged = [...fresh, ...prev];
+            merged.sort((a, b) => ts(b) - ts(a));
+            return merged.slice(0, 500);
+          });
         }
+        setNewCount(prev => prev + added);
         setIsLive(true);
         setLastFetchAt(Date.now());
 
@@ -184,7 +139,7 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
         if (data._cache) setCacheAge(data._cache.age);
 
         await finishLoading();
-        return newCount;
+        return added;
       } else {
         throw new Error('Empty feed');
       }
@@ -218,20 +173,23 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
     };
   }, [fetchNews]);
 
-  // Manual refresh — explicit user action (button tap, pull-to-refresh).
-  // Always flushes pending into the displayed feed FIRST, then triggers a
-  // visible re-fetch. Returns the new-item count from the fetch (the pill
-  // is a separate signal showing pending items between refreshes).
+  // Manual refresh — explicit user action. Resets the new-items counter
+  // (since the user is acknowledging them by refreshing) and triggers a
+  // visible re-fetch.
   const refresh = useCallback(async () => {
-    flushPending();
+    setNewCount(0);
     return fetchNews(false, true);
-  }, [flushPending, fetchNews]);
+  }, [fetchNews]);
+
+  // ackNewItems — caller (the pill onClick) can clear the new-items count
+  // without forcing a re-fetch (items are already in the feed).
+  const ackNewItems = useCallback(() => setNewCount(0), []);
 
   return {
     feed, loading, error, isLive,
     serverBreaking, radarOverrides, cacheAge,
-    pendingCount: pendingFeed.length,
-    flushPending,
+    newCount,
+    ackNewItems,
     lastFetchAt,
     refresh,
     silentRefresh: () => fetchNews(true, false),

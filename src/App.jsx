@@ -134,7 +134,7 @@ export default function Sada() {
   // flow only through the `news` vertical response, since fetchAdminLayer
   // in functions/api/feeds.js only runs for kind=news. It's global state,
   // not per-vertical, so the news feed is a fine carrier.
-  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, pendingCount, flushPending, lastFetchAt } = useNews([], 'news', 6000);
+  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, newCount, ackNewItems, lastFetchAt } = useNews([], 'news', 6000);
   const { feed:mapFeed } = useNews([], 'map', 30000);
   const { feed:radarFeed, refresh:radarRefresh } = useNews([], 'radar', 30000);
   // X-style buffered feed: useNews owns the new-items detector. It
@@ -486,16 +486,17 @@ export default function Sada() {
               misleading because the user couldn't tell when (or whether)
               new items had actually arrived. */}
 
-          {/* X-style refresh pill — appears ONLY when at least 5 genuinely-
-              new items have piled up. Subtle frosted-glass chip in the app's
-              dark palette (no bright orange) — calm, doesn't compete with
-              feed content. Tap → flushPending() + smooth-scroll to top. */}
-          {pendingCount>=5 && (
+          {/* Refresh pill — pure NOTIFICATION. Items have ALREADY been merged
+              into the feed; this pill just tells the user N new items arrived
+              since they last looked at the top, and on tap scrolls them up.
+              Threshold: >=5 so trickle updates don't pop a banner. Subtle
+              frosted-glass chip matching the app's dark palette. */}
+          {newCount>=5 && (
             <div style={{ position:'sticky', top:8, zIndex:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
               <button
                 onClick={() => {
                   Sound.tap();
-                  flushPending();
+                  ackNewItems();
                   contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 style={{
@@ -525,8 +526,8 @@ export default function Sada() {
               <div className="live-dot"/>
               <span>أخبار مباشرة · {allFeed.length} خبر</span>
               {freshnessLabel && <span style={{ opacity:.7 }}>· تحديث {freshnessLabel}</span>}
-              {pendingCount>0 && pendingCount<5 && (
-                <span style={{ opacity:.7 }}>· {pendingCount} في الانتظار</span>
+              {newCount>0 && newCount<5 && (
+                <span style={{ opacity:.7 }}>· {newCount} جديد</span>
               )}
             </div>
           )}

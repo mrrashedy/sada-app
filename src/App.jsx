@@ -88,6 +88,12 @@ export default function Sada() {
   const contentRef              = useRef(null);
   const lastScrollY             = useRef(0);
   const [barsHidden, setBarsHidden] = useState(false);
+  // isAtTop — true when the user is within ~120px of the feed top. The
+  // 'تحديث' pill should NOT show when isAtTop is true: the user is already
+  // looking at the freshest items and any new arrivals are visible directly.
+  // The pill is only useful when the user has scrolled DOWN and needs a
+  // hint that new items have appeared above their current position.
+  const [isAtTop, setIsAtTop] = useState(true);
   const handleScroll = useCallback(() => {
     const el = contentRef.current;
     if (!el) return;
@@ -95,6 +101,7 @@ export default function Sada() {
     const delta = y - lastScrollY.current;
     if (delta > 8) setBarsHidden(true);       // scrolling down → hide
     else if (delta < -8) setBarsHidden(false); // scrolling up → show
+    setIsAtTop(y < 120);
     lastScrollY.current = y;
   }, []);
 
@@ -155,6 +162,14 @@ export default function Sada() {
     const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Auto-ack new items whenever the user is at the top of the feed. They're
+  // already looking at the freshest content; there's no reason to accumulate
+  // a count that will never produce a useful pill. Without this, scrolling
+  // away after sitting at top would suddenly pop a stale-count pill.
+  useEffect(() => {
+    if (isAtTop && newCount > 0) ackNewItems();
+  }, [isAtTop, newCount, ackNewItems]);
   const secsSinceFetch = lastFetchAt ? Math.floor((Date.now() - lastFetchAt) / 1000) : null;
   const freshnessLabel = secsSinceFetch === null ? '' :
     secsSinceFetch < 5 ? 'الآن' :
@@ -491,7 +506,7 @@ export default function Sada() {
               since they last looked at the top, and on tap scrolls them up.
               Threshold: >=5 so trickle updates don't pop a banner. Subtle
               frosted-glass chip matching the app's dark palette. */}
-          {newCount>=5 && (
+          {newCount>=5 && !isAtTop && (
             <div style={{ position:'sticky', top:8, zIndex:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
               <button
                 onClick={() => {

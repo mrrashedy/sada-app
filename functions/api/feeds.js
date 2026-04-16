@@ -31,9 +31,9 @@ const SOURCES = {
   // dw: rss.dw.com no longer responds reliably. Google News proxy is stable.
   dw:              { name: "دويتشه فيله", initial: "D", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Adw.com%2Far&hl=ar&gl=SA&ceid=SA:ar"] },
   cnn_ar:          { name: "CNN عربية", initial: "C", tier: 1, feeds: ["https://arabic.cnn.com/api/v1/rss/rss.xml"] },
-  cnn_biz_ar:      { name: "CNN اقتصاد", initial: "C$", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Acnnbusinessarabic.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  cnn_biz_ar:      { name: "CNN اقتصاد", initial: "C$", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Acnnbusinessarabic.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Monte Carlo Doualiya — direct feed is podcast-only. Google News proxy for articles.
-  mc_doualiya:     { name: "مونت كارلو", initial: "MC", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amc-doualiya.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  mc_doualiya:     { name: "مونت كارلو", initial: "MC", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Amc-doualiya.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // independent_ar direct feed intermittent. Google News proxy is reliable.
   independent_ar:  { name: "إندبندنت عربية", initial: "إ", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Aindependentarabia.com&hl=ar&gl=SA&ceid=SA:ar"] },
   aawsat:          { name: "الشرق الأوسط", initial: "ش", tier: 1, feeds: ["https://aawsat.com/feed","https://news.google.com/rss/search?q=site%3Aaawsat.com&hl=ar&gl=SA&ceid=SA:ar"] },
@@ -56,8 +56,8 @@ const SOURCES = {
   // alaraby.co.uk domain with 50 fresh Arabic items.
   alaraby:   { name: "العربي الجديد", initial: "ع", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalaraby.co.uk&hl=ar&gl=SA&ceid=SA:ar"] },
   almasry:   { name: "المصري اليوم", initial: "م", tier: 2, feeds: ["https://www.almasryalyoum.com/rss/rssfeed"] },
-  masrawy:   { name: "مصراوي", initial: "مص", tier: 2, feeds: ["https://www.masrawy.com/rss/feed/25/%D8%A3%D8%AE%D8%A8%D8%A7%D8%B1"] },
-  ahram_en:  { name: "الأهرام EN", initial: "AH", tier: 2, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aenglish.ahram.org.eg&hl=en&gl=US&ceid=US:en"] },
+  masrawy:   { name: "مصراوي", initial: "مص", tier: 1, feeds: ["https://www.masrawy.com/rss/feed/25/%D8%A3%D8%AE%D8%A8%D8%A7%D8%B1"] },
+  ahram_en:  { name: "الأهرام EN", initial: "AH", tier: 1, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aenglish.ahram.org.eg&hl=en&gl=US&ceid=US:en"] },
   youm7:     { name: "اليوم السابع", initial: "٧", tier: 1, feeds: ["https://www.youm7.com/RSS/SectionRss?SectionID=97","https://www.youm7.com/RSS/SectionRss?SectionID=203"] },
   // egyptindependent.com returns 200 but 0 items from CF Workers. Add GN fallback.
   egypt_ind: { name: "Egypt Independent", initial: "EI", tier: 2, lang: "en", feeds: ["https://www.egyptindependent.com/feed/","https://news.google.com/rss/search?q=site%3Aegyptindependent.com&hl=en&gl=US&ceid=US:en"] },

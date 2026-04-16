@@ -156,7 +156,7 @@ export default function Sada() {
     for (const id of currentIds) if (!prevIds.current.has(id)) added++;
     if (added > 0) {
       setNewCount(prev => prev + added);
-      Sound.notify();
+      // Refresh-related notify ping removed per design — silent updates.
       setTimeout(() => setNewCount(0), 8000);
     }
     prevIds.current = currentIds;
@@ -195,10 +195,10 @@ export default function Sada() {
   const { pullY, refreshing, refreshMsg, setRefreshMsg, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD } = usePullToRefresh(contentRef, refresh);
 
   // Refresh button handler — shares the same toast banner as pull-to-refresh.
-  // Plays the refresh sound, awaits the fetch's new-item count, then shows
-  // "N خبر جديد" or "أخبارك محدّثة" for 2.5s.
+  // Awaits the fetch's new-item count, then shows "N خبر جديد" or
+  // "أخبارك محدّثة" for 2.5s. Sound effect removed per design — refresh
+  // is now silent.
   const handleHeaderRefresh = useCallback(async () => {
-    Sound.refresh();
     try {
       const count = (await refresh()) || 0;
       setRefreshMsg(count > 0 ? `${count} خبر جديد` : 'أخبارك محدّثة');

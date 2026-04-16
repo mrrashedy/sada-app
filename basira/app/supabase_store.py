@@ -212,6 +212,51 @@ def mark_document_status(doc_id: int, status: str) -> None:
     ).execute()
 
 
+def documents_with_analyses(limit: int = 1000) -> list[dict[str, Any]]:
+    """Return docs that already have an analysis row, joined with the
+    analytical_conclusion text + the document's source language.
+
+    Used by the language-mismatch repair pass: we need both the doc
+    language and the existing conclusion text to decide whether the
+    analysis came back in the wrong tongue.
+    """
+    sb = get_client()
+    # Embedded select pulls the joined analysis if present; the caller
+    # filters out docs whose depth_analyses comes back null/empty so we
+    # don't depend on PostgREST's embedded-resource filter syntax.
+    res = (
+        sb.table("depth_documents")
+        .select("id,language,depth_analyses(analytical_conclusion)")
+        .limit(limit)
+        .execute()
+    )
+    return res.data or []
+
+
+def requeue_for_analysis(doc_ids: list[int]) -> int:
+    """Drop existing analyses for these docs and flip them back to
+    'pending' so the next analyze pass re-processes them with the
+    current prompt. Returns the number of docs requeued.
+
+    Used by the --reanalyze-language-mismatches repair pass and any
+    future bulk re-analysis flag (e.g. prompt version bumps).
+    """
+    if not doc_ids:
+        return 0
+    sb = get_client()
+    # Chunk to avoid overlong URL/IN clauses on PostgREST
+    n = 0
+    CHUNK = 100
+    for i in range(0, len(doc_ids), CHUNK):
+        batch = doc_ids[i : i + CHUNK]
+        sb.table("depth_analyses").delete().in_("document_id", batch).execute()
+        sb.table("depth_documents").update({"analysis_status": "pending"}).in_(
+            "id", batch
+        ).execute()
+        n += len(batch)
+    return n
+
+
 # ---------------------------------------------------------------------------
 # Analyses
 # ---------------------------------------------------------------------------

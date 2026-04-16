@@ -254,6 +254,47 @@ def analyze_pass(*, budget: int) -> dict[str, int]:
 # Entrypoint
 # ---------------------------------------------------------------------------
 
+def reanalyze_language_mismatches() -> dict[str, int]:
+    """Find docs whose source language is Arabic but whose existing
+    analytical_conclusion is in English (no Arabic glyphs at all),
+    then drop their analyses and requeue them. The next analyze pass
+    will re-process them with the current language-aware prompt.
+
+    Symmetric for English docs that came back in Arabic. We use a simple
+    Arabic-codepoint scan because that's the bug we actually saw in
+    production (Haiku translating Arabic → English by default).
+    """
+    import re
+    AR = re.compile(r"[\u0600-\u06FF]")
+
+    rows = store.documents_with_analyses(limit=5000)
+    mismatched: list[int] = []
+    for r in rows:
+        lang = (r.get("language") or "").lower()
+        analyses = r.get("depth_analyses")
+        # Embedded join can return either a list or a single object
+        if isinstance(analyses, list):
+            analysis = analyses[0] if analyses else None
+        else:
+            analysis = analyses
+        if not analysis:
+            continue
+        conclusion = analysis.get("analytical_conclusion") or ""
+        if not conclusion:
+            continue
+        has_arabic = bool(AR.search(conclusion))
+        is_arabic_doc = lang.startswith("ar")
+        is_english_doc = lang.startswith("en")
+        # Arabic source, no Arabic in conclusion → was translated to EN
+        # English source, conclusion has Arabic → was translated to AR
+        if (is_arabic_doc and not has_arabic) or (is_english_doc and has_arabic):
+            mismatched.append(r["id"])
+
+    n = store.requeue_for_analysis(mismatched)
+    logger.info("reanalyze: %d language-mismatched docs requeued", n)
+    return {"requeued": n}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Basira one-shot worker")
     parser.add_argument(
@@ -265,6 +306,15 @@ def main() -> int:
         "--ingest-only",
         action="store_true",
         help="skip analysis, only poll sources",
+    )
+    parser.add_argument(
+        "--reanalyze-language-mismatches",
+        action="store_true",
+        help=(
+            "find docs whose conclusion came back in the wrong language "
+            "(Arabic source → English conclusion or vice versa), drop "
+            "those analyses and requeue them. Implies --analyze-only."
+        ),
     )
     parser.add_argument(
         "--max-sources",
@@ -291,19 +341,29 @@ def main() -> int:
     t0 = time.time()
     summary: dict[str, Any] = {"started_at": datetime.utcnow().isoformat()}
 
-    if not args.analyze_only:
-        logger.info(
-            "starting ingest pass (max_sources=%d max_per_source=%d)",
-            args.max_sources,
-            args.max_per_source,
-        )
-        summary["ingest"] = ingest_pass(
-            max_sources=args.max_sources,
-            max_per_source=args.max_per_source,
-        )
-    if not args.ingest_only:
+    # The reanalyze flag is a maintenance pass: skip ingest, run the
+    # mismatch repair, then immediately drain the freshly-requeued docs
+    # with the current prompt. Doing both in one workflow_dispatch run
+    # means a single click in the GH Actions UI fixes the backlog.
+    if args.reanalyze_language_mismatches:
+        logger.info("starting language-mismatch repair pass")
+        summary["repair"] = reanalyze_language_mismatches()
         logger.info("starting analyze pass (budget=%d)", args.analyze_budget)
         summary["analyze"] = analyze_pass(budget=args.analyze_budget)
+    else:
+        if not args.analyze_only:
+            logger.info(
+                "starting ingest pass (max_sources=%d max_per_source=%d)",
+                args.max_sources,
+                args.max_per_source,
+            )
+            summary["ingest"] = ingest_pass(
+                max_sources=args.max_sources,
+                max_per_source=args.max_per_source,
+            )
+        if not args.ingest_only:
+            logger.info("starting analyze pass (budget=%d)", args.analyze_budget)
+            summary["analyze"] = analyze_pass(budget=args.analyze_budget)
 
     summary["elapsed_seconds"] = round(time.time() - t0, 2)
     logger.info("worker finished: %s", summary)

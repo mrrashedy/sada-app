@@ -99,6 +99,7 @@ export const SOURCES = [
   { n:"واشنطن بوست",   i:"WP", id:"wapo_world",    domain:"washingtonpost.com"    },
   { n:"بلومبرغ",       i:"BL", id:"bloomberg",     domain:"bloomberg.com"         },
   { n:"CNN عالمي",     i:"CN", id:"cnn_en",        domain:"cnn.com"               },
+  { n:"أكسيوس",        i:"AX", id:"axios",         domain:"axios.com"             },
 
   // ── PHOTO-GRID-ONLY SOURCES (photoOnly: true) ──────────────────
   // These appear only in the photo grid, not the main news feed or stories strip.

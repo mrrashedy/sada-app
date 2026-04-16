@@ -207,6 +207,9 @@ const SOURCES = {
   bloomberg:    { name: "بلومبرغ", initial: "BL", tier: 3, lang: "en", feeds: ["https://feeds.bloomberg.com/politics/news.rss"] },
   // CNN direct RSS uses http:// which breaks on CF Workers (cert issue). Google News proxy.
   cnn_en:       { name: "CNN عالمي", initial: "CN", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Acnn.com+world&hl=en&gl=US&ceid=US:en"] },
+  // Axios — US politics/business/tech. Direct site has no public RSS;
+  // rss.app scraper yields ~30 fresh items, updates continuously.
+  axios:        { name: "أكسيوس", initial: "AX", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/LAUKMnlukwyJudVw.xml"] },
 
   // ── PHOTO-GRID-ONLY SOURCES ──────────────────────────────────────
   // Tagged `photoOnly: true` so they're excluded from the main /api/feeds

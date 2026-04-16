@@ -480,27 +480,35 @@ export default function Sada() {
               misleading because the user couldn't tell when (or whether)
               new items had actually arrived. */}
 
-          {/* X-style "new posts" pill — sticky at the top of the feed.
-              Appears only when pendingCount > 0. Tap → flushPending()
-              pulls accumulated items into the displayed feed and scrolls
-              to top. The displayed feed never moves on its own; this pill
-              is the user's only signal that the world has updated. */}
+          {/* X-style refresh pill — round orange chip, centered, sticky at
+              the top of the feed. Appears ONLY when pendingCount > 0,
+              meaning genuine new items (newer-by-timestamp than what's
+              already shown) have arrived. Tap → flushPending() merges
+              them in and smooth-scrolls to top. */}
           {pendingCount>0 && (
-            <div
-              onClick={() => {
-                Sound.tap();
-                flushPending();
-                contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              style={{
-                position: 'sticky', top: 0, zIndex: 50,
-                background: '#0A0A0A', color: '#fff',
-                fontSize: 12, fontWeight: 700, textAlign: 'center',
-                padding: '10px', cursor: 'pointer',
-                boxShadow: '0 1px 4px rgba(0,0,0,.15)',
-              }}
-            >
-              ↑ {pendingCount} خبر جديد
+            <div style={{ position:'sticky', top:8, zIndex:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
+              <button
+                onClick={() => {
+                  Sound.tap();
+                  flushPending();
+                  contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                style={{
+                  pointerEvents:'auto',
+                  background:'#FF6B00',
+                  color:'#fff',
+                  fontSize:13,
+                  fontWeight:700,
+                  fontFamily:'var(--ft)',
+                  padding:'8px 22px',
+                  borderRadius:'999px',
+                  border:'none',
+                  cursor:'pointer',
+                  boxShadow:'0 4px 14px rgba(255,107,0,.4)',
+                }}
+              >
+                تحديث
+              </button>
             </div>
           )}
 

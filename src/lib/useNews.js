@@ -142,16 +142,23 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
           setFeed(data.feed.slice(0, 500));
           setPendingFeed([]);
         } else {
-          // Subsequent polls — anything not already displayed becomes pending.
-          // Existing items in the displayed feed are NEVER touched: no reorder,
-          // no in-place updates, no removal. The user's view stays stable.
+          // Subsequent polls — pending is ONLY items NEWER (by timestamp)
+          // than what we already showed. Without this threshold, pending
+          // would immediately fill with items 501-1200 that the server
+          // returned but we never displayed (the feed slices at 500), so
+          // the user would see '↑ 500 خبر جديد' on the second poll even
+          // though nothing genuinely new had arrived.
+          const ts = (item) => item.pubTs || item.timestamp || 0;
+          const newestDisplayedTs = feedRef.current.reduce(
+            (max, f) => Math.max(max, ts(f)), 0
+          );
           const pendingIds = new Set(pendingRef.current.map(p => p.id));
           const fresh = data.feed.filter(
-            f => !displayedIds.has(f.id) && !pendingIds.has(f.id)
+            f => ts(f) > newestDisplayedTs &&
+                 !displayedIds.has(f.id) &&
+                 !pendingIds.has(f.id)
           );
           if (fresh.length > 0) {
-            // Prepend fresh items so the newest pending item is at index 0
-            // (server already returns time-sorted descending).
             setPendingFeed(prev => {
               const prevIds = new Set(prev.map(p => p.id));
               const dedupedFresh = fresh.filter(f => !prevIds.has(f.id));

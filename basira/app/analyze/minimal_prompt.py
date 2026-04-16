@@ -50,18 +50,28 @@ thoughtful reader would paraphrase it after finishing the piece.
 Register: academic, plain, non-emotional. If the document is weak, \
 vague, or evasive, say so — do not inflate it.
 
+LANGUAGE — MANDATORY:
+The analytical_conclusion MUST be written in the SAME language as the \
+document body. If the body is Arabic, the conclusion is Arabic. If the \
+body is English, the conclusion is English. If the body is French, the \
+conclusion is French. Do not translate. Do not switch language. The \
+key_quote is verbatim from the body, so it is already in the source \
+language by definition; the key_quote_context follows the same \
+language as the conclusion.
+
 Respond with JSON only, matching this schema exactly:
 {
-  "analytical_conclusion": "<one sentence, 20-50 words>",
+  "analytical_conclusion": "<one sentence, 20-50 words, in the body's language>",
   "key_quote": "<one verbatim sentence from the body OR null>",
-  "key_quote_context": "<one phrase explaining why this quote matters OR null>"
+  "key_quote_context": "<one phrase explaining why this quote matters, in the body's language, OR null>"
 }
 
 Rules:
 - key_quote must be a sentence that appears LITERALLY in the body. If \
 no single quote carries the argument cleanly, set key_quote and \
 key_quote_context to null. Do NOT invent or paraphrase. Quotes are \
-optional — only surface one when it genuinely carries the argument."""
+optional — only surface one when it genuinely carries the argument.
+- Match the source language. Never translate the conclusion."""
 
 
 def _build_user_message(doc: dict[str, Any]) -> str:

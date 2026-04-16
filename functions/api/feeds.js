@@ -145,7 +145,7 @@ const SOURCES = {
   // updates continuously) + Google News fallback for breadth.
   reuters_ar:  { name: "رويترز", initial: "R", tier: 1, feeds: ["https://rss.app/feeds/QMxooeXFymYyJeYS.xml","https://news.google.com/rss/search?q=site%3Areuters.com&hl=ar&gl=SA&ceid=SA:ar"] },
 
-  // Tier 3: English sources (auto-translated)
+  // Tier 3: English sources (served as-is — no translation)
   bbc_en:   { name: "BBC عالمي", initial: "BB", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/world/rss.xml"] },
   nyt:      { name: "نيويورك تايمز", initial: "NY", tier: 3, lang: "en", feeds: ["https://rss.nytimes.com/services/xml/rss/nyt/World.xml"] },
   fox:      { name: "فوكس نيوز", initial: "FX", tier: 3, lang: "en", feeds: ["https://moxie.foxnews.com/google-publisher/latest.xml"] },
@@ -158,7 +158,7 @@ const SOURCES = {
   // skynews.com feed returns 200 but 0 items from CF Workers. Add GN fallback (news.sky.com).
   sky_en:   { name: "سكاي نيوز EN", initial: "SK", tier: 3, lang: "en", feeds: ["https://feeds.skynews.com/feeds/rss/world.xml","https://news.google.com/rss/search?q=site%3Anews.sky.com&hl=en&gl=US&ceid=US:en"] },
 
-  // Tier 3: Gulf English-language press (auto-translated)
+  // Tier 3: Gulf English-language press (served as-is — no translation)
   thenational:   { name: "ذا ناشيونال", initial: "TN", tier: 3, lang: "en", feeds: ["https://www.thenationalnews.com/arc/outboundfeeds/rss/?outputType=xml"] },
   gulfnews:      { name: "غلف نيوز", initial: "GU", tier: 3, lang: "en", feeds: ["https://gulfnews.com/api/v1/collections/latest-news.rss"] },
   // arabnews.com direct feed 403s from CF Workers. Google News proxy.
@@ -172,10 +172,10 @@ const SOURCES = {
 
   // Tier 4: Additional real-time firehose sources — major Western broadcasters
   guardian_w:   { name: "الغارديان", initial: "G", tier: 3, lang: "en", feeds: ["https://www.theguardian.com/world/rss"] },
-  // Reuters English wire — international breaking news. Sister to the existing
-  // reuters_ar (Arabic-translated). Both run because Reuters EN sometimes
-  // breaks stories the Arabic feed lags or omits, and the en→ar translation
-  // pipeline normalizes the language for the user.
+  // Reuters English wire — international breaking news. Served as-is in
+  // English (no translation — the warm pipeline only translates French→English,
+  // never touches English or Arabic items). Sister to reuters_ar which gets
+  // Arabic content from Google News + a separate rss.app scraper.
   reuters_en:   { name: "رويترز EN", initial: "RE", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/OfVnHSMzG81M03AF.xml"] },
   // washingtonpost.com direct feed 403s/timeouts from CF Workers. Google News proxy.
   wapo_world:   { name: "واشنطن بوست", initial: "WP", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Awashingtonpost.com+world&hl=en&gl=US&ceid=US:en"] },
@@ -188,7 +188,7 @@ const SOURCES = {
   // (news) aggregation and only appear in /api/feeds?kind=photos.
   // The photo grid is an independent feature like the radar.
 
-  // English photo-rich sources (auto-translated, culture/tech/science-leaning)
+  // English photo-rich sources (served as-is — culture/tech/science-leaning)
   wired:        { name: "Wired", initial: "WD", tier: 3, lang: "en", photoOnly: true, feeds: ["https://www.wired.com/feed/rss"] },
   verge:        { name: "The Verge", initial: "VG", tier: 3, lang: "en", photoOnly: true, feeds: ["https://www.theverge.com/rss/index.xml"] },
   atlasobscura: { name: "Atlas Obscura", initial: "AO", tier: 3, lang: "en", photoOnly: true, feeds: ["https://www.atlasobscura.com/feeds/latest"] },

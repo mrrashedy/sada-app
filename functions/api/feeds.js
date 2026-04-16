@@ -6,26 +6,43 @@
 
 const SOURCES = {
   // Tier 1: Flagship Arabic broadcasters
-  // Al Jazeera Arabic: the UUID-based Arc CMS feed updates slowly (editor-
-  // curated Story List, ~3h latency). We add a Google News site-search as
-  // a fresh backup so aljazeera items always appear near the top of the feed.
-  // Both URLs are fetched in parallel and merged/deduplicated by title.
+  // Al Jazeera Arabic: the UUID-based Arc CMS feed was retired by AJ and the
+  // endpoint now refuses connections. We run two independent paths:
+  //   1) rss.app scraper of aljazeera.net (30 items, updates continuously)
+  //   2) Google News site-search (50 items, broad indexing)
+  // Both are fetched in parallel and deduplicated by title downstream.
   aljazeera:       { name: "الجزيرة", initial: "ج", tier: 1, feeds: [
-    "https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9",
+    "https://rss.app/feeds/wEloTC9ifcfo3wu5.xml",
     "https://news.google.com/rss/search?q=site%3Aaljazeera.net&hl=ar&gl=SA&ceid=SA%3Aar",
   ] },
-  aljazeera_en:    { name: "الجزيرة EN", initial: "ج", tier: 3, lang: "en", feeds: ["https://www.aljazeera.com/xml/rss/all.xml"] },
+  // @AJABreaking — Al Jazeera Arabic Breaking News alerts (عاجل).
+  // X/Twitter RSS bridges are unreliable; we use a targeted Google News
+  // query for عاجل stories from aljazeera.net as the closest equivalent.
+  aja_breaking:    { name: "الجزيرة عاجل", initial: "عاجل", tier: 1, feeds: [
+    "https://news.google.com/rss/search?q=عاجل+site%3Aaljazeera.net&hl=ar&gl=SA&ceid=SA%3Aar",
+  ] },
+  // aljazeera.com direct RSS times out from CF Workers. Google News proxy.
+  aljazeera_en:    { name: "الجزيرة EN", initial: "ج", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aaljazeera.com&hl=en&gl=US&ceid=US:en"] },
   bbc:             { name: "BBC عربي", initial: "B", tier: 1, feeds: ["https://feeds.bbci.co.uk/arabic/rss.xml","https://feeds.bbci.co.uk/arabic/middleeast/rss.xml","https://feeds.bbci.co.uk/arabic/worldnews/rss.xml"] },
   skynews:         { name: "سكاي نيوز", initial: "S", tier: 1, feeds: ["https://www.skynewsarabia.com/rss.xml","https://www.skynewsarabia.com/rss/middle-east.xml","https://www.skynewsarabia.com/rss/world.xml"] },
-  france24:        { name: "فرانس ٢٤", initial: "F", tier: 1, feeds: ["https://www.france24.com/ar/rss","https://www.france24.com/ar/الشرق-الأوسط/rss"] },
-  dw:              { name: "دويتشه فيله", initial: "D", tier: 1, feeds: ["https://rss.dw.com/xml/rss-ar-all"] },
+  // france24 direct RSS (/ar/rss) now returns 403. Google News site-search
+  // (50 fresh items) is the working alternative.
+  france24:        { name: "فرانس ٢٤", initial: "F", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Afrance24.com%2Far&hl=ar&gl=SA&ceid=SA:ar"] },
+  // dw: rss.dw.com no longer responds reliably. Google News proxy is stable.
+  dw:              { name: "دويتشه فيله", initial: "D", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Adw.com%2Far&hl=ar&gl=SA&ceid=SA:ar"] },
   cnn_ar:          { name: "CNN عربية", initial: "C", tier: 1, feeds: ["https://arabic.cnn.com/api/v1/rss/rss.xml"] },
-  independent_ar:  { name: "إندبندنت عربية", initial: "إ", tier: 1, feeds: ["https://www.independentarabia.com/rss.xml"] },
-  aawsat:          { name: "الشرق الأوسط", initial: "ش", tier: 1, feeds: ["https://aawsat.com/feed"] },
-  alhurra:         { name: "الحرة", initial: "ح", tier: 1, feeds: ["https://alhurra.com/feed"] },
+  cnn_biz_ar:      { name: "CNN اقتصاد", initial: "C$", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Acnnbusinessarabic.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Monte Carlo Doualiya — direct feed is podcast-only. Google News proxy for articles.
+  mc_doualiya:     { name: "مونت كارلو", initial: "MC", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amc-doualiya.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // independent_ar direct feed intermittent. Google News proxy is reliable.
+  independent_ar:  { name: "إندبندنت عربية", initial: "إ", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Aindependentarabia.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  aawsat:          { name: "الشرق الأوسط", initial: "ش", tier: 1, feeds: ["https://aawsat.com/feed","https://news.google.com/rss/search?q=site%3Aaawsat.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // alhurra.com direct feed returns 200 but empty from CF Workers. Add GN fallback.
+  alhurra:         { name: "الحرة", initial: "ح", tier: 1, feeds: ["https://alhurra.com/feed","https://news.google.com/rss/search?q=site%3Aalhurra.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Tier 1 additions
   rt_ar:           { name: "روسيا اليوم", initial: "RT", tier: 1, feeds: ["https://arabic.rt.com/rss/"] },
-  alarabiya:       { name: "العربية", initial: "ع", tier: 1, feeds: ["https://www.alarabiya.net/.mrss/ar.xml"] },
+  // alarabiya /.mrss/ar.xml now 403s. Google News proxy (50 fresh items).
+  alarabiya:       { name: "العربية", initial: "ع", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Aalarabiya.net&hl=ar&gl=SA&ceid=SA:ar"] },
   asharq_news:     { name: "الشرق الإخبارية", initial: "شر", tier: 1, feeds: ["https://asharq.com/rss.xml"] },
 
   // Wire services + aggregators (Arabic Google News topics give broad coverage)
@@ -35,57 +52,89 @@ const SOURCES = {
   gnews_science:   { name: "أخبار Google علوم", initial: "GS", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=ar&gl=SA&ceid=SA:ar"] },
 
   // Tier 2: Regional newspapers
-  alaraby:   { name: "العربي الجديد", initial: "ع", tier: 2, feeds: ["https://www.alaraby.co.uk/rss"] },
+  // Al Araby Al Jadeed: direct RSS is dead but Google News still indexes the
+  // alaraby.co.uk domain with 50 fresh Arabic items.
+  alaraby:   { name: "العربي الجديد", initial: "ع", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalaraby.co.uk&hl=ar&gl=SA&ceid=SA:ar"] },
   almasry:   { name: "المصري اليوم", initial: "م", tier: 2, feeds: ["https://www.almasryalyoum.com/rss/rssfeed"] },
+  masrawy:   { name: "مصراوي", initial: "مص", tier: 2, feeds: ["https://www.masrawy.com/rss/feed/25/%D8%A3%D8%AE%D8%A8%D8%A7%D8%B1"] },
+  ahram_en:  { name: "الأهرام EN", initial: "AH", tier: 2, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aenglish.ahram.org.eg&hl=en&gl=US&ceid=US:en"] },
   youm7:     { name: "اليوم السابع", initial: "٧", tier: 1, feeds: ["https://www.youm7.com/RSS/SectionRss?SectionID=97","https://www.youm7.com/RSS/SectionRss?SectionID=203"] },
-  egypt_ind: { name: "Egypt Independent", initial: "EI", tier: 2, lang: "en", feeds: ["https://www.egyptindependent.com/feed/"] },
+  // egyptindependent.com returns 200 but 0 items from CF Workers. Add GN fallback.
+  egypt_ind: { name: "Egypt Independent", initial: "EI", tier: 2, lang: "en", feeds: ["https://www.egyptindependent.com/feed/","https://news.google.com/rss/search?q=site%3Aegyptindependent.com&hl=en&gl=US&ceid=US:en"] },
   okaz:      { name: "عكاظ", initial: "ك", tier: 2, feeds: ["https://www.okaz.com.sa/rssFeed/0"] },
   alsumaria: { name: "السومرية", initial: "سم", tier: 2, feeds: ["https://www.alsumaria.tv/Rss/iraq-latest-news/ar"] },
-  alkhaleej: { name: "الخليج", initial: "خ", tier: 2, feeds: ["https://www.alkhaleej.ae/section/1110/rss.xml"] },
-  uae24:     { name: "24 الإمارات", initial: "٢", tier: 2, feeds: ["https://24.ae/rss.aspx"] },
+  // alkhaleej.ae returns 200 but 0 items from CF Workers. Add GN fallback.
+  alkhaleej: { name: "الخليج", initial: "خ", tier: 2, feeds: ["https://www.alkhaleej.ae/section/1110/rss.xml","https://news.google.com/rss/search?q=site%3Aalkhaleej.ae&hl=ar&gl=SA&ceid=SA:ar"] },
+  // 24.ae direct RSS 403s. Google News proxy works.
+  uae24:     { name: "24 الإمارات", initial: "٢", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3A24.ae&hl=ar&gl=SA&ceid=SA:ar"] },
   alsharq:   { name: "الشرق", initial: "ق", tier: 2, feeds: ["https://al-sharq.com/rss/latestNews"] },
-  alyaum:    { name: "اليوم", initial: "ل", tier: 2, feeds: ["https://www.alyaum.com/rssFeed/1005"] },
-  alquds:    { name: "القدس العربي", initial: "ق", tier: 2, feeds: ["https://www.alquds.co.uk/feed/"] },
-  noonpost:  { name: "نون بوست", initial: "ن", tier: 2, feeds: ["https://www.noonpost.com/feed/"] },
+  // alyaum.com returns 200 but 0 items from CF Workers. Add GN fallback.
+  alyaum:    { name: "اليوم", initial: "ل", tier: 2, feeds: ["https://www.alyaum.com/rssFeed/1005","https://news.google.com/rss/search?q=site%3Aalyaum.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // alquds.co.uk direct feed socket-closes. Google News proxy works.
+  alquds:    { name: "القدس العربي", initial: "ق", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalquds.co.uk&hl=ar&gl=SA&ceid=SA:ar"] },
+  // (noonpost removed — outlet dormant, Google News index newest item is Jan 2019)
 
   // Tier 2: Levant — Lebanon, Syria, Jordan, Palestine
   annahar:    { name: "النهار", initial: "نه", tier: 2, feeds: ["https://www.annahar.com/arabic/rss-feed"] },
-  lbci:       { name: "إل بي سي آي", initial: "LB", tier: 2, feeds: ["https://www.lbcgroup.tv/Rss/latest-news/ar"] },
+  // lbcgroup.tv direct feed 403s from CF Workers. Google News proxy.
+  lbci:       { name: "إل بي سي آي", initial: "LB", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Albcgroup.tv&hl=ar&gl=SA&ceid=SA:ar"] },
   roya:       { name: "رؤيا", initial: "ر", tier: 2, feeds: ["https://royanews.tv/rss"] },
-  almamlaka:  { name: "المملكة", initial: "مم", tier: 2, feeds: ["https://www.almamlakatv.com/rss.xml"] },
+  // almamlakatv.com direct feed 403s. Google News proxy works.
+  almamlaka:  { name: "المملكة", initial: "مم", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalmamlakatv.com&hl=ar&gl=SA&ceid=SA:ar"] },
   sana:       { name: "سانا", initial: "س", tier: 2, feeds: ["https://sana.sy/feed/"] },
-  alghad:     { name: "الغد", initial: "غ", tier: 2, feeds: ["https://alghad.com/rss"] },
+  // alghad.com direct feed 403s. Google News proxy works.
+  alghad:     { name: "الغد", initial: "غ", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalghad.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Tier 2: additional Levant — high-priority Arabic outlets
+  almayadeen:  { name: "الميادين", initial: "مي", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalmayadeen.net&hl=ar&gl=SA&ceid=SA:ar"] },
+  alakhbar_lb: { name: "الأخبار اللبنانية", initial: "أخ", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aal-akhbar.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  daraj:       { name: "درج", initial: "در", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Adaraj.media&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Tier 2: additional Egypt & Gulf flagships
+  ahram:       { name: "الأهرام", initial: "هر", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Agate.ahram.org.eg&hl=ar&gl=SA&ceid=SA:ar"] },
+  mada_masr:   { name: "مدى مصر", initial: "مد", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amadamasr.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  alain_ar:    { name: "العين الإخبارية", initial: "عن", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aal-ain.com&hl=ar&gl=SA&ceid=SA:ar"] },
 
   // Tier 2: North Africa (Maghreb) — Morocco, Algeria, Tunisia
   hespress:    { name: "هسبريس", initial: "هـ", tier: 2, feeds: ["https://www.hespress.com/feed"] },
   le360_ar:    { name: "لو 360", initial: "360", tier: 2, feeds: ["https://ar.le360.ma/arc/outboundfeeds/rss/?outputType=xml"] },
-  snrt:        { name: "الأولى المغربية", initial: "SN", tier: 2, feeds: ["https://snrtnews.com/rss.xml"] },
+  // snrtnews.com direct feed 403s. Google News proxy works.
+  snrt:        { name: "الأولى المغربية", initial: "SN", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Asnrtnews.com&hl=ar&gl=SA&ceid=SA:ar"] },
   echorouk:    { name: "الشروق الجزائرية", initial: "شج", tier: 2, feeds: ["https://www.echoroukonline.com/feed"] },
   elkhabar:    { name: "الخبر", initial: "خب", tier: 2, feeds: ["https://www.elkhabar.com/feed"] },
   ennahar_dz:  { name: "النهار الجزائرية", initial: "نج", tier: 2, feeds: ["https://www.ennaharonline.com/feed/"] },
   mosaiquefm:  { name: "موزاييك إف إم", initial: "MFM", tier: 2, feeds: ["https://www.mosaiquefm.net/ar/rss"] },
 
-  // Tier 2: Sahel & Sudan & Libya
+  // Tier 2: Sahel & Sudan
+  // (libya_ahrar removed — outlet has not published since Jan 25 2025)
   sahara_media: { name: "صحراء ميديا", initial: "صح", tier: 2, feeds: ["https://saharamedias.net/feed/"] },
-  sudan_tribune: { name: "سودان تريبيون", initial: "ST", tier: 2, feeds: ["https://sudantribune.net/feed/"] },
-  alsudani:     { name: "السوداني", initial: "سد", tier: 2, feeds: ["https://alsudaninews.com/?feed=rss2"] },
-  libya_ahrar:  { name: "ليبيا الأحرار", initial: "LY", tier: 2, feeds: ["https://libyaalahrar.net/feed/"] },
+  // sudantribune.net returns 200 but 0 items from CF Workers. Add GN fallback.
+  sudan_tribune: { name: "سودان تريبيون", initial: "ST", tier: 2, feeds: ["https://sudantribune.net/feed/","https://news.google.com/rss/search?q=site%3Asudantribune.net&hl=ar&gl=SA&ceid=SA:ar"] },
+  // alsudaninews.com returns 200 but 0 items from CF Workers. Add GN fallback.
+  alsudani:     { name: "السوداني", initial: "سد", tier: 2, feeds: ["https://alsudaninews.com/?feed=rss2","https://news.google.com/rss/search?q=site%3Aalsudaninews.com&hl=ar&gl=SA&ceid=SA:ar"] },
+
+  // Reuters Arabic — direct rss.app scraper of reuters.com (25 fresh items,
+  // updates continuously) + Google News fallback for breadth.
+  reuters_ar:  { name: "رويترز", initial: "R", tier: 1, feeds: ["https://rss.app/feeds/QMxooeXFymYyJeYS.xml","https://news.google.com/rss/search?q=site%3Areuters.com&hl=ar&gl=SA&ceid=SA:ar"] },
 
   // Tier 3: English sources (auto-translated)
   bbc_en:   { name: "BBC عالمي", initial: "BB", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/world/rss.xml"] },
   nyt:      { name: "نيويورك تايمز", initial: "NY", tier: 3, lang: "en", feeds: ["https://rss.nytimes.com/services/xml/rss/nyt/World.xml"] },
   fox:      { name: "فوكس نيوز", initial: "FX", tier: 3, lang: "en", feeds: ["https://moxie.foxnews.com/google-publisher/latest.xml"] },
-  bbc_tech: { name: "BBC تقنية", initial: "BT", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/technology/rss.xml"] },
+  // bbci.co.uk tech feed returns 200 but 0 items from CF Workers. Add GN fallback.
+  bbc_tech: { name: "BBC تقنية", initial: "BT", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/technology/rss.xml","https://news.google.com/rss/search?q=site%3Abbc.com+technology&hl=en&gl=US&ceid=US:en"] },
   nbc:      { name: "NBC نيوز", initial: "NB", tier: 3, lang: "en", feeds: ["https://feeds.nbcnews.com/feeds/topstories"] },
-  npr:      { name: "NPR عالمي", initial: "NP", tier: 3, lang: "en", feeds: ["https://feeds.npr.org/1004/rss.xml"] },
+  // NPR feed returns 200 but 0 items from CF Workers. Add GN fallback.
+  npr:      { name: "NPR عالمي", initial: "NP", tier: 3, lang: "en", feeds: ["https://feeds.npr.org/1004/rss.xml","https://news.google.com/rss/search?q=site%3Anpr.org+world&hl=en&gl=US&ceid=US:en"] },
   abc_en:   { name: "ABC نيوز", initial: "AB", tier: 3, lang: "en", feeds: ["https://feeds.abcnews.com/abcnews/topstories"] },
-  sky_en:   { name: "سكاي نيوز EN", initial: "SK", tier: 3, lang: "en", feeds: ["https://feeds.skynews.com/feeds/rss/world.xml"] },
+  // skynews.com feed returns 200 but 0 items from CF Workers. Add GN fallback (news.sky.com).
+  sky_en:   { name: "سكاي نيوز EN", initial: "SK", tier: 3, lang: "en", feeds: ["https://feeds.skynews.com/feeds/rss/world.xml","https://news.google.com/rss/search?q=site%3Anews.sky.com&hl=en&gl=US&ceid=US:en"] },
 
   // Tier 3: Gulf English-language press (auto-translated)
   thenational:   { name: "ذا ناشيونال", initial: "TN", tier: 3, lang: "en", feeds: ["https://www.thenationalnews.com/arc/outboundfeeds/rss/?outputType=xml"] },
   gulfnews:      { name: "غلف نيوز", initial: "GU", tier: 3, lang: "en", feeds: ["https://gulfnews.com/api/v1/collections/latest-news.rss"] },
-  arabnews:      { name: "عرب نيوز", initial: "AN", tier: 3, lang: "en", feeds: ["https://www.arabnews.com/rss.xml"] },
-  alarabiya_en:  { name: "العربية EN", initial: "عE", tier: 3, lang: "en", feeds: ["https://english.alarabiya.net/rss/en_default.xml"] },
+  // arabnews.com direct feed 403s from CF Workers. Google News proxy.
+  arabnews:      { name: "عرب نيوز", initial: "AN", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aarabnews.com&hl=en&gl=US&ceid=US:en"] },
+  // english.alarabiya.net direct feed 403s from CF Workers. Google News proxy.
+  alarabiya_en:  { name: "العربية EN", initial: "عE", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aenglish.alarabiya.net&hl=en&gl=US&ceid=US:en"] },
 
   // Tier 3: Maghreb French-language press (auto-translated, M2M-100)
   hespress_fr:   { name: "هسبريس FR", initial: "HF", tier: 3, lang: "fr", feeds: ["https://fr.hespress.com/feed"] },
@@ -93,9 +142,11 @@ const SOURCES = {
 
   // Tier 4: Additional real-time firehose sources — major Western broadcasters
   guardian_w:   { name: "الغارديان", initial: "G", tier: 3, lang: "en", feeds: ["https://www.theguardian.com/world/rss"] },
-  wapo_world:   { name: "واشنطن بوست", initial: "WP", tier: 3, lang: "en", feeds: ["https://feeds.washingtonpost.com/rss/world"] },
+  // washingtonpost.com direct feed 403s/timeouts from CF Workers. Google News proxy.
+  wapo_world:   { name: "واشنطن بوست", initial: "WP", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Awashingtonpost.com+world&hl=en&gl=US&ceid=US:en"] },
   bloomberg:    { name: "بلومبرغ", initial: "BL", tier: 3, lang: "en", feeds: ["https://feeds.bloomberg.com/politics/news.rss"] },
-  cnn_en:       { name: "CNN عالمي", initial: "CN", tier: 3, lang: "en", feeds: ["http://rss.cnn.com/rss/edition_world.rss"] },
+  // CNN direct RSS uses http:// which breaks on CF Workers (cert issue). Google News proxy.
+  cnn_en:       { name: "CNN عالمي", initial: "CN", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Acnn.com+world&hl=en&gl=US&ceid=US:en"] },
 
   // ── PHOTO-GRID-ONLY SOURCES ──────────────────────────────────────
   // Tagged `photoOnly: true` so they're excluded from the main /api/feeds
@@ -546,6 +597,75 @@ async function warmTranslations(items, ai, kv, limit = 40) {
   await saveTranslationIndex(kv, index);
 }
 
+// ─── GDELT + HTML Homepage Scrapers (creative fallback for RSS-lagged flagships) ───
+// Two independent paths run in parallel, each strong in different failure modes:
+//
+// 1) GDELT DOC API — Global Database of Events, Language, and Tone. Free
+//    real-time news database maintained by a Georgetown/Google project.
+//    Updates every 15 minutes, covers aljazeera.net/alarabiya.net/etc. across
+//    100+ languages. Returns structured JSON — no HTML parsing needed.
+//    https://api.gdeltproject.org/api/v2/doc/doc?query=domain:X&mode=ArtList&format=json
+//
+// 2) HTML homepage scraping — Fallback for when GDELT is rate-limited or
+//    missing a source. Uses Cloudflare's native HTMLRewriter API to stream-
+//    parse aljazeera.net HTML, extract article anchors with /YYYY/M/D/ URL
+//    pattern, and timestamp them as "just published" (since the homepage IS
+//    what readers see right now).
+//
+// Both paths are wrapped in Promise.allSettled — failures in one do not
+// affect the other, and both results feed into the main sort pipeline.
+
+// Tier-1 Arabic flagships polled on every aggregation. GDELT indexes most
+// major publishers at ~15-minute latency and bypasses the 1-4h lag of RSS
+// proxies. Items land tagged with the given sourceId so they merge cleanly
+// into the same sort pipeline as RSS.
+const FRESH_FLAGSHIPS = [
+  { sourceId: 'aljazeera', gdeltDomain: 'aljazeera.net'     },
+  { sourceId: 'alarabiya', gdeltDomain: 'alarabiya.net'     },
+  { sourceId: 'bbc',       gdeltDomain: 'bbc.com/arabic'    },
+  { sourceId: 'skynews',   gdeltDomain: 'skynewsarabia.com' },
+];
+
+async function fetchGdelt(domain) {
+  try {
+    const query = encodeURIComponent(`domain:${domain}`);
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=ArtList&format=json&maxrecords=15&sort=datedesc&timespan=6h`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/3.0)' },
+      signal: AbortSignal.timeout(10000),
+      cf: { cacheTtl: 60, cacheEverything: true },
+    });
+    if (!res.ok) return [];
+    const text = await res.text();
+    // GDELT sometimes returns an HTML error page. Detect and skip.
+    if (!text.trim().startsWith('{')) return [];
+    let data;
+    try { data = JSON.parse(text); } catch { return []; }
+    const arts = Array.isArray(data?.articles) ? data.articles : [];
+    return arts
+      .filter(a => a.title && a.url)
+      .map(a => {
+        // GDELT seendate format: "20260414T213011Z" (compact ISO8601)
+        let ts = Date.now();
+        if (a.seendate && /^\d{8}T\d{6}Z$/.test(a.seendate)) {
+          const s = a.seendate;
+          const iso = `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(9,11)}:${s.slice(11,13)}:${s.slice(13,15)}Z`;
+          ts = new Date(iso).getTime() || Date.now();
+        }
+        return {
+          title: String(a.title).slice(0, 250),
+          link: a.url,
+          description: '',
+          pubDate: new Date(ts).toUTCString(),
+          image: a.socialimage || '',
+          categories: [],
+          timestamp: ts,
+          isBreaking: /عاجل|breaking/i.test(a.title),
+        };
+      });
+  } catch { return []; }
+}
+
 // ─── Core Aggregation Pipeline ───
 // This is the expensive operation — fetches all RSS, translates, deduplicates, interleaves
 
@@ -576,6 +696,30 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
 
   const results = await Promise.allSettled(fetches);
   results.forEach(r => { if (r.status === 'fulfilled') allItems.push(...r.value); });
+
+  // ─── GDELT freshness pass ──────────────────────────────────────────
+  // RSS proxies (rss.app, Google News) lag tier-1 flagships by 1-4 hours.
+  // GDELT's DOC API indexes the same publishers at ~15-min latency and
+  // returns JSON with publication dates. Each flagship is tagged with its
+  // canonical source metadata so items merge cleanly into the sort pipeline.
+  if (kind !== 'photos') {
+    const tagItems = (items, source, sourceId) => items.map(item => ({
+      ...item,
+      sourceId,
+      sourceName: source.name,
+      sourceInitial: source.initial,
+      sourceTier: source.tier,
+      lang: source.lang || 'ar',
+    }));
+    const freshFetches = FRESH_FLAGSHIPS
+      .filter(fl => SOURCES[fl.sourceId])
+      .map(async fl => {
+        try { return tagItems(await fetchGdelt(fl.gdeltDomain), SOURCES[fl.sourceId], fl.sourceId); }
+        catch { return []; }
+      });
+    const freshResults = await Promise.allSettled(freshFetches);
+    freshResults.forEach(r => { if (r.status === 'fulfilled') allItems.push(...r.value); });
+  }
 
   // NewsData.io API — supplements RSS with 85,000+ sources.
   // Each vertical gets its own language batches and throttle cadence.
@@ -628,28 +772,39 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
   const MAX_PER_SOURCE = 3; // max items from same source before forcing variety
   const mixed = [];
   const srcCount = new Map(); // track consecutive items per source in recent window
+  // Title-level dedup: BBC Arabic ships the same story across 3 category feeds
+  // (general, middleeast, worldnews), and AJ/Sky News do similar. Without a
+  // title-level dedup, the same headline appears 3x in the feed. Normalize
+  // whitespace and case so near-duplicates also collapse.
+  const normTitle = (t) => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const seenTitles = new Set();
 
   for (const item of allDeduped) {
     if (mixed.length >= LIMIT) break;
     const sid = item.sourceId;
+    const tkey = normTitle(item.title);
+    if (tkey && seenTitles.has(tkey)) continue; // drop duplicate headline
     const recent = srcCount.get(sid) || 0;
     if (recent >= MAX_PER_SOURCE) {
       // Defer this item — will be picked up in the backfill pass
       continue;
     }
     mixed.push(item);
+    if (tkey) seenTitles.add(tkey);
     srcCount.set(sid, recent + 1);
     // Reset other sources' counts every 20 items to allow them back in
     if (mixed.length % 20 === 0) {
       for (const [k] of srcCount) srcCount.set(k, Math.max(0, srcCount.get(k) - 1));
     }
   }
-  // Backfill with remaining items sorted by time
+  // Backfill with remaining items sorted by time (also deduped by normalized title)
   if (mixed.length < LIMIT) {
-    const usedIds = new Set(mixed.map(m => m.title));
     for (const item of allDeduped) {
       if (mixed.length >= LIMIT) break;
-      if (!usedIds.has(item.title)) mixed.push(item);
+      const tkey = normTitle(item.title);
+      if (tkey && seenTitles.has(tkey)) continue;
+      mixed.push(item);
+      if (tkey) seenTitles.add(tkey);
     }
   }
 
@@ -663,21 +818,31 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
   // if missing. Stale items are acceptable because the user specifically
   // wants to see these flagships (they are the trust anchors of the feed).
   if (kind !== 'photos') {
-    const FLAGSHIP_SOURCES = ['aljazeera', 'alarabiya', 'bbc', 'asharq_news', 'skynews', 'aawsat'];
-    const FLAGSHIP_WINDOW = 12;
-    const FLAGSHIP_INSERT_POS = 4;
-    for (const flagshipId of FLAGSHIP_SOURCES) {
-      // Already present in the visible window → nothing to do.
-      if (mixed.slice(0, FLAGSHIP_WINDOW).some(x => x.sourceId === flagshipId)) continue;
+    // Order matters — we insert in reverse order so the FIRST flagship ends up
+    // at position 0 after all splices, and the rest fan out into slots 0..N.
+    // The user's first-screen view (3-4 cards) MUST contain recognizable
+    // flagships — otherwise they perceive the app as "regional outlets only".
+    const FLAGSHIP_SOURCES = ['aljazeera', 'bbc', 'alarabiya', 'skynews', 'asharq_news', 'aawsat'];
+    // Unconditionally promote each flagship's newest item to the top of the
+    // feed. We iterate in reverse so the highest-priority flagship ends up
+    // at position 0 (the last splice wins). Any earlier occurrence of the
+    // same item is removed first, so flagships are NOT duplicated.
+    for (const flagshipId of [...FLAGSHIP_SOURCES].reverse()) {
       // Find newest item from this flagship anywhere in allDeduped.
       const item = allDeduped.find(x => x.sourceId === flagshipId);
       if (!item) continue;
-      // Remove any later copy of it so we don't duplicate.
-      const existingIdx = mixed.findIndex(x => x.title === item.title);
-      if (existingIdx >= 0) mixed.splice(existingIdx, 1);
-      // Splice into the visible window. Using a fixed slot keeps ordering
-      // predictable across refreshes so the UI doesn't jitter.
-      mixed.splice(Math.min(FLAGSHIP_INSERT_POS, mixed.length), 0, item);
+      // Remove ALL existing copies (by link or title) so splicing at 0
+      // guarantees the flagship ends up at exactly one slot — the top.
+      const itemTkey = (item.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      for (let j = mixed.length - 1; j >= 0; j--) {
+        const m = mixed[j];
+        const mTkey = (m.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        if (m.link === item.link || (itemTkey && mTkey === itemTkey)) {
+          mixed.splice(j, 1);
+        }
+      }
+      // Splice into the very top so flagships are guaranteed at position 0.
+      mixed.splice(0, 0, item);
     }
   }
 
@@ -730,27 +895,52 @@ async function fetchAdminLayer(env) {
   if (!url || !key) return null;
 
   const headers = { apikey: key, authorization: `Bearer ${key}` };
-  try {
-    const [overridesRes, manualRes, radarRes] = await Promise.all([
-      fetch(`${url}/rest/v1/article_overrides?select=*`, { headers, cf: { cacheTtl: 10, cacheEverything: true } }),
-      fetch(`${url}/rest/v1/manual_feed_items?select=*&order=created_at.desc&limit=50`, { headers, cf: { cacheTtl: 10, cacheEverything: true } }),
-      fetch(`${url}/rest/v1/radar_overrides?select=word,action,weight,expires_at`, { headers, cf: { cacheTtl: 10, cacheEverything: true } }),
-    ]);
-    if (!overridesRes.ok || !manualRes.ok) return null;
-    const [overrides, manualItems, radarRaw] = await Promise.all([
-      overridesRes.json(),
-      manualRes.json(),
-      radarRes.ok ? radarRes.json() : Promise.resolve([]),
-    ]);
-    // Drop expired radar overrides at the server so the client never sees them
-    const now = Date.now();
-    const radarOverrides = (radarRaw || []).filter(o =>
-      !o.expires_at || new Date(o.expires_at).getTime() > now
-    );
-    return { overrides, manualItems, radarOverrides };
-  } catch {
-    return null;
-  }
+
+  // Per-query try/catch so one flaky table doesn't kill the whole layer.
+  // 3s edge cache gives newly-created editor items a near-immediate feed
+  // appearance without hammering Supabase on every request.
+  const fetchTable = async (path) => {
+    try {
+      const r = await fetch(`${url}/rest/v1/${path}`, {
+        headers,
+        cf: { cacheTtl: 3, cacheEverything: true },
+      });
+      if (!r.ok) return [];
+      return await r.json();
+    } catch { return []; }
+  };
+
+  const [overrides, manualItems, radarRaw] = await Promise.all([
+    fetchTable('article_overrides?select=*'),
+    fetchTable('manual_feed_items?select=*&order=created_at.desc&limit=50'),
+    fetchTable('radar_overrides?select=word,action,weight,expires_at'),
+  ]);
+
+  // Drop expired radar overrides server-side so the client never sees them.
+  const now = Date.now();
+  const radarOverrides = radarRaw.filter(o =>
+    !o.expires_at || new Date(o.expires_at).getTime() > now
+  );
+  return { overrides, manualItems, radarOverrides };
+}
+
+// Defensive filter for manual items that slipped into Supabase before the
+// URL scraper was hardened — bot-block pages, homepages, section landings.
+// Keeps legacy garbage out of the feed without needing a DB cleanup pass.
+const JUNK_TITLE_PATTERNS = [
+  // Bot-block / Cloudflare challenge / error pages
+  /^(unauthorized|request blocked|access denied|forbidden|just a moment|checking your browser|enable javascript|attention required|are you a (robot|human)|page not found|not found|404\b|500\b|error \d+)/i,
+  /(cloudflare|cf-ray|\bddos\b|\bcaptcha\b)/i,
+  // Generic site names / homepages
+  /^(rt arabic|bbc arabic|bbc news|sky news arabia|sky news|cnn arabic|al jazeera|al arabiya|home|menu|login|sign in|الرئيسية|القائمة|تسجيل الدخول)$/i,
+  // Section / program landings with a site-name suffix after a dash
+  /\s[–\-]\s*(قناة|موقع|شبكة|برامج|tv|channel|network)\s/i,
+  /شبكة\s+برامج/i,
+];
+function isJunkManualItem(m) {
+  const title = String(m?.title || '').trim();
+  if (!title || title.length < 15) return true;
+  return JUNK_TITLE_PATTERNS.some(p => p.test(title));
 }
 
 function formatManualItem(m) {
@@ -782,7 +972,7 @@ function applyAdminLayer(feed, layer) {
   if (!layer) return feed;
   const { overrides = [], manualItems = [] } = layer;
 
-  // Index overrides for O(1) lookup by article id (primary) and link (fallback)
+  // Index overrides for O(1) lookup by article id (primary) or link (fallback).
   const byId = new Map();
   const byLink = new Map();
   for (const o of overrides) {
@@ -790,7 +980,7 @@ function applyAdminLayer(feed, layer) {
     if (o.link) byLink.set(o.link, o);
   }
 
-  // Apply hides / custom title / custom body / featured / pinned
+  // Walk the feed once: apply hide/rewrite/pin/feature and partition by pin.
   const pinnedArticles = [];
   const regularArticles = [];
   for (const item of feed) {
@@ -803,23 +993,30 @@ function applyAdminLayer(feed, layer) {
       featured: !!ov.featured,
       pinned: !!ov.pinned,
     } : item;
-    if (ov?.pinned) pinnedArticles.push(annotated);
-    else regularArticles.push(annotated);
+    (ov?.pinned ? pinnedArticles : regularArticles).push(annotated);
   }
 
-  // Filter expired manual items (defensive — RLS also enforces this)
+  // Filter out expired + junk manual items, then split by pin state.
   const now = Date.now();
-  const visibleManual = manualItems.filter(m => !m.expires_at || new Date(m.expires_at).getTime() > now);
+  const visibleManual = manualItems.filter(m =>
+    (!m.expires_at || new Date(m.expires_at).getTime() > now) &&
+    !isJunkManualItem(m)
+  );
   const pinnedManual = visibleManual.filter(m => m.pinned).map(formatManualItem);
-  const unpinnedManual = visibleManual.filter(m => !m.pinned).map(formatManualItem);
+  const flowManual   = visibleManual.filter(m => !m.pinned).map(formatManualItem);
 
-  // Final order: pinned manual → pinned articles → unpinned manual → regular articles
-  return [
-    ...pinnedManual,
-    ...pinnedArticles,
-    ...unpinnedManual,
-    ...regularArticles,
-  ];
+  // Splice flow-manual items into regularArticles at their timestamp position
+  // so unpinned editor items sit naturally alongside RSS items from the same
+  // time window instead of being hoisted to the top.
+  for (const m of flowManual) {
+    const mTs = m.timestamp || 0;
+    let idx = regularArticles.findIndex(a => (a.timestamp || 0) < mTs);
+    if (idx === -1) idx = regularArticles.length;
+    regularArticles.splice(idx, 0, m);
+  }
+
+  // Final order: pinned manual → pinned articles → regular (flow-mixed).
+  return [...pinnedManual, ...pinnedArticles, ...regularArticles];
 }
 
 function buildPayload(data, layer, limit, cacheMeta) {

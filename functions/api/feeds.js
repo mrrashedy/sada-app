@@ -268,7 +268,10 @@ function cleanText(str) {
 //   • Generic placeholders ("آخر الاخبار", "منوعات", "الرئيسية", "home", "main")
 // `عاجل` is the one string we keep as a category — it's used downstream as
 // a breaking-news marker and is filtered out at display time.
-const MAX_CATEGORIES_PER_ITEM = 5;
+// Per-item tag cap removed — kept as a very large sentinel so the
+// existing `categories.length >= MAX_CATEGORIES_PER_ITEM` checks still
+// short-circuit on truly absurd inputs, but no longer trim normal feeds.
+const MAX_CATEGORIES_PER_ITEM = 1000;
 
 const JUNK_CATEGORIES = new Set([
   // English: content-type, publisher internals, placeholders
@@ -785,14 +788,16 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
 
   const sortByTime = (a, b) => b.timestamp - a.timestamp;
   const allDeduped = [...preFiltered].sort(sortByTime);
-  const LIMIT = 1200;
+  // Server-side mixed-pool ceiling. Raised to 5000 so the curated stream
+  // can hold the full output of ~100 active sources × 20 items each.
+  const LIMIT = 5000;
   const mixed = [];
   const rtBucketCount = new Map(); // hour bucket → RT items in that bucket
-  // Title-level dedup: BBC Arabic ships the same story across 3 category feeds
-  // (general, middleeast, worldnews), and AJ/Sky News do similar. Without a
-  // title-level dedup, the same headline appears 3x in the feed. Normalize
-  // whitespace and case so near-duplicates also collapse.
-  const normTitle = (t) => (t || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  // Title-level dedup: only collapse LITERALLY IDENTICAL titles. No
+  // whitespace/case normalization — if a publisher emits the same string
+  // across category feeds, it will dedup; anything that differs by even
+  // one character (punctuation, case, spacing) is treated as distinct.
+  const normTitle = (t) => t || '';
   const seenTitles = new Set();
 
   for (const item of allDeduped) {
@@ -822,81 +827,11 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
     }
   }
 
-  // ── Flagship boost ─────────────────────────────────────────────────
-  // Some tier-1 sources publish via editor-curated Story Lists (aljazeera's
-  // Arc CMS feed, BBC Arabic) that update every few hours. Their freshest
-  // items can be 2-3h old while tier-2 regional papers push fresh content
-  // every minute — so the flagships fall below the fold under pure time sort.
-  // We guarantee each flagship source has at least one item in the top
-  // FLAGSHIP_WINDOW slots by splicing their newest (non-duplicate) item in
-  // if missing. Stale items are acceptable because the user specifically
-  // wants to see these flagships (they are the trust anchors of the feed).
-  if (kind !== 'photos') {
-    // Order matters — we insert in reverse order so the FIRST flagship ends up
-    // at position 0 after all splices, and the rest fan out into slots 0..N.
-    // The user's first-screen view (3-4 cards) MUST contain recognizable
-    // flagships — otherwise they perceive the app as "regional outlets only".
-    const FLAGSHIP_SOURCES = ['aljazeera', 'bbc', 'alarabiya', 'skynews', 'asharq_news', 'aawsat'];
-    // Unconditionally promote each flagship's newest item to the top of the
-    // feed. We iterate in reverse so the highest-priority flagship ends up
-    // at position 0 (the last splice wins). Any earlier occurrence of the
-    // same item is removed first, so flagships are NOT duplicated.
-    for (const flagshipId of [...FLAGSHIP_SOURCES].reverse()) {
-      // Find newest item from this flagship anywhere in allDeduped.
-      const item = allDeduped.find(x => x.sourceId === flagshipId);
-      if (!item) continue;
-      // Remove ALL existing copies (by link or title) so splicing at 0
-      // guarantees the flagship ends up at exactly one slot — the top.
-      const itemTkey = (item.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
-      for (let j = mixed.length - 1; j >= 0; j--) {
-        const m = mixed[j];
-        const mTkey = (m.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
-        if (m.link === item.link || (itemTkey && mTkey === itemTkey)) {
-          mixed.splice(j, 1);
-        }
-      }
-      // Splice into the very top so flagships are guaranteed at position 0.
-      mixed.splice(0, 0, item);
-    }
-
-    // ── Diversity floor ───────────────────────────────────────────────
-    // Generalized version of the flagship boost. Reuters publishes 1-3
-    // items/hour as an agency, while RT publishes 100/hour — pure time-sort
-    // pushes Reuters past position 400 even though its newest item is
-    // recent. Same problem applies to every low-volume source we add.
-    //
-    // Floor: every source with at least one item in allDeduped must have
-    // its NEWEST item in the top DIVERSITY_WINDOW slots. Sources already
-    // present (by sourceId) in the window are skipped — we only inject the
-    // missing ones. Insertion is at the END of the window so high-recency
-    // items at the top stay put; the missing source's item lands at slot
-    // ~DIVERSITY_WINDOW-1.
-    const DIVERSITY_WINDOW = 100;
-    const presentInWindow = new Set(
-      mixed.slice(0, DIVERSITY_WINDOW).map(m => m.sourceId)
-    );
-    // Iterate sources in registry order so promotion is deterministic.
-    for (const sid of Object.keys(SOURCES)) {
-      if (presentInWindow.has(sid)) continue;
-      const item = allDeduped.find(x => x.sourceId === sid);
-      if (!item) continue;
-      // Title-dedup against the entire mixed array (not just window) so we
-      // don't promote a duplicate of a story already shown elsewhere.
-      const itemTkey = (item.title || '').replace(/\s+/g, ' ').trim().toLowerCase();
-      const dup = itemTkey && mixed.some(m =>
-        (m.title || '').replace(/\s+/g, ' ').trim().toLowerCase() === itemTkey
-      );
-      if (dup) continue;
-      // Remove this item's earlier (deeper) occurrence if any, then insert
-      // at the end of the diversity window so it's visible without bumping
-      // the very-recent items off-screen.
-      const existing = mixed.findIndex(m => m === item || m.link === item.link);
-      if (existing >= 0) mixed.splice(existing, 1);
-      const insertAt = Math.min(DIVERSITY_WINDOW - 1, mixed.length);
-      mixed.splice(insertAt, 0, item);
-      presentInWindow.add(sid);
-    }
-  }
+  // ── Flagship boost + diversity floor: REMOVED ─────────────────────
+  // Per user request, the feed is pure recency now. No source promotion,
+  // no per-source-in-window injection. Items appear strictly in
+  // newest-first order (modulo identical-title dedup and the RT hourly
+  // cap). High-volume publishers will dominate the top of the feed.
 
   // Format for client
   const feed = mixed.map((item, i) => ({
@@ -1102,10 +1037,9 @@ export async function onRequest(context) {
 
   try {
     const url = new URL(request.url);
-    // Default limit raised from 200 → 500 so low-volume sources actually surface.
-    // The per-source cap (MAX_PER_SOURCE = 3) and 100+ active sources mean items
-    // 200-500 are where new / low-volume sources land — slicing at 200 hid them.
-    const limit = parseInt(url.searchParams.get('limit')) || 500;
+    // Default response limit raised to 5000 to match the new server-side
+    // pool ceiling (LIMIT). Caller can still pass ?limit=N to truncate.
+    const limit = parseInt(url.searchParams.get('limit')) || 5000;
     const forceRefresh = url.searchParams.has('refresh');
 
     // Resolve kind. The photo grid is an independent feature, so it uses its

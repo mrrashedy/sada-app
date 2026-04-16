@@ -60,6 +60,13 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
   // on top of extractTrending() output in App.jsx.
   const [radarOverrides, setRadarOverrides] = useState([]);
   const [cacheAge, setCacheAge] = useState(null);
+  // Wall-clock timestamp of the LAST successful poll. Used by the UI to
+  // show 'آخر تحديث: منذ X ث' so the user can feel the polling pulse even
+  // when no new items have arrived (slow news cycle). Without this, the
+  // X-style buffered feed combined with the 5-item pill threshold means
+  // the user sees zero visible activity during quiet periods and assumes
+  // the feed has stopped.
+  const [lastFetchAt, setLastFetchAt] = useState(null);
   const abortRef = useRef(null);
   // Refs hold the latest state for the fetch closure to read without recreating
   // the callback on every state change (which would recreate the interval).
@@ -168,6 +175,7 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
           newCount = fresh.length;
         }
         setIsLive(true);
+        setLastFetchAt(Date.now());
 
         // Server-side breaking list (from KV cache) + admin radar overrides
         // (fetched live from Supabase per-request, not cached in KV).
@@ -224,6 +232,7 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
     serverBreaking, radarOverrides, cacheAge,
     pendingCount: pendingFeed.length,
     flushPending,
+    lastFetchAt,
     refresh,
     silentRefresh: () => fetchNews(true, false),
   };

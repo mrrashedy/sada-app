@@ -134,7 +134,7 @@ export default function Sada() {
   // flow only through the `news` vertical response, since fetchAdminLayer
   // in functions/api/feeds.js only runs for kind=news. It's global state,
   // not per-vertical, so the news feed is a fine carrier.
-  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, pendingCount, flushPending } = useNews([], 'news', 6000);
+  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, pendingCount, flushPending, lastFetchAt } = useNews([], 'news', 6000);
   const { feed:mapFeed } = useNews([], 'map', 30000);
   const { feed:radarFeed, refresh:radarRefresh } = useNews([], 'radar', 30000);
   // X-style buffered feed: useNews owns the new-items detector. It
@@ -144,6 +144,22 @@ export default function Sada() {
   // calls `flushPending()` — via the floating pill, the refresh button,
   // or pull-to-refresh. This eliminates the "items shifting under your
   // finger" flicker and matches the X / Twitter pattern.
+
+  // 1-second ticker — re-renders just enough to update the 'آخر تحديث: منذ X ث'
+  // counter in the live indicator. Without this, during quiet periods (no new
+  // items) the user sees no visible activity at all and assumes the feed has
+  // stopped. The ticker is cheap: one setState per second, and only the live
+  // indicator div recomputes from it (not the feed list).
+  const [_tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const secsSinceFetch = lastFetchAt ? Math.floor((Date.now() - lastFetchAt) / 1000) : null;
+  const freshnessLabel = secsSinceFetch === null ? '' :
+    secsSinceFetch < 5 ? 'الآن' :
+    secsSinceFetch < 60 ? `منذ ${secsSinceFetch} ث` :
+    `منذ ${Math.floor(secsSinceFetch / 60)} د`;
 
   // Bottom-nav indicator pulses — every 60s each indicator fires 3 quick blips
   // in sync with its CSS animation. Map is offset 30s from radar so the two
@@ -504,7 +520,16 @@ export default function Sada() {
           )}
 
           {/* Live indicator */}
-          {isLive&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'5px 0',fontSize:11,color:'var(--t4)' }}><div className="live-dot"/>أخبار مباشرة · {allFeed.length} خبر</div>)}
+          {isLive&&(
+            <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'5px 0',fontSize:11,color:'var(--t4)' }}>
+              <div className="live-dot"/>
+              <span>أخبار مباشرة · {allFeed.length} خبر</span>
+              {freshnessLabel && <span style={{ opacity:.7 }}>· تحديث {freshnessLabel}</span>}
+              {pendingCount>0 && pendingCount<5 && (
+                <span style={{ opacity:.7 }}>· {pendingCount} في الانتظار</span>
+              )}
+            </div>
+          )}
 
           {/* Breaking news ticker — removed per design */}
 

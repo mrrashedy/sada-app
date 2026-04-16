@@ -60,7 +60,8 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .s-nm{font-size:10px;color:var(--t3);font-weight:500;max-width:50px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Content area */
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:95px;padding-bottom:70px}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:95px;padding-bottom:70px;overflow-anchor:auto}
+.post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}
 
 /* Post card */

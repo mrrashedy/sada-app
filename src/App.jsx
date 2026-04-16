@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from "react";
 import './styles/global.css';
 
 // Data
@@ -170,6 +170,36 @@ export default function Sada() {
   useEffect(() => {
     if (isAtTop && newCount > 0) ackNewItems();
   }, [isAtTop, newCount, ackNewItems]);
+
+  // Scroll-anchor compensation. When new items are prepended to the feed
+  // while the user has scrolled down, the natural browser behavior is for
+  // the user's view to slide DOWN by the height of the inserted content
+  // (because their scrollTop stays the same but content shifts). The user
+  // reported this as 'feed slides under my finger.'
+  //
+  // We compensate by capturing scrollHeight + scrollTop BEFORE every render
+  // and, if scrollHeight grows AND the user isn't at the top, bump scrollTop
+  // by the height delta. The user's viewport stays glued to whatever they
+  // were reading. CSS overflow-anchor:auto handles this in modern Chrome /
+  // Firefox, but Safari support is incomplete — this JS fallback covers it.
+  const scrollHRef = useRef(0);
+  const scrollTRef = useRef(0);
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const prevH = scrollHRef.current;
+    const prevT = scrollTRef.current;
+    const newH = el.scrollHeight;
+    const delta = newH - prevH;
+    // Only compensate when content was added above (not below), and only
+    // when the user isn't already at the top (where they want to see new
+    // items appear naturally).
+    if (delta > 0 && prevT > 120 && prevH > 0) {
+      el.scrollTop = prevT + delta;
+    }
+    scrollHRef.current = el.scrollHeight;
+    scrollTRef.current = el.scrollTop;
+  }, [liveFeed]);
   const secsSinceFetch = lastFetchAt ? Math.floor((Date.now() - lastFetchAt) / 1000) : null;
   const freshnessLabel = secsSinceFetch === null ? '' :
     secsSinceFetch < 5 ? 'الآن' :

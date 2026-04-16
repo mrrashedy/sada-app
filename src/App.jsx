@@ -367,26 +367,16 @@ export default function Sada() {
   const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
   const userTopics = userPrefs.topics||[];
 
-  // Flagship sources that update slowly (aljazeera's Arc CMS feed, BBC Arabic)
-  // get outranked by fast-updating tier-2 regional papers under pure time sort
-  // and disappear below the fold. We guarantee each flagship has at least one
-  // item in the visible window (top 12) by splicing their newest item in at
-  // slot 4 if missing. Stale items are acceptable — the user specifically
-  // wants to see these trust-anchor sources.
-  const applyFlagshipBoost = useCallback((pool) => {
-    const FLAGSHIP_IDS = ['aljazeera','alarabiya','bbc','asharq_news','skynews','aawsat'];
-    const WINDOW = 12;
-    const INSERT_AT = 4;
-    const result = pool.slice();
-    for (const fid of FLAGSHIP_IDS) {
-      if (result.slice(0, WINDOW).some(x => x.s?.id === fid)) continue;
-      const idx = result.findIndex(x => x.s?.id === fid);
-      if (idx < 0) continue;
-      const [item] = result.splice(idx, 1);
-      result.splice(Math.min(INSERT_AT, result.length), 0, item);
-    }
-    return result;
-  }, []);
+  // Client-side flagship boost REMOVED per user request — pure recency only.
+  // Previously this function (applyFlagshipBoost) splice-inserted AJ, Al
+  // Arabiya, BBC, Asharq News, Sky News, and Aawsat into position 4 of the
+  // feed if they weren't already in the top 12, even when their newest item
+  // was hours older than the surrounding fresh content. That's why a 3h35m
+  // BBC item was appearing above a 1h10m Al Arabiya item — the BBC item was
+  // pinned. Removed entirely; flagships now compete on recency like every
+  // other source. (The matching server-side flagship boost in feeds.js was
+  // already removed in an earlier commit.)
+  const applyFlagshipBoost = useCallback((pool) => pool, []);
 
   // Build display feed based on active tab — each tab shows genuinely different content
   const displayFeed = useMemo(() => {

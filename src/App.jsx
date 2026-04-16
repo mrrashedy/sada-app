@@ -12,7 +12,7 @@ import { useInfiniteScroll } from './hooks/useInfiniteScroll';
 import { useReactions } from './hooks/useReactions';
 
 // Lib
-import { scoreByTopics, isOpinionOrSentimental } from './lib/filters';
+import { scoreByTopics, isOpinionOrSentimental, isDeepInvestigative } from './lib/filters';
 import { detectFlags } from './lib/countryFlags';
 import { Sound } from './lib/sounds';
 import { extractTrending } from './lib/trending';
@@ -207,7 +207,11 @@ export default function Sada() {
     }
     setTimeout(() => setRefreshMsg(null), 2500);
   }, [refresh, setRefreshMsg]);
-  const { visibleCount, onScroll } = useInfiniteScroll(20, 15, 200, feedTab);
+  // Cap raised 200 → 1200: the API now serves up to 500 items per kind
+  // and previously items 201+ were silently unreachable no matter how
+  // far the user scrolled. 1200 leaves headroom for future API growth
+  // without rendering everything up-front (initial slice still 20).
+  const { visibleCount, onScroll } = useInfiniteScroll(20, 15, 1200, feedTab);
 
   // Shared transform: raw API items → client-side items with tags, flags, briefs
   const transformFeed = useCallback((rawFeed) => rawFeed.map((item, i) => {
@@ -236,7 +240,7 @@ export default function Sada() {
     const sid = item.source?.id;
     const srcMeta = sid ? SOURCES.find(x => x.id === sid) : null;
     return {
-      id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟', id:sid, domain:srcMeta?.domain, logo:srcMeta?.logo },
+      id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟', id:sid, domain:srcMeta?.domain, logo:srcMeta?.logo, tier:item.source?.tier },
       t: item.time||'الآن', pubTs: item.timestamp || (Date.now() - i*60000),
       title: item.title,
       body: ((b) => { if (!b) return null; return b.replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,800)||null; })(item.body),
@@ -413,8 +417,21 @@ export default function Sada() {
     }
     if(feedTab==='important'){
       const hasInterests = Object.keys(interests).length > 0;
-      if(userTopics.length===0 && !hasInterests) return [];
-      return pool.map(item=>({...item,_score:scoreByTopics(item,userTopics,interests)})).filter(i=>i._score>0).sort((a,b)=>b._score-a._score||(b.pubTs||0)-(a.pubTs||0));
+      // Personalized path — score by topics + learned interests
+      if(userTopics.length>0 || hasInterests){
+        const scored = pool.map(item=>({...item,_score:scoreByTopics(item,userTopics,interests)})).filter(i=>i._score>0).sort((a,b)=>b._score-a._score||(b.pubTs||0)-(a.pubTs||0));
+        if(scored.length>0) return scored;
+        // fall through to the editorial default if scoring returned nothing
+      }
+      // Editorial default — when the user hasn't trained the engine yet
+      // (or their picks produced zero matches), surface the universally
+      // "important" slice: tier-1 flagships + analytical/investigative
+      // pieces, sorted by recency. Anything is better than an empty tab
+      // with a "tap يهمني on news" instruction the user hasn't seen yet.
+      const importantPool = pool.filter(item =>
+        item.s?.tier === 1 || isDeepInvestigative(item)
+      );
+      return importantPool.length > 0 ? importantPool : pool;
     }
     return pool;
   }, [feedTab, sourcedFeed, userTopics.join(','), activeSource, interests]);

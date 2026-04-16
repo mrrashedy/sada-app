@@ -68,15 +68,21 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
   feedRef.current = feed;
   pendingRef.current = pendingFeed;
 
-  // flushPending — moves all pending items into the displayed feed (prepended,
-  // newest first), clears the pending pile. Called by the user via the floating
-  // pill, the manual refresh button, or pull-to-refresh.
+  // flushPending — merges all pending items into the displayed feed by
+  // TIMESTAMP (not arrival order). Critical: pending items aren't necessarily
+  // newer than displayed by timestamp — e.g. Google News may surface a
+  // 10-hour-old article we hadn't seen, which is "new to us" but old in time.
+  // Prepending such items would put 10h-old content at position 0 after a
+  // refresh, which is what the user reported. Time-merge keeps the displayed
+  // feed in true reverse-chronological order across the merge.
   const flushPending = useCallback(() => {
     setFeed(prev => {
       const prevIds = new Set(prev.map(p => p.id));
       const fresh = pendingRef.current.filter(p => !prevIds.has(p.id));
       if (fresh.length === 0) return prev;
-      return [...fresh, ...prev].slice(0, 500);
+      const merged = [...fresh, ...prev];
+      merged.sort((a, b) => (b.pubTs || b.timestamp || 0) - (a.pubTs || a.timestamp || 0));
+      return merged.slice(0, 500);
     });
     setPendingFeed([]);
   }, []);

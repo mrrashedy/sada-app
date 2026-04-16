@@ -821,29 +821,27 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
   };
   const preFiltered = allItems.filter(i => !isGoogleNewsChannelTitle(i));
 
-  // Surgical rate cap: only Russia Today Arabic (rt_ar) is rate-limited,
-  // because it publishes ~100 items/hour and would otherwise dominate the
-  // top of the time-sorted feed (60+ of the first 100 slots). Capped at
-  // 5 items per rolling hour bucket — keeps RT visible without monopoly.
-  // Every other source flows uncapped: a per-source cap when there are
-  // 100+ active sources just buries the low-volume ones (مصراوي, مونت كارلو,
-  // الأهرام EN, etc.) instead of helping them. Title-level dedup still runs.
-  const RT_HOURLY_LIMIT = 5;
-  const RT_SOURCE_ID = 'rt_ar';
-  const HOUR_MS = 60 * 60 * 1000;
-  const _now = Date.now();
+  // Pure recency, no hierarchy. Per user request: no flagship boost, no
+  // diversity floor, no per-source caps (including the RT hourly cap that
+  // used to live here). Items appear strictly newest-first. The only
+  // filters that survive are NOT hierarchy — they're data hygiene:
+  //   • exact-title dedup (one publisher emitting the same string across
+  //     category feeds collapses to one item)
+  //   • Google News meta-titles already filtered above (preFiltered)
+  //   • future-timestamp items dropped later in cleanFeed (broken pubDates
+  //     would otherwise pin to position 0 forever)
+  //
+  // High-volume publishers (RT publishing ~100/hour, breaking-news Twitter
+  // feeds, etc.) WILL dominate the top of the feed. That is the intended
+  // behavior — you get exactly what was published most recently, period.
 
   const sortByTime = (a, b) => b.timestamp - a.timestamp;
   const allDeduped = [...preFiltered].sort(sortByTime);
-  // Server-side mixed-pool ceiling. Raised to 5000 so the curated stream
-  // can hold the full output of ~100 active sources × 20 items each.
+  // Server-side mixed-pool ceiling. 5000 so the curated stream can hold
+  // the full output of ~100 active sources × 20 items each.
   const LIMIT = 5000;
   const mixed = [];
-  const rtBucketCount = new Map(); // hour bucket → RT items in that bucket
-  // Title-level dedup: only collapse LITERALLY IDENTICAL titles. No
-  // whitespace/case normalization — if a publisher emits the same string
-  // across category feeds, it will dedup; anything that differs by even
-  // one character (punctuation, case, spacing) is treated as distinct.
+  // Identical-title dedup only — no normalization.
   const normTitle = (t) => t || '';
   const seenTitles = new Set();
 
@@ -851,34 +849,9 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
     if (mixed.length >= LIMIT) break;
     const tkey = normTitle(item.title);
     if (tkey && seenTitles.has(tkey)) continue; // drop duplicate headline
-    if (item.sourceId === RT_SOURCE_ID) {
-      // Bucket by how many hours ago this item was published. Items > 24h old
-      // share a single tail bucket so RT's archive doesn't game the cap.
-      const ageMs = Math.max(0, _now - (item.timestamp || _now));
-      const bucket = Math.min(24, Math.floor(ageMs / HOUR_MS));
-      const count = rtBucketCount.get(bucket) || 0;
-      if (count >= RT_HOURLY_LIMIT) continue;
-      rtBucketCount.set(bucket, count + 1);
-    }
     mixed.push(item);
     if (tkey) seenTitles.add(tkey);
   }
-  // Backfill (rare — only triggers if title-dedup left us under LIMIT).
-  if (mixed.length < LIMIT) {
-    for (const item of allDeduped) {
-      if (mixed.length >= LIMIT) break;
-      const tkey = normTitle(item.title);
-      if (tkey && seenTitles.has(tkey)) continue;
-      mixed.push(item);
-      if (tkey) seenTitles.add(tkey);
-    }
-  }
-
-  // ── Flagship boost + diversity floor: REMOVED ─────────────────────
-  // Per user request, the feed is pure recency now. No source promotion,
-  // no per-source-in-window injection. Items appear strictly in
-  // newest-first order (modulo identical-title dedup and the RT hourly
-  // cap). High-volume publishers will dominate the top of the feed.
 
   // Format for client
   const feed = mixed.map((item, i) => ({

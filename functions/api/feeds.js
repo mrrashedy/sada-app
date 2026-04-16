@@ -766,20 +766,23 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
   };
   const preFiltered = allItems.filter(i => !isGoogleNewsChannelTitle(i));
 
-  // No dedup — every source should surface its full set of items even when
-  // multiple agencies cover the same story. Previously we deduped by title,
-  // which dropped aljazeera copies whenever another source was fetched first.
-  const sortByTime = (a, b) => b.timestamp - a.timestamp;
+  // Surgical rate cap: only Russia Today Arabic (rt_ar) is rate-limited,
+  // because it publishes ~100 items/hour and would otherwise dominate the
+  // top of the time-sorted feed (60+ of the first 100 slots). Capped at
+  // 5 items per rolling hour bucket — keeps RT visible without monopoly.
+  // Every other source flows uncapped: a per-source cap when there are
+  // 100+ active sources just buries the low-volume ones (مصراوي, مونت كارلو,
+  // الأهرام EN, etc.) instead of helping them. Title-level dedup still runs.
+  const RT_HOURLY_LIMIT = 5;
+  const RT_SOURCE_ID = 'rt_ar';
+  const HOUR_MS = 60 * 60 * 1000;
+  const _now = Date.now();
 
-  // Timestamp sort with per-source cap — newest first, but no single source
-  // can take more than MAX_PER_SOURCE consecutive items. This prevents RT (100+
-  // items) from flooding the top while ensuring NewsData items appear naturally
-  // alongside RSS content.
+  const sortByTime = (a, b) => b.timestamp - a.timestamp;
   const allDeduped = [...preFiltered].sort(sortByTime);
   const LIMIT = 1200;
-  const MAX_PER_SOURCE = 3; // max items from same source before forcing variety
   const mixed = [];
-  const srcCount = new Map(); // track consecutive items per source in recent window
+  const rtBucketCount = new Map(); // hour bucket → RT items in that bucket
   // Title-level dedup: BBC Arabic ships the same story across 3 category feeds
   // (general, middleeast, worldnews), and AJ/Sky News do similar. Without a
   // title-level dedup, the same headline appears 3x in the feed. Normalize
@@ -789,23 +792,21 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
 
   for (const item of allDeduped) {
     if (mixed.length >= LIMIT) break;
-    const sid = item.sourceId;
     const tkey = normTitle(item.title);
     if (tkey && seenTitles.has(tkey)) continue; // drop duplicate headline
-    const recent = srcCount.get(sid) || 0;
-    if (recent >= MAX_PER_SOURCE) {
-      // Defer this item — will be picked up in the backfill pass
-      continue;
+    if (item.sourceId === RT_SOURCE_ID) {
+      // Bucket by how many hours ago this item was published. Items > 24h old
+      // share a single tail bucket so RT's archive doesn't game the cap.
+      const ageMs = Math.max(0, _now - (item.timestamp || _now));
+      const bucket = Math.min(24, Math.floor(ageMs / HOUR_MS));
+      const count = rtBucketCount.get(bucket) || 0;
+      if (count >= RT_HOURLY_LIMIT) continue;
+      rtBucketCount.set(bucket, count + 1);
     }
     mixed.push(item);
     if (tkey) seenTitles.add(tkey);
-    srcCount.set(sid, recent + 1);
-    // Reset other sources' counts every 20 items to allow them back in
-    if (mixed.length % 20 === 0) {
-      for (const [k] of srcCount) srcCount.set(k, Math.max(0, srcCount.get(k) - 1));
-    }
   }
-  // Backfill with remaining items sorted by time (also deduped by normalized title)
+  // Backfill (rare — only triggers if title-dedup left us under LIMIT).
   if (mixed.length < LIMIT) {
     for (const item of allDeduped) {
       if (mixed.length >= LIMIT) break;

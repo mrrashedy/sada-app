@@ -53,6 +53,7 @@ export const SOURCES = [
   { n:"الميادين",      i:"مي", id:"almayadeen",    domain:"almayadeen.net"        },
   { n:"الأخبار اللبنانية",i:"أخ",id:"alakhbar_lb", domain:"al-akhbar.com"         },
   { n:"درج",           i:"در", id:"daraj",         domain:"daraj.media"           },
+  { n:"ترجمات عبرية",  i:"عب", id:"qudsn_heb",     domain:"t.me"                  },
   // Egypt & Gulf flagships
   { n:"الأهرام",       i:"هر", id:"ahram",         domain:"ahram.org.eg"          },
   { n:"مدى مصر",       i:"مد", id:"mada_masr",     domain:"madamasr.com"          },

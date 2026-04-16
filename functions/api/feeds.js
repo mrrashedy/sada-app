@@ -96,6 +96,11 @@ const SOURCES = {
   almayadeen:  { name: "الميادين", initial: "مي", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalmayadeen.net&hl=ar&gl=SA&ceid=SA:ar"] },
   alakhbar_lb: { name: "الأخبار اللبنانية", initial: "أخ", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aal-akhbar.com&hl=ar&gl=SA&ceid=SA:ar"] },
   daraj:       { name: "درج", initial: "در", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Adaraj.media&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Quds Hebrew Translations — real-time Arabic translation of Israeli/Hebrew
+  // media (Channel 12, Haaretz, Yedioth, Channel 15, etc.). Unique angle: lets
+  // Arabic readers see what Israeli press is saying about MENA in near-real-time.
+  // Source is the Telegram channel @Qudsn_hebrew, fed via rss.app.
+  qudsn_heb:   { name: "ترجمات عبرية", initial: "عب", tier: 2, feeds: ["https://rss.app/feeds/ZkMAVoRAYNluzgla.xml"] },
   // Tier 2: additional Egypt & Gulf flagships
   ahram:       { name: "الأهرام", initial: "هر", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Agate.ahram.org.eg&hl=ar&gl=SA&ceid=SA:ar"] },
   mada_masr:   { name: "مدى مصر", initial: "مد", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amadamasr.com&hl=ar&gl=SA&ceid=SA:ar"] },

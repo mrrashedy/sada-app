@@ -61,7 +61,12 @@ const SOURCES = {
   // Al Araby Al Jadeed: direct RSS is dead but Google News still indexes the
   // alaraby.co.uk domain with 50 fresh Arabic items.
   alaraby:   { name: "العربي الجديد", initial: "ع", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalaraby.co.uk&hl=ar&gl=SA&ceid=SA:ar"] },
-  almasry:   { name: "المصري اليوم", initial: "م", tier: 2, feeds: ["https://www.almasryalyoum.com/rss/rssfeed"] },
+  // المصري اليوم — direct /rss/rssfeed endpoint is stale (~14h lag — the
+  // server-cached feed only refreshes a few times a day). rss.app scrapes
+  // /section/index/3 ("أخبار" section) and stays current within minutes.
+  // Promoted to Tier 1 (Egypt's largest independent daily). Direct feed
+  // kept as fallback.
+  almasry:   { name: "المصري اليوم", initial: "م", tier: 1, feeds: ["https://rss.app/feeds/WRngmPq6X4bpxAgE.xml","https://www.almasryalyoum.com/rss/rssfeed"] },
   // masrawy direct RSS works from public networks but the response from CF Workers' edge
   // contains 0 items (likely datacenter IPs blocked). Google News proxy is the fallback.
   masrawy:   { name: "مصراوي", initial: "مص", tier: 1, feeds: ["https://www.masrawy.com/rss/feed/25/%D8%A3%D8%AE%D8%A8%D8%A7%D8%B1","https://news.google.com/rss/search?q=site%3Amasrawy.com&hl=ar&gl=SA&ceid=SA:ar"] },

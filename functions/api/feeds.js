@@ -1052,7 +1052,10 @@ export async function onRequest(context) {
 
   try {
     const url = new URL(request.url);
-    const limit = parseInt(url.searchParams.get('limit')) || 200;
+    // Default limit raised from 200 → 500 so low-volume sources actually surface.
+    // The per-source cap (MAX_PER_SOURCE = 3) and 100+ active sources mean items
+    // 200-500 are where new / low-volume sources land — slicing at 200 hid them.
+    const limit = parseInt(url.searchParams.get('limit')) || 500;
     const forceRefresh = url.searchParams.has('refresh');
 
     // Resolve kind. The photo grid is an independent feature, so it uses its
@@ -1106,8 +1109,15 @@ export async function onRequest(context) {
     data.sources = sourceList;
 
     // Store in KV (no warming here — /api/warm handles it separately with
-    // its own subrequest budget; aggregation alone uses ~45 subreqs)
-    if (feedCache) {
+    // its own subrequest budget; aggregation alone uses ~45 subreqs).
+    //
+    // Cache hardening: refuse to write thin aggregations. If half the feeds
+    // timed out and we only got 300 items, that bad payload would sit in KV
+    // for 600s and every request would serve dead content. The threshold
+    // (600 items / kind-aware) is well below a healthy run (~1200 items for
+    // news) but well above the catastrophe floor.
+    const MIN_ITEMS = kind === 'photos' ? 100 : 600;
+    if (feedCache && (data.feed?.length || 0) >= MIN_ITEMS) {
       context.waitUntil(Promise.all([
         feedCache.put(kvKeys.feed, JSON.stringify(data), { expirationTtl: 600 }),
         feedCache.put(kvKeys.meta, JSON.stringify({ ts: Date.now(), count: data.feed.length }), { expirationTtl: 600 }),
@@ -1133,6 +1143,12 @@ async function refreshCache(ai, translationKV, feedCache, kind = 'news', env = n
   try {
     const data = await aggregateFeeds(ai, translationKV, kind, env, feedCache);
     const kvKeys = KV_KEYS[kind];
+    // Cache hardening — same MIN_ITEMS floor as the foreground path. A failed
+    // background refresh leaves the previous (good) cached snapshot in place
+    // until the next refresh succeeds, instead of overwriting it with thin
+    // partial data.
+    const MIN_ITEMS = kind === 'photos' ? 100 : 600;
+    if ((data.feed?.length || 0) < MIN_ITEMS) return;
     await Promise.all([
       feedCache.put(kvKeys.feed, JSON.stringify(data), { expirationTtl: 600 }),
       feedCache.put(kvKeys.meta, JSON.stringify({ ts: Date.now(), count: data.feed.length }), { expirationTtl: 600 }),

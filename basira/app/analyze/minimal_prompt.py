@@ -54,13 +54,21 @@ Respond with JSON only, matching this schema exactly:
 {
   "analytical_conclusion": "<one sentence, 20-50 words>",
   "key_quote": "<one verbatim sentence from the body OR null>",
-  "key_quote_context": "<one phrase explaining why this quote carries \
-the argument OR null>"
+  "key_quote_context": "<one phrase explaining why this quote matters OR null>",
+  "relevance": "<one sentence: why this piece matters RIGHT NOW — \
+what current situation, decision, or trend does it illuminate? \
+Connect it to something the reader is already watching.>"
 }
 
-If no single quote in the document carries the argument cleanly, set \
-key_quote and key_quote_context to null. Do NOT invent or paraphrase \
-a quote. Only use a sentence that appears literally in the body."""
+Rules:
+- key_quote must be a sentence that appears LITERALLY in the body. If \
+no single quote carries the argument cleanly, set key_quote and \
+key_quote_context to null. Do NOT invent or paraphrase.
+- relevance: always required. Not "this is important because..." — \
+instead, name the specific live situation it speaks to. Example: \
+"Directly relevant to the stalled JCPOA talks resuming in June" or \
+"Reframes the Saudi-Iran rapprochement as economic rather than \
+diplomatic." One sentence, concrete, present-tense."""
 
 
 def _build_user_message(doc: dict[str, Any]) -> str:
@@ -142,9 +150,19 @@ def analyze_document_minimal(doc: dict[str, Any]) -> dict[str, Any]:
 
     try:
         parsed = json.loads(raw)
-    except json.JSONDecodeError as e:
-        logger.warning("JSON decode failed: %s | raw=%r", e, raw[:300])
-        raise
+    except json.JSONDecodeError:
+        # Haiku sometimes appends commentary after the closing brace.
+        # Try to extract just the first JSON object.
+        brace = raw.rfind("}")
+        if brace != -1:
+            try:
+                parsed = json.loads(raw[: brace + 1])
+            except json.JSONDecodeError as e2:
+                logger.warning("JSON decode failed: %s | raw=%r", e2, raw[:300])
+                raise
+        else:
+            logger.warning("No JSON object found | raw=%r", raw[:300])
+            raise ValueError("no JSON in response")
 
     conclusion = (parsed.get("analytical_conclusion") or "").strip()
     if not conclusion:
@@ -156,9 +174,12 @@ def analyze_document_minimal(doc: dict[str, Any]) -> dict[str, Any]:
     if quote:
         quotes = [{"quote": quote, "context": quote_ctx}]
 
+    relevance = (parsed.get("relevance") or "").strip() or None
+
     return {
         "analytical_conclusion": conclusion,
         "key_quotes": quotes,
+        "relevance": relevance,
         "model": model,
         "input_tokens": getattr(msg.usage, "input_tokens", None),
         "output_tokens": getattr(msg.usage, "output_tokens", None),

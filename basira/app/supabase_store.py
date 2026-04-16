@@ -223,8 +223,16 @@ def upsert_analysis(analysis_row: dict[str, Any]) -> None:
     an earlier analysis run produced one. That means re-running Claude
     on a document with an improved prompt just overwrites the prior
     result instead of leaving an orphan.
+
+    Silently skips FK violations (doc deleted mid-run) instead of
+    crashing the whole analyze pass.
     """
     sb = get_client()
-    sb.table("depth_analyses").upsert(
-        analysis_row, on_conflict="document_id"
-    ).execute()
+    try:
+        sb.table("depth_analyses").upsert(
+            analysis_row, on_conflict="document_id"
+        ).execute()
+    except Exception as e:
+        if "23503" in str(e) or "foreign key" in str(e).lower():
+            return  # doc was deleted mid-run — skip silently
+        raise

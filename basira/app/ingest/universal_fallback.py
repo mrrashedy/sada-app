@@ -227,6 +227,72 @@ def fetch_source(src: Source, max_docs: int = 10) -> list[CandidateDocument]:
                 logger.debug("skip listing-URL page: %s", url)
                 continue
 
+            # ── Content-type filter ──────────────────────────────────
+            # Reject non-analytical content that the URL heuristic lets
+            # through. Protocol news from MFAs, campus fluff from
+            # universities, HR announcements — none of these are studies.
+            #
+            # Two layers:
+            #   1. Universal noise patterns (any source)
+            #   2. Category-specific patterns (official, university, etc.)
+
+            _noise_title_patterns = [
+                # Protocol / ceremonial (EN + AR)
+                r'\breceives?\b', r'\bwelcomes?\b', r'\bmeets? with\b',
+                r'\bphone call\b', r'\bcongratulat', r'\bcondolenc',
+                r'\bceremony\b', r'\binaugurat',
+                r'يستقبل', r'يلتقي', r'يهنئ', r'يعزي', r'استقبل',
+                r'التقى', r'هنأ', r'عزّى', r'حفل تكريم',
+                # HR / admin
+                r'\bappoint(?:s|ed|ment)\b', r'\bresign(?:s|ed|ation)\b',
+                r'\bjob opening\b', r'\bhiring\b', r'\bvacancy\b',
+                r'تعيين', r'استقالة',
+                # Campus / student life
+                r'\bstudent(?:s)? event\b', r'\bgraduation\b',
+                r'\balumni\b', r'\bcommencement\b', r'\borientation\b',
+                r'\bcampus life\b', r'\bstudent club\b',
+                r'\bopen day\b', r'\bworkshop registration\b',
+                r'حفل تخرج', r'خريجين', r'نشاط طلابي',
+                # Photo galleries / multimedia
+                r'\bphoto gallery\b', r'\bin pictures\b',
+                r'\bبالصور\b', r'صور من',
+            ]
+
+            _skip = False
+            for pat in _noise_title_patterns:
+                if re.search(pat, tl, re.IGNORECASE):
+                    logger.debug("skip noise-title: %s (%s)", title, url)
+                    _skip = True
+                    break
+            if _skip:
+                continue
+
+            # Category-specific: official sources — keep only substantive
+            # policy content, not "Minister receives Ambassador of X"
+            _src_cat = getattr(src, "category", "") or ""
+            if _src_cat == "official":
+                # Must have a body longer than a press photo caption
+                if len(body) < 800:
+                    logger.debug("skip short official: %s (%s)", title, url)
+                    continue
+
+            # Category-specific: university sources — skip campus news
+            if _src_cat == "university":
+                _campus_patterns = [
+                    r'\bstudent\b', r'\bcampus\b', r'\bclub\b',
+                    r'\bsport', r'\bathlet', r'\benroll',
+                    r'\bscholarship applic', r'\badmission',
+                    r'طالب', r'طلاب', r'حرم جامعي', r'نادي',
+                ]
+                _is_campus = False
+                for pat in _campus_patterns:
+                    if re.search(pat, tl, re.IGNORECASE):
+                        _is_campus = True
+                        break
+                if _is_campus and len(body) < 1500:
+                    logger.debug("skip campus news: %s (%s)", title, url)
+                    continue
+
             authors = []
             author_val = extracted.get("author")
             if isinstance(author_val, list):

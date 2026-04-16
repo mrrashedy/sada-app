@@ -74,6 +74,30 @@ function tierFromPriority(priority) {
   return m ? m[0] : null;
 }
 
+// Compact relative-then-absolute date for the meta header.
+// Today  → "اليوم"           (today)
+// Yesterday → "أمس"          (yesterday)
+// < 7 days → "منذ N أيام"    (N days ago)
+// Older   → "16 أبريل 2026"  (absolute Arabic date)
+// Hover (title attr) always carries the full date+time.
+const REL_FMT = new Intl.RelativeTimeFormat('ar', { numeric: 'auto' });
+const ABS_FMT = new Intl.DateTimeFormat('ar', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+function formatDepthDate(ts) {
+  if (!ts) return '';
+  const now = Date.now();
+  const diffMs = ts - now;
+  const dayMs = 86_400_000;
+  const diffDays = Math.round(diffMs / dayMs);
+  if (diffDays === 0) return 'اليوم';
+  if (diffDays === -1) return 'أمس';
+  if (diffDays < 0 && diffDays > -7) return REL_FMT.format(diffDays, 'day');
+  return ABS_FMT.format(new Date(ts));
+}
+
 function detectArabic(str) {
   return !!str && /[\u0600-\u06FF]/.test(str);
 }
@@ -221,6 +245,18 @@ export function DepthPost({ item, delay = 0, index = 0, onOpen }) {
         {!hasAnalysis && (
           <span className="depth-chip depth-pending">تحليل قيد الإعداد</span>
         )}
+        {item.pubTs ? (
+          <time
+            className="depth-pubdate"
+            dateTime={new Date(item.pubTs).toISOString()}
+            title={new Date(item.pubTs).toLocaleString('ar', {
+              dateStyle: 'full',
+              timeStyle: 'short',
+            })}
+          >
+            {formatDepthDate(item.pubTs)}
+          </time>
+        ) : null}
       </header>
 
       {/* ─────────── Title ─────────── */}

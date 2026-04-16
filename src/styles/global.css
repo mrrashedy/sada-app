@@ -384,6 +384,7 @@ textarea.auth-input{line-height:1.6}
 .depth-tier-3{border-color:var(--g1);color:var(--t4)}
 .depth-doctype{background:var(--f1);color:var(--t3)}
 .depth-pending{border-color:rgba(255,109,0,.3);color:var(--or);background:rgba(255,109,0,.06)}
+.depth-pubdate{margin-inline-start:auto;font-size:11px;font-weight:600;color:var(--t4);letter-spacing:.2px;white-space:nowrap;font-variant-numeric:tabular-nums}
 
 /* ---------- Title ---------- */
 .depth-title{font-size:15px;font-weight:700;line-height:1.5;color:var(--t1);margin:0 0 12px;word-break:break-word;letter-spacing:-.05px}

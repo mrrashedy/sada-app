@@ -1,6 +1,13 @@
 // Client-side source registry. Mirrors the server SOURCES in functions/api/feeds.js.
 // `photoOnly: true` → source is only used by the Photo Grid (NOT the main feed).
 // Used for logo lookups in post headers, the stories strip, and the photo grid.
+//
+// ⚠️  KEEP IN SYNC WITH functions/api/feeds.js → SOURCES const.
+// Adding a source to ONLY the backend file means items will be fetched but
+// the source pill won't render in the UI strip and items will fall back to
+// generic styling. The runtime drift detector in src/lib/useNews.js logs a
+// console.warn for any backend source missing from this file — check the
+// browser console after adding sources.
 
 export const SOURCES = [
   { n:"الجزيرة",       i:"ج",  id:"aljazeera",     domain:"aljazeera.net",        logo:"/logos/aljazeera.png" },

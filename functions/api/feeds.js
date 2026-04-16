@@ -3,6 +3,12 @@
 // RSS aggregation runs at most once per 2 minutes; all other requests read from KV
 
 // ─── Source Registry ───
+//
+// ⚠️  KEEP IN SYNC WITH src/data/sources.js → SOURCES array.
+// Adding a source here makes the backend fetch it, but the UI source-strip
+// pulls names/logos from the client file. A backend-only addition will pull
+// items but render with placeholder styling and won't appear as a chip in
+// the strip. The client logs a console.warn on drift — see useNews.js.
 
 const SOURCES = {
   // Tier 1: Flagship Arabic broadcasters

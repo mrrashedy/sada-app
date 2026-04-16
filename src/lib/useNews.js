@@ -5,8 +5,30 @@
 // Each kind has its own KV cache on the server and its own polling instance
 // on the client — they never share state.
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { SOURCES } from '../data/sources';
 
 const API_URL = '/api/feeds';
+
+// One-shot drift detector — logs a clear console warning if the API knows
+// about source IDs that the client's hardcoded src/data/sources.js doesn't.
+// This was the root cause of "I added a source and don't see it" — the
+// backend SOURCES const in functions/api/feeds.js and the client SOURCES
+// array in src/data/sources.js have to stay in sync, but nothing enforced
+// it. Now drift surfaces immediately in the dev tools console.
+let _driftChecked = false;
+function checkSourceDrift(apiSources) {
+  if (_driftChecked || !Array.isArray(apiSources)) return;
+  _driftChecked = true;
+  const clientIds = new Set(SOURCES.map(s => s.id));
+  const missing = apiSources.filter(s => s.id && !clientIds.has(s.id));
+  if (missing.length === 0) return;
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[sources-drift] API exposes ${missing.length} source(s) the client doesn't know:\n` +
+      missing.map(m => `  · ${m.id} — ${m.name || ''}`).join('\n') +
+      `\nAdd them to src/data/sources.js so they appear in the source strip.`
+  );
+}
 
 // No sample data — this is a production app
 
@@ -66,6 +88,7 @@ export function useNews(sources = [], kind = 'news', pollInterval = 15000) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
+      checkSourceDrift(data.sources);
       if (data.ok && Array.isArray(data.feed) && data.feed.length > 0) {
         let newCount = 0;
         setFeed(prev => {

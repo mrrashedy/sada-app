@@ -393,6 +393,12 @@ textarea.auth-input{line-height:1.6}
 /* ---------- Flagship pullquote (the real claim, stripped) ---------- */
 .depth-flagship{position:relative;font-size:15px;line-height:1.8;color:var(--t1);padding:14px 18px 14px 16px;margin:0 0 14px;background:linear-gradient(180deg,rgba(126,87,194,.08),rgba(126,87,194,.03));border-inline-start:3px solid #7E57C2;border-radius:0 8px 8px 0;font-weight:600}
 .depth-flagship-mark{display:block;font-size:9px;font-weight:800;color:#7E57C2;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-style:normal}
+/* Inner text gets its own block + dir=auto so an English conclusion
+   under the Arabic "الخلاصة" label flows LTR (period on the right,
+   lines wrap left-to-right) instead of inheriting the parent's RTL. */
+.depth-flagship-text{display:block}
+.depth-flagship-text:dir(ltr){text-align:left}
+.depth-flagship-text:dir(rtl){text-align:right}
 
 /* ---------- Labeled analytical sections ---------- */
 .depth-section{margin:0 0 12px;padding:0}

@@ -266,9 +266,12 @@ export function DepthPost({ item, delay = 0, index = 0, onOpen }) {
 
       {/* ─────────── Flagship: the real claim, stripped ─────────── */}
       {flagship && (
-        <blockquote className="depth-flagship" dir="auto">
+        <blockquote className="depth-flagship">
           <span className="depth-flagship-mark">الخلاصة</span>
-          {flagship}
+          {/* Separate dir=auto on the conclusion text so an English
+              conclusion flows LTR even though the Arabic label above it
+              would otherwise force the parent into RTL. */}
+          <span className="depth-flagship-text" dir="auto">{flagship}</span>
         </blockquote>
       )}
 

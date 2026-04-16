@@ -3,7 +3,10 @@
 [data-theme="dark"]{--bg:#0E0E0E;--f1:#161616;--g1:rgba(255,255,255,.08);--g2:rgba(255,255,255,.13);--t1:#ECEAE5;--t2:#A8A6A0;--t3:#686664;--t4:#3A3A38;--bk:#ECEAE5;--rd:#EF5350;--bl:#42A5F5;--gn:#66BB6A;--or:#FFA040}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{0%{opacity:0;transform:translateY(-16px)}60%{opacity:1;transform:translateY(0)}100%{opacity:1;transform:translateY(0)}}
-.post-new{animation:slideIn 1.2s ease both!important}
+/* .post-new animation disabled — was causing flicker on every poll under
+   pure-recency sort. Items still get the _new flag in state in case other
+   UI wants it, but no visual animation fires. */
+.post-new{}
 @keyframes hp{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
 @keyframes fi{from{opacity:0}to{opacity:1}}
 @keyframes sl{from{transform:translateX(100%)}to{transform:translateX(0)}}
@@ -61,7 +64,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .content.content-full{padding-top:0;padding-bottom:0}
 
 /* Post card */
-.post{padding:5px 14px 3px 14px;border-bottom:.5px solid var(--g1);animation:fu .4s ease both;overflow:hidden}
+.post{padding:5px 14px 3px 14px;border-bottom:.5px solid var(--g1);overflow:hidden}
 .post .ptitle,.post .pbody,.post .strap,.post .pactions{margin-left:10px}
 .post .strap{margin-left:12px}
 .ph{display:flex;align-items:center;gap:8px;margin-bottom:4px}

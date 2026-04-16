@@ -460,7 +460,7 @@ export default function Sada() {
           <div className="logo"><span className="logo-icon">غ</span>غرفة الأخبار</div>
           <div className="hdr-r">
             <button className="ib" onClick={()=>{Sound.tap();setSrch(true);}}>{I.search()}</button>
-            <button className={`ib ${loading?'spinning':''}`} onClick={handleHeaderRefresh}>{I.globe()}</button>
+            <button className="ib" onClick={handleHeaderRefresh}>{I.globe()}</button>
             <button className={`ib ${allFeed.some(f=>f.pubTs>seenTs)?'ndot':''}`} onClick={()=>{Sound.tap();setNotifs(true); const now=Date.now(); setSeenTs(now); try{localStorage.setItem('sada-seen-ts',String(now));}catch{}; }}>{I.bell()}</button>
           </div>
         </div>
@@ -475,11 +475,11 @@ export default function Sada() {
         onTouchEnd={nav==='home'?onTouchEnd:undefined}>
 
         {nav==='home'&&(<>
-          {/* Pull-to-refresh */}
-          {pullY>0&&(<div className="pull-indicator" style={{ height:pullY, opacity:pullY/PULL_THRESHOLD }}>
-            {refreshing ? <><div className="spinner"/> جاري التحديث…</> : pullY>=PULL_THRESHOLD ? '↓ أفلت للتحديث' : '↓ اسحب للتحديث'}
-          </div>)}
-          {refreshMsg&&(<div style={{ position:'sticky',top:0,zIndex:50,background:refreshMsg.includes('جديد')?'#0A0A0A':'var(--f1)',color:refreshMsg.includes('جديد')?'#fff':'var(--t3)',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',transition:'all .3s' }}>✓ {refreshMsg}</div>)}
+          {/* Refresh-act UI removed per design (pull-to-refresh indicator
+              + post-refresh toast). The auto-poll in useNews keeps the
+              feed fresh silently; the visual "refreshing…" theatre was
+              misleading because the user couldn't tell when (or whether)
+              new items had actually arrived. */}
 
           {/* New-articles sticky banner removed per design — newCount
               is still tracked internally so the notify ping fires on

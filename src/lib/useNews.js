@@ -36,7 +36,22 @@ function checkSourceDrift(apiSources) {
 // (KV TTL 15s, cron warms every ~45s), so polling at 6s feels live without
 // adding meaningful load — most requests are cache HITs that return in ~50ms.
 export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
+  // X-style buffered feed:
+  //   • `feed` (displayed) — what the user actually sees. Stable. Never moves
+  //     under the user's finger. The only way new items enter is via flushPending().
+  //   • `pendingFeed` — items the server has returned but we haven't shown yet.
+  //     Accumulates silently between user actions.
+  //   • `pendingCount` — exposed as a banner number ('5 new posts ↑').
+  //
+  // On poll: any server item NOT already in displayed `feed` and NOT already in
+  // `pendingFeed` is appended to `pendingFeed`. Items in displayed `feed` are
+  // never touched (no reorder, no in-place updates). Items the server has dropped
+  // remain in displayed feed until they fall off the 500-item cap naturally.
+  //
+  // First load is special — there's nothing to "preserve," so we drop the entire
+  // server response straight into the displayed feed, no pending pile.
   const [feed, setFeed] = useState([]);
+  const [pendingFeed, setPendingFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLive, setIsLive] = useState(false);
@@ -46,6 +61,25 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
   const [radarOverrides, setRadarOverrides] = useState([]);
   const [cacheAge, setCacheAge] = useState(null);
   const abortRef = useRef(null);
+  // Refs hold the latest state for the fetch closure to read without recreating
+  // the callback on every state change (which would recreate the interval).
+  const feedRef = useRef([]);
+  const pendingRef = useRef([]);
+  feedRef.current = feed;
+  pendingRef.current = pendingFeed;
+
+  // flushPending — moves all pending items into the displayed feed (prepended,
+  // newest first), clears the pending pile. Called by the user via the floating
+  // pill, the manual refresh button, or pull-to-refresh.
+  const flushPending = useCallback(() => {
+    setFeed(prev => {
+      const prevIds = new Set(prev.map(p => p.id));
+      const fresh = pendingRef.current.filter(p => !prevIds.has(p.id));
+      if (fresh.length === 0) return prev;
+      return [...fresh, ...prev].slice(0, 500);
+    });
+    setPendingFeed([]);
+  }, []);
 
   const fetchNews = useCallback(async (silent = false, forceRefresh = false) => {
     if (abortRef.current) abortRef.current.abort();
@@ -94,15 +128,32 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
       checkSourceDrift(data.sources);
       if (data.ok && Array.isArray(data.feed) && data.feed.length > 0) {
         let newCount = 0;
-        setFeed(prev => {
-          const oldIds = new Set(prev.map(f => f.id));
-          newCount = data.feed.filter(f => !oldIds.has(f.id)).length;
-          // Mark genuinely new items (not in previous set) so the UI can animate them
-          const tagged = data.feed.map(f => oldIds.has(f.id) ? f : { ...f, _new: true });
-          const newIds = new Set(data.feed.map(f => f.id));
-          const kept = prev.filter(p => !newIds.has(p.id));
-          return [...tagged, ...kept].slice(0, 500);
-        });
+        const displayedIds = new Set(feedRef.current.map(f => f.id));
+        const isFirstLoad = feedRef.current.length === 0;
+
+        if (isFirstLoad) {
+          // First load — nothing to preserve, drop the whole response in.
+          setFeed(data.feed.slice(0, 500));
+          setPendingFeed([]);
+        } else {
+          // Subsequent polls — anything not already displayed becomes pending.
+          // Existing items in the displayed feed are NEVER touched: no reorder,
+          // no in-place updates, no removal. The user's view stays stable.
+          const pendingIds = new Set(pendingRef.current.map(p => p.id));
+          const fresh = data.feed.filter(
+            f => !displayedIds.has(f.id) && !pendingIds.has(f.id)
+          );
+          if (fresh.length > 0) {
+            // Prepend fresh items so the newest pending item is at index 0
+            // (server already returns time-sorted descending).
+            setPendingFeed(prev => {
+              const prevIds = new Set(prev.map(p => p.id));
+              const dedupedFresh = fresh.filter(f => !prevIds.has(f.id));
+              return [...dedupedFresh, ...prev].slice(0, 500);
+            });
+          }
+          newCount = fresh.length;
+        }
         setIsLive(true);
 
         // Server-side breaking list (from KV cache) + admin radar overrides
@@ -146,10 +197,21 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
     };
   }, [fetchNews]);
 
+  // Manual refresh — explicit user action (button tap, pull-to-refresh).
+  // Always flushes pending into the displayed feed FIRST, then triggers a
+  // visible re-fetch. Returns the new-item count from the fetch (the pill
+  // is a separate signal showing pending items between refreshes).
+  const refresh = useCallback(async () => {
+    flushPending();
+    return fetchNews(false, true);
+  }, [flushPending, fetchNews]);
+
   return {
     feed, loading, error, isLive,
     serverBreaking, radarOverrides, cacheAge,
-    refresh: () => fetchNews(false, true),
+    pendingCount: pendingFeed.length,
+    flushPending,
+    refresh,
     silentRefresh: () => fetchNews(true, false),
   };
 }

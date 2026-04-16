@@ -81,9 +81,10 @@ export default function Sada() {
   const [seenTs, setSeenTs]     = useState(() => { try { return parseInt(localStorage.getItem('sada-seen-ts'))||0; } catch { return 0; } });
   const [sources, setSources]   = useState({});
   const [activeSource, setActiveSource] = useState(null);
-  const [newCount, setNewCount] = useState(0);
-  const prevLen                 = useRef(0);
-  const prevIds                 = useRef(new Set()); // tracks ids we've already shown — replaces broken length-based new-detection
+  // (newCount state removed — the pill now reads pendingCount directly
+  // from useNews. See the X-style buffered-feed comment below.)
+  // (prevLen / prevIds removed — useNews now owns the new-items detection
+  // via its internal pendingFeed buffer. See the X-style comment block below.)
   const contentRef              = useRef(null);
   const lastScrollY             = useRef(0);
   const [barsHidden, setBarsHidden] = useState(false);
@@ -133,35 +134,16 @@ export default function Sada() {
   // flow only through the `news` vertical response, since fetchAdminLayer
   // in functions/api/feeds.js only runs for kind=news. It's global state,
   // not per-vertical, so the news feed is a fine carrier.
-  const { feed:liveFeed, loading, isLive, refresh, radarOverrides } = useNews([], 'news', 6000);
+  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, pendingCount, flushPending } = useNews([], 'news', 6000);
   const { feed:mapFeed } = useNews([], 'map', 30000);
   const { feed:radarFeed, refresh:radarRefresh } = useNews([], 'radar', 30000);
-  // New-items detector — counts items with IDs we haven't shown before.
-  // The previous length-based version was broken once the feed reached its
-  // 500-item cap (length stops growing even as new items pour in), which is
-  // why new items arrived silently with no pill / no notification ping —
-  // the feed felt "dead" even when it was updating every 6 seconds.
-  // Now we diff item IDs against a remembered set: anything new gets counted,
-  // pills the floating "↑ N خبر جديد" banner, and pings the notify sound.
-  useEffect(() => {
-    if (liveFeed.length === 0) return;
-    const currentIds = new Set(liveFeed.map(f => f.id));
-    if (prevIds.current.size === 0) {
-      // First load — just remember the IDs, don't count them as "new".
-      prevIds.current = currentIds;
-      prevLen.current = liveFeed.length;
-      return;
-    }
-    let added = 0;
-    for (const id of currentIds) if (!prevIds.current.has(id)) added++;
-    if (added > 0) {
-      setNewCount(prev => prev + added);
-      // Refresh-related notify ping removed per design — silent updates.
-      setTimeout(() => setNewCount(0), 8000);
-    }
-    prevIds.current = currentIds;
-    prevLen.current = liveFeed.length;
-  }, [liveFeed]);
+  // X-style buffered feed: useNews owns the new-items detector. It
+  // accumulates new items into a `pendingFeed` buffer (exposed here as
+  // `pendingCount`) instead of merging them into the displayed feed in
+  // real-time. The displayed feed only updates when the user explicitly
+  // calls `flushPending()` — via the floating pill, the refresh button,
+  // or pull-to-refresh. This eliminates the "items shifting under your
+  // finger" flicker and matches the X / Twitter pattern.
 
   // Bottom-nav indicator pulses — every 60s each indicator fires 3 quick blips
   // in sync with its CSS animation. Map is offset 30s from radar so the two
@@ -498,9 +480,29 @@ export default function Sada() {
               misleading because the user couldn't tell when (or whether)
               new items had actually arrived. */}
 
-          {/* New-articles sticky banner removed per design — newCount
-              is still tracked internally so the notify ping fires on
-              new items, but no in-feed prompt is shown. */}
+          {/* X-style "new posts" pill — sticky at the top of the feed.
+              Appears only when pendingCount > 0. Tap → flushPending()
+              pulls accumulated items into the displayed feed and scrolls
+              to top. The displayed feed never moves on its own; this pill
+              is the user's only signal that the world has updated. */}
+          {pendingCount>0 && (
+            <div
+              onClick={() => {
+                Sound.tap();
+                flushPending();
+                contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              style={{
+                position: 'sticky', top: 0, zIndex: 50,
+                background: '#0A0A0A', color: '#fff',
+                fontSize: 12, fontWeight: 700, textAlign: 'center',
+                padding: '10px', cursor: 'pointer',
+                boxShadow: '0 1px 4px rgba(0,0,0,.15)',
+              }}
+            >
+              ↑ {pendingCount} خبر جديد
+            </div>
+          )}
 
           {/* Live indicator */}
           {isLive&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'5px 0',fontSize:11,color:'var(--t4)' }}><div className="live-dot"/>أخبار مباشرة · {allFeed.length} خبر</div>)}

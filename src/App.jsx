@@ -524,7 +524,7 @@ export default function Sada() {
           {isLive&&(
             <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'5px 0',fontSize:11,color:'var(--t4)' }}>
               <div className="live-dot"/>
-              <span>أخبار مباشرة · {allFeed.length} خبر</span>
+              <span>أخبار مباشرة</span>
               {freshnessLabel && <span style={{ opacity:.7 }}>· تحديث {freshnessLabel}</span>}
               {newCount>0 && newCount<5 && (
                 <span style={{ opacity:.7 }}>· {newCount} جديد</span>

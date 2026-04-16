@@ -24,7 +24,11 @@ const SOURCES = {
   // @AJABreaking — Al Jazeera Arabic Breaking News alerts (عاجل).
   // X/Twitter RSS bridges are unreliable; we use a targeted Google News
   // query for عاجل stories from aljazeera.net as the closest equivalent.
+  // الجزيرة عاجل — direct breaking-news Twitter feed (@AJABreaking) via rss.app.
+  // Replaces the Google News proxy (5-15min lag) with near-real-time breaking
+  // updates. GN proxy kept as fallback so the source survives if rss.app errors.
   aja_breaking:    { name: "الجزيرة عاجل", initial: "عاجل", tier: 1, feeds: [
+    "https://rss.app/feeds/1e7195HOC6i8FptT.xml",
     "https://news.google.com/rss/search?q=عاجل+site%3Aaljazeera.net&hl=ar&gl=SA&ceid=SA%3Aar",
   ] },
   // aljazeera.com direct RSS times out from CF Workers. Google News proxy.
@@ -49,7 +53,18 @@ const SOURCES = {
   rt_ar:           { name: "روسيا اليوم", initial: "RT", tier: 1, feeds: ["https://arabic.rt.com/rss/"] },
   // alarabiya /.mrss/ar.xml now 403s. Google News proxy (50 fresh items).
   alarabiya:       { name: "العربية", initial: "ع", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Aalarabiya.net&hl=ar&gl=SA&ceid=SA:ar"] },
+  // العربية عاجل — dedicated Twitter (@AlArabiya_Brk) breaking-news channel,
+  // sister to the main alarabiya entry. Higher cadence, shorter items.
+  alarabiya_brk:   { name: "العربية عاجل", initial: "عاع", tier: 1, feeds: ["https://rss.app/feeds/feM5F3Gmr2JJ6xfN.xml"] },
+  // التلفزيون العربي - عاجل — Al-Araby TV's dedicated Telegram breaking-news
+  // channel (@AlarabyTvBrk). Levant-focused, high cadence, used as the live
+  // wire when conflict events break in Gaza/Lebanon/Syria.
+  alaraby_tv_brk:  { name: "العربي عاجل", initial: "عت", tier: 1, feeds: ["https://rss.app/feeds/FDjA0ZXmIBmXKXIZ.xml"] },
   asharq_news:     { name: "الشرق الإخبارية", initial: "شر", tier: 1, feeds: ["https://asharq.com/rss.xml"] },
+  // تميم بن حمد — H.H. Sheikh Tamim, Emir of Qatar, official Twitter
+  // (@TamimBinHamad). Primary source for Qatari foreign policy positions —
+  // statements appear here before they hit any wire service. Tier 1 official.
+  tamim_qatar:     { name: "تميم بن حمد", initial: "تم", tier: 1, feeds: ["https://rss.app/feeds/F7A4BGt96lZBHqdJ.xml"] },
 
   // Wire services + aggregators (Arabic Google News topics give broad coverage)
   gnews_world:     { name: "أخبار Google عالمي", initial: "GN", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/WORLD?hl=ar&gl=SA&ceid=SA:ar"] },
@@ -115,12 +130,22 @@ const SOURCES = {
   // Arabic readers see what Israeli press is saying about MENA in near-real-time.
   // Source is the Telegram channel @Qudsn_hebrew, fed via rss.app.
   qudsn_heb:   { name: "ترجمات عبرية", initial: "عب", tier: 2, feeds: ["https://rss.app/feeds/ZkMAVoRAYNluzgla.xml"] },
+  // Ne3raf نعرف — analytical YouTube channel covering international relations
+  // (politics, geopolitics, military, economy). Long-form, slower cadence than
+  // breaking-news sources but useful for context. Tier 2 individual outlet.
+  ne3raf:      { name: "نعرف", initial: "نع", tier: 2, feeds: ["https://rss.app/feeds/AlXKMtH7eonzL7mh.xml"] },
+  // زيد بنيامين — independent journalist covering US-MENA affairs and Gulf
+  // politics from Washington (@ZaidBenjamin5). Distinctive analytical voice,
+  // ex-Al Jazeera Washington bureau. Tier 2 individual journalist.
+  zaid_benjamin:{ name: "زيد بنيامين", initial: "زب", tier: 2, feeds: ["https://rss.app/feeds/s8DAMAxUyWWe8AeX.xml"] },
   // Tier 2: additional Egypt & Gulf flagships
   // الأهرام — Egypt's flagship daily (founded 1875, most-circulated). Upgraded
   // from Google News proxy to direct rss.app feed (~1min lag instead of 5-15min)
   // and promoted to Tier 1. GN proxy kept as fallback in case rss.app feed dies.
   ahram:       { name: "الأهرام", initial: "هر", tier: 1, feeds: ["https://rss.app/feeds/gXGjA0WaERLJ5Sot.xml","https://news.google.com/rss/search?q=site%3Agate.ahram.org.eg&hl=ar&gl=SA&ceid=SA:ar"] },
-  mada_masr:   { name: "مدى مصر", initial: "مد", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amadamasr.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // مدى مصر — direct rss.app feed (~1min lag) replaces the Google News proxy
+  // (5-15min lag). Independent Egyptian investigative outlet, distinctive voice.
+  mada_masr:   { name: "مدى مصر", initial: "مد", tier: 2, feeds: ["https://rss.app/feeds/vxVIdRoKKQKFk1hj.xml","https://news.google.com/rss/search?q=site%3Amadamasr.com&hl=ar&gl=SA&ceid=SA:ar"] },
   alain_ar:    { name: "العين الإخبارية", initial: "عن", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aal-ain.com&hl=ar&gl=SA&ceid=SA:ar"] },
 
   // Tier 2: North Africa (Maghreb) — Morocco, Algeria, Tunisia

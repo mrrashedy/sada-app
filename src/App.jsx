@@ -481,8 +481,9 @@ export default function Sada() {
           </div>)}
           {refreshMsg&&(<div style={{ position:'sticky',top:0,zIndex:50,background:refreshMsg.includes('جديد')?'#0A0A0A':'var(--f1)',color:refreshMsg.includes('جديد')?'#fff':'var(--t3)',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',transition:'all .3s' }}>✓ {refreshMsg}</div>)}
 
-          {/* New articles banner */}
-          {newCount>0&&(<div onClick={()=>{Sound.notify();setNewCount(0);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}} style={{ position:'sticky',top:0,zIndex:50,background:'#0A0A0A',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',padding:'9px',cursor:'pointer' }}>↑ {newCount} خبر جديد</div>)}
+          {/* New-articles sticky banner removed per design — newCount
+              is still tracked internally so the notify ping fires on
+              new items, but no in-feed prompt is shown. */}
 
           {/* Live indicator */}
           {isLive&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'5px 0',fontSize:11,color:'var(--t4)' }}><div className="live-dot"/>أخبار مباشرة · {allFeed.length} خبر</div>)}

@@ -19,4 +19,17 @@ export const I = {
   check:    () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>,
   radar:    (f) => <svg width="22" height="22" viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth={f?0:1.2}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4" strokeWidth="1.2"/><path d="M2 12h4M18 12h4" strokeWidth="1.2"/><line x1="12" y1="12" x2="17" y2="7" strokeWidth="1.5" stroke={f?"#E53935":"currentColor"}/></svg>,
   photos:   (f) => <svg width="22" height="22" viewBox="0 0 24 24" fill={f?"currentColor":"none"} stroke="currentColor" strokeWidth={f?0:1.2}><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>,
+  // Reading glasses — the nav entry for the Basira depth/studies vertical.
+  // A pair of round spectacles: two lenses, a small bridge arcing between
+  // them, and short temple hints on the outer edges. Signals "long-form
+  // reading" rather than "search" (which is the magnifying glass in the
+  // header). When active, the lenses fill with currentColor so the glasses
+  // read as "worn" rather than "empty frames".
+  depth:    (f) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={f?2:1.7} strokeLinecap="round" strokeLinejoin="round">
+                     <circle cx="7"  cy="12" r="4.5" fill={f?"currentColor":"none"}/>
+                     <circle cx="17" cy="12" r="4.5" fill={f?"currentColor":"none"}/>
+                     <path d="M11.5 10.5 Q12 9 12.5 10.5"/>
+                     <path d="M3.8 8.8 L2 7"/>
+                     <path d="M20.2 8.8 L22 7"/>
+                   </svg>,
 };

@@ -4,6 +4,7 @@
 
 export const SOURCES = [
   { n:"الجزيرة",       i:"ج",  id:"aljazeera",     domain:"aljazeera.net",        logo:"/logos/aljazeera.png" },
+  { n:"الجزيرة عاجل", i:"عاجل",id:"aja_breaking",  domain:"aljazeera.net"         },
   { n:"BBC عربي",      i:"B",  id:"bbc",           domain:"bbc.com"               },
   { n:"سكاي نيوز",    i:"S",  id:"skynews",       domain:"skynewsarabia.com"     },
   { n:"فرانس ٢٤",     i:"F",  id:"france24",      domain:"france24.com"          },
@@ -19,7 +20,7 @@ export const SOURCES = [
   { n:"أخبار Google تقنية", i:"GT", id:"gnews_tech",  domain:"news.google.com"      },
   { n:"أخبار Google صحة",   i:"GH", id:"gnews_health",domain:"news.google.com"      },
   { n:"أخبار Google علوم",  i:"GS", id:"gnews_science",domain:"news.google.com"     },
-  { n:"العربي الجديد", i:"ع",  id:"alaraby",       domain:"alaraby.co.uk"         },
+  { n:"العربي الجديد", i:"ع",  id:"alaraby",       domain:"newarab.com"           },
   { n:"المصري اليوم",  i:"م",  id:"almasry",       domain:"almasryalyoum.com"     },
   { n:"اليوم السابع",   i:"٧",  id:"youm7",         domain:"youm7.com"             },
   { n:"Egypt Independent",i:"EI", id:"egypt_ind",    domain:"egyptindependent.com"  },
@@ -30,7 +31,6 @@ export const SOURCES = [
   { n:"الشرق",         i:"ق",  id:"alsharq",       domain:"al-sharq.com"          },
   { n:"اليوم",         i:"ل",  id:"alyaum",        domain:"alyaum.com"            },
   { n:"القدس العربي",  i:"ق",  id:"alquds",        domain:"alquds.co.uk"          },
-  { n:"نون بوست",      i:"ن",  id:"noonpost",      domain:"noonpost.com"          },
   // مشرق عربي — لبنان، سوريا، الأردن، فلسطين
   { n:"النهار",        i:"نه", id:"annahar",       domain:"annahar.com"           },
   { n:"إل بي سي آي",   i:"LB", id:"lbci",          domain:"lbcgroup.tv"           },
@@ -38,6 +38,13 @@ export const SOURCES = [
   { n:"المملكة",       i:"مم", id:"almamlaka",     domain:"almamlakatv.com"       },
   { n:"سانا",          i:"س",  id:"sana",          domain:"sana.sy"               },
   { n:"الغد",          i:"غ",  id:"alghad",        domain:"alghad.com"            },
+  { n:"الميادين",      i:"مي", id:"almayadeen",    domain:"almayadeen.net"        },
+  { n:"الأخبار اللبنانية",i:"أخ",id:"alakhbar_lb", domain:"al-akhbar.com"         },
+  { n:"درج",           i:"در", id:"daraj",         domain:"daraj.media"           },
+  // Egypt & Gulf flagships
+  { n:"الأهرام",       i:"هر", id:"ahram",         domain:"ahram.org.eg"          },
+  { n:"مدى مصر",       i:"مد", id:"mada_masr",     domain:"madamasr.com"          },
+  { n:"العين الإخبارية",i:"عن", id:"alain_ar",     domain:"al-ain.com"            },
   // مغرب عربي
   { n:"هسبريس",        i:"هـ", id:"hespress",      domain:"hespress.com"          },
   { n:"لو 360",        i:"360",id:"le360_ar",      domain:"ar.le360.ma"           },
@@ -50,7 +57,6 @@ export const SOURCES = [
   { n:"صحراء ميديا",   i:"صح", id:"sahara_media",  domain:"saharamedias.net"      },
   { n:"سودان تريبيون", i:"ST", id:"sudan_tribune", domain:"sudantribune.net"      },
   { n:"السوداني",      i:"سد", id:"alsudani",      domain:"alsudaninews.com"      },
-  { n:"ليبيا الأحرار", i:"LY", id:"libya_ahrar",   domain:"libyaalahrar.net"      },
   // English sources (translated)
   { n:"BBC عالمي",     i:"BB", id:"bbc_en",        domain:"bbc.com"               },
   { n:"نيويورك تايمز", i:"NY", id:"nyt",           domain:"nytimes.com"           },

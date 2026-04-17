@@ -101,17 +101,17 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 
 /* Post actions */
 .pactions{display:flex;align-items:center;justify-content:center;gap:48px;margin-top:3px}
-/* + / − action language. Opinion pair = bordered chip buttons with bold
-   glyphs. Utility pair = quieter outline icons pushed to the far end. Two
-   distinct treatments keep the eye separating "opinion" from "utility". */
-.pactions-pm{justify-content:flex-start;gap:6px;padding:6px 4px 2px;margin-top:5px;border-top:.5px solid var(--g1)}
-.pm-btn{width:28px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg);border:1px solid var(--g1);color:var(--t2);font-family:var(--ft);font-size:18px;font-weight:600;line-height:1;cursor:pointer;transition:all .15s;padding:0}
-.pm-btn:active{transform:scale(.9);opacity:.7}
-.pm-plus.on{background:var(--or);border-color:var(--or);color:#fff}
-.pm-minus:hover,.pm-minus:active{color:var(--rd);border-color:rgba(211,47,47,.4)}
-.util-btn{background:none;border:none;cursor:pointer;color:var(--t3);padding:6px 8px;display:inline-flex;align-items:center;transition:color .15s}
-.util-btn:first-of-type{margin-inline-start:auto}
-.util-btn:active{opacity:.5}
+/* + / − action language — symmetric. All four buttons sit in a single
+   centered row, evenly spaced, no borders or pills. Just bold glyphs
+   (the + and −) and quiet outline icons (save and share) at matching
+   visual weight. Reads as one cohesive control bar. */
+.pactions-pm{justify-content:center;gap:48px;padding:6px 0 2px;margin-top:5px;border-top:.5px solid var(--g1)}
+.pm-btn{background:none;border:none;color:var(--t3);font-family:var(--ft);font-size:20px;font-weight:600;line-height:1;cursor:pointer;transition:color .15s,transform .12s;padding:4px 0;width:18px;display:inline-flex;align-items:center;justify-content:center}
+.pm-btn:active{transform:scale(.85);opacity:.6}
+.pm-plus.on{color:var(--or)}
+.pm-minus:hover,.pm-minus:active{color:var(--rd)}
+.util-btn{background:none;border:none;cursor:pointer;color:var(--t3);padding:4px 0;display:inline-flex;align-items:center;transition:color .15s,transform .12s}
+.util-btn:active{transform:scale(.85);opacity:.6}
 .util-btn.on{color:var(--or)}
 .act{display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:11px;background:none;border:none;font-family:var(--ft);transition:color .15s;padding:3px 0}
 .act:active{opacity:.4}

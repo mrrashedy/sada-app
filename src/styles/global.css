@@ -17,18 +17,12 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 
 /* App shell */
 .app{max-width:430px;margin:0 auto;height:100vh;background:var(--bg);font-family:var(--ft);direction:rtl;display:flex;flex-direction:column;overflow:hidden;position:relative}
-/* Selection highlight uses brand orange at low alpha — subtle but unmistakably 'us'. */
-.app ::selection{background:rgba(255,109,0,.22);color:var(--bk)}
-.app ::-moz-selection{background:rgba(255,109,0,.22);color:var(--bk)}
 .sb{display:none}
 
 /* Header */
 /* Live indicator breathing pulse */
 @keyframes livePulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.6}}
-/* Live dot now uses --or (brand orange) so 'live' reads as part of the
-   app's identity instead of a generic 'green = ok' indicator. The pulse
-   keeps motion; color carries the meaning. */
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--or);animation:livePulse 2s ease infinite;flex-shrink:0}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--gn);animation:livePulse 2s ease infinite;flex-shrink:0}
 
 .hdr{position:fixed;top:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1)}
 .hdr-top{display:flex;justify-content:space-between;align-items:center;padding:max(12px, env(safe-area-inset-top, 12px)) 28px 10px}
@@ -46,8 +40,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .tabs{display:flex;border-bottom:.5px solid var(--g1);flex-shrink:0}
 .tab{flex:1;text-align:center;padding:11px 0;font-size:13px;font-weight:500;color:var(--t4);cursor:pointer;background:none;border:none;font-family:var(--ft);position:relative;transition:color .2s}
 .tab.on{color:var(--bk);font-weight:700}
-/* Tab underline → orange. Subtle brand touch on the most-noticed indicator. */
-.tab.on::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--or);border-radius:1px}
+.tab.on::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--bk);border-radius:1px}
 
 /* Stories row */
 .stories{display:flex;gap:10px;padding:10px 28px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
@@ -117,7 +110,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .bnav{display:flex;align-items:center;border-top:.5px solid var(--g1);padding:14px 0 max(22px, env(safe-area-inset-bottom, 22px));position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1)}
 .bnav-hide{transform:translateY(100%)}
 .bnav-item{flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;background:none;border:none;color:var(--t4);font-family:var(--ft);padding:6px 0;transition:color .2s}
-.bnav-item.on{color:var(--or)}
+.bnav-item.on{color:var(--bk)}
 .bnav-icon{display:inline-flex;align-items:center;justify-content:center}
 .bnav-item:not(.bnav-center) .bnav-icon svg{width:24px;height:24px}
 

@@ -37,9 +37,9 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
    Height-bound; intrinsic width auto from viewBox. Color inherits the
    header text color so dark theme just works (no filter needed). */
 .logo-svg{height:38px;width:auto;display:block;color:var(--bk)}
-/* Modern executive sans-serif for the NEWSROOM wordmark.
-   SF Pro Display on Apple, Inter / Helvetica Neue elsewhere. */
-.logo-svg text{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Helvetica Neue",Helvetica,Arial,sans-serif;font-stretch:100%}
+/* Newsroom masthead — heavy editorial serif, newspaper-flag feel.
+   System serif stack: New York (Apple) / Charter / Iowan / Georgia. */
+.logo-svg text{font-family:"New York","Charter","Iowan Old Style",Georgia,"Times New Roman",serif;font-stretch:100%}
 .hdr-r{display:flex;gap:16px;align-items:center}
 .ib{background:none;border:none;cursor:pointer;color:var(--t1);padding:2px;display:flex;align-items:center}
 .ib:active{opacity:.35}

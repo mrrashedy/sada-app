@@ -583,7 +583,7 @@ export default function Sada() {
             {/* Wordmark: NEWSROOM in a modern executive sans (SF Pro Display
                 / Inter), heavy weight, tight letter-spacing, uppercase. */}
             <svg className="logo-svg" viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" aria-label="NEWSROOM" preserveAspectRatio="xMidYMid meet">
-              <text x="450" y="100" textAnchor="middle" dominantBaseline="central" fontSize="150" fontWeight="900" letterSpacing="6" fill="currentColor">NEWSROOM</text>
+              <text x="450" y="100" textAnchor="middle" dominantBaseline="central" fontSize="160" fontWeight="900" letterSpacing="-1" fill="currentColor">Newsroom</text>
             </svg>
           </div>
           <div className="hdr-r">

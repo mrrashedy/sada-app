@@ -799,20 +799,21 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
       return res;
     } finally { clearTimeout(t); }
   };
-  // Aggressive retry: Google News from CF edge IPs is throttled and slow
-  // (often 15-25s, sometimes 30s+). Sources whose ONLY upstream is a GN
-  // proxy (france24, lbci, almamlaka, daraj, cnn_biz_ar...) were dropping
-  // to zero items because a single 15s timeout killed the whole fetch.
-  // New budget: 25s primary, 20s retry #1, 15s retry #2. Worst case ~60s
-  // per feed but bounded; the slowest source defines aggregateFeeds() time.
+  // Per-feed retry budget. Tuned 2026-04-18 after the source registry grew
+  // from 70 → 95 sources (many GN-only) and a single slow GN feed could pin
+  // cold-aggregation at 60s+, causing the cache-write threshold to be missed
+  // and triggering a death spiral where every request was a fresh aggregation.
+  //
+  // Direct feeds: 15s + 12s + 8s = 35s worst case, 3 attempts.
+  // Google News:  15s + 10s       = 25s worst case, 2 attempts (skip retry #3).
+  // Most flagships now have BOTH a direct upstream and a GN fallback, so
+  // failing GN fast is fine — the direct path covers it.
   const isGN = (u) => u.includes('news.google.com');
   const fetchWithRetry = async (feedUrl) => {
-    const t1 = isGN(feedUrl) ? 25000 : 15000;
-    const t2 = isGN(feedUrl) ? 20000 : 12000;
-    const t3 = isGN(feedUrl) ? 15000 :  8000;
+    const attempts = isGN(feedUrl) ? [15000, 10000] : [15000, 12000, 8000];
     let lastErr = null;
     let lastRes = null;
-    for (const t of [t1, t2, t3]) {
+    for (const t of attempts) {
       try {
         const res = await fetchOnce(feedUrl, t);
         lastRes = res;
@@ -1226,12 +1227,13 @@ export async function onRequest(context) {
     // Store in KV (no warming here — /api/warm handles it separately with
     // its own subrequest budget; aggregation alone uses ~45 subreqs).
     //
-    // Cache hardening: refuse to write thin aggregations. If half the feeds
-    // timed out and we only got 300 items, that bad payload would sit in KV
-    // for 600s and every request would serve dead content. The threshold
-    // (600 items / kind-aware) is well below a healthy run (~1200 items for
-    // news) but well above the catastrophe floor.
-    const MIN_ITEMS = kind === 'photos' ? 100 : 600;
+    // Cache hardening: refuse to write thin aggregations. Threshold lowered
+    // from 600 → 300 on 2026-04-18 because the registry grew to 95 sources;
+    // a partial degradation that still produces 300+ items is FAR better
+    // than refusing to cache and forcing every request into a fresh
+    // aggregation (the 5-min-refresh bug). 300 is well above an empty run
+    // but well below a healthy ~1200-item run.
+    const MIN_ITEMS = kind === 'photos' ? 100 : 300;
     if (feedCache && (data.feed?.length || 0) >= MIN_ITEMS) {
       context.waitUntil(Promise.all([
         feedCache.put(kvKeys.feed, JSON.stringify(data), { expirationTtl: 600 }),

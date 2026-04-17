@@ -197,7 +197,10 @@ export default function Sada() {
   // flow only through the `news` vertical response, since fetchAdminLayer
   // in functions/api/feeds.js only runs for kind=news. It's global state,
   // not per-vertical, so the news feed is a fine carrier.
-  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, pendingCount, flushPending, ackNewItems, lastFetchAt } = useNews([], 'news', 6000, isAtTopRef);
+  // Poll cadence stretched 6s → 12s on 2026-04-18 to relieve render pressure.
+  // The KV cache TTL is 15s so polling faster than that is mostly wasted
+  // bandwidth + render churn. Radar (30s) and map (30s) already slower.
+  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, pendingCount, flushPending, ackNewItems, lastFetchAt } = useNews([], 'news', 12000, isAtTopRef);
   const { feed:mapFeed } = useNews([], 'map', 30000);
   const { feed:radarFeed, refresh:radarRefresh } = useNews([], 'radar', 30000);
   // X-style buffered feed: useNews owns the new-items detector. It
@@ -361,8 +364,22 @@ export default function Sada() {
     };
   }), []);
 
-  // Transform all three feed pools
-  const allFeed = useMemo(() => transformFeed(liveFeed), [liveFeed, transformFeed]);
+  // Transform all three feed pools.
+  // Identity-stable memo: skip recomputation when the item-id set hasn't
+  // changed. Without this, every poll allocated 800+ fresh objects and
+  // cascaded a full re-render through sourcedFeed → displayFeed → list,
+  // even when the API returned the same items. Added 2026-04-18 as part
+  // of the slowness fix.
+  const allFeedRef = useRef(null);
+  const allFeedKeyRef = useRef('');
+  const allFeed = useMemo(() => {
+    const key = liveFeed.length + ':' + (liveFeed[0]?.id || '') + ':' + (liveFeed[liveFeed.length - 1]?.id || '');
+    if (key === allFeedKeyRef.current && allFeedRef.current) return allFeedRef.current;
+    const next = transformFeed(liveFeed);
+    allFeedRef.current = next;
+    allFeedKeyRef.current = key;
+    return next;
+  }, [liveFeed, transformFeed]);
   const mapItems = useMemo(() => transformFeed(mapFeed), [mapFeed, transformFeed]);
   const radarItems = useMemo(() => transformFeed(radarFeed), [radarFeed, transformFeed]);
 

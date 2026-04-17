@@ -72,13 +72,13 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000, isAtTo
   hiddenRef.current = hiddenBuffer;
 
   // Constants
-  // FEED_CAP raised from 500 → 3000 so all 80 active sources have items in
-  // the displayed pool. Without this, the source-strip filter is empty for
-  // ~50 low-volume sources (Reuters, Mada Masr, Al-Akhbar, BBC EN, etc.).
-  // Rendering perf is unaffected — useInfiniteScroll paginates the visible
-  // window to ~20 nodes at a time; the in-state array just holds objects.
-  const FEED_CAP = 3000;
-  const HIDDEN_CAP = 1000;
+  // FEED_CAP lowered 3000 → 800 on 2026-04-18 to fix general app slowness.
+  // The previous 3000 was held in React state and re-transformed/re-filtered/
+  // re-sorted on every 6s poll, which compounded into noticeable jank in
+  // foreground tabs after a few minutes. 800 still gives ~8 items per source
+  // across 95 sources — plenty for the source-strip filter to feel populated.
+  const FEED_CAP = 800;
+  const HIDDEN_CAP = 400;
   const ts = (item) => item.pubTs || item.timestamp || 0;
 
   // mergeByTime — pure helper. Combines two arrays of items, dedupes by id,

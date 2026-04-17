@@ -597,18 +597,21 @@ export default function Sada() {
                 }}
                 style={{
                   pointerEvents:'auto',
-                  background:'rgba(10,10,10,.65)',
-                  backdropFilter:'blur(12px)',
-                  WebkitBackdropFilter:'blur(12px)',
-                  color:'rgba(255,255,255,.92)',
+                  // Translucent orange — uses the app's --or hue (#FF6D00 light /
+                  // #FFA040 dark) at ~50% alpha so content underneath is still
+                  // legible. backdrop-filter blurs whatever's behind the chip.
+                  background:'rgba(255,109,0,.55)',
+                  backdropFilter:'blur(14px) saturate(1.4)',
+                  WebkitBackdropFilter:'blur(14px) saturate(1.4)',
+                  color:'#fff',
                   fontSize:11,
-                  fontWeight:600,
+                  fontWeight:700,
                   fontFamily:'var(--ft)',
-                  padding:'5px 14px',
+                  padding:'6px 28px',
                   borderRadius:'999px',
-                  border:'1px solid rgba(255,255,255,.08)',
+                  border:'1px solid rgba(255,255,255,.15)',
                   cursor:'pointer',
-                  boxShadow:'0 1px 4px rgba(0,0,0,.12)',
+                  boxShadow:'0 2px 10px rgba(255,109,0,.25)',
                 }}
               >
                 تحديث

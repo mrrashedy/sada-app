@@ -740,17 +740,41 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
 
   // Fetch sources for the requested kind — news feed and photo grid use
   // disjoint source pools (the `photoOnly: true` flag gates them).
+  // E. Per-feed fetch with one retry. Slow Google News / rss.app endpoints
+  // were getting killed by the old 12s ceiling, dropping their freshest
+  // items entirely. New flow: 15s primary timeout, single retry at 10s on
+  // AbortError or 5xx. Worst case 25s wall time per feed, still bounded.
+  const fetchOnce = async (feedUrl, timeoutMs) => {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(feedUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/3.0)', 'Accept': 'application/rss+xml, application/xml, text/xml, */*' },
+        signal: controller.signal,
+        cf: { cacheTtl: 15, cacheEverything: true },
+      });
+      return res;
+    } finally { clearTimeout(t); }
+  };
+  const fetchWithRetry = async (feedUrl) => {
+    try {
+      const res = await fetchOnce(feedUrl, 15000);
+      if (res.ok) return res;
+      if (res.status >= 500) {
+        // server-side hiccup — one retry
+        return await fetchOnce(feedUrl, 10000).catch(() => res);
+      }
+      return res;
+    } catch (err) {
+      // network error / abort — one retry
+      try { return await fetchOnce(feedUrl, 10000); }
+      catch { throw err; }
+    }
+  };
   const fetches = sourcesForKind(kind).flatMap(([id, source]) => {
     return (source.feeds || []).map(async (feedUrl) => {
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
-        const res = await fetch(feedUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SadaNews/3.0)', 'Accept': 'application/rss+xml, application/xml, text/xml, */*' },
-          signal: controller.signal,
-          cf: { cacheTtl: 15, cacheEverything: true },
-        });
-        clearTimeout(timeout);
+        const res = await fetchWithRetry(feedUrl);
         if (!res.ok) return [];
         const xml = await decodeXmlResponse(res);
         return parseXML(xml).map(item => ({
@@ -822,7 +846,21 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
     // title is essentially the channel description, drop it.
     return /آخر\s*الأخبار|آخر\s*أخبار\s*اليوم|أخبار\s*اليوم|أحدث\s*الأخبار|Latest\s*news|Top\s*stories/i.test(t);
   };
-  const preFiltered = allItems.filter(i => !isGoogleNewsChannelTitle(i));
+  // B. Freshness gate — drop anything older than 48h. Google News and
+  // rss.app scrapers return up to 50 items going back weeks, polluting the
+  // tail of the feed with stale content. 48h is generous enough that slow
+  // publishers (mada masr, daraj, long-form outlets) still surface, but
+  // cuts the 1979-item >3d tail we measured in production.
+  const FRESHNESS_WINDOW_MS = 48 * 60 * 60 * 1000;
+  const _freshNow = Date.now();
+  const preFiltered = allItems
+    .filter(i => !isGoogleNewsChannelTitle(i))
+    .filter(i => {
+      const ts = i.timestamp || 0;
+      if (!ts) return true; // keep items without a timestamp (rare; don't punish)
+      const age = _freshNow - ts;
+      return age >= 0 && age <= FRESHNESS_WINDOW_MS;
+    });
 
   // Pure recency, no hierarchy. Per user request: no flagship boost, no
   // diversity floor, no per-source caps (including the RT hourly cap that

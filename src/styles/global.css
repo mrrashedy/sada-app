@@ -37,9 +37,10 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
    Height-bound; intrinsic width auto from viewBox. Color inherits the
    header text color so dark theme just works (no filter needed). */
 .logo-svg{height:38px;width:auto;display:block;color:var(--bk)}
-/* Newsroom masthead — heavy editorial serif, newspaper-flag feel.
-   System serif stack: New York (Apple) / Charter / Iowan / Georgia. */
-.logo-svg text{font-family:"New York","Charter","Iowan Old Style",Georgia,"Times New Roman",serif;font-stretch:100%}
+/* Tall condensed bold sans — wire-service / press-credential feel
+   (Reuters Knockout, Wired, Vice lineage). System stack favors any
+   condensed weight available. */
+.logo-svg text{font-family:"Helvetica Neue Condensed","HelveticaNeue-CondensedBold","Oswald","Bebas Neue",Impact,"Arial Narrow",sans-serif;font-stretch:75%}
 .hdr-r{display:flex;gap:16px;align-items:center}
 .ib{background:none;border:none;cursor:pointer;color:var(--t1);padding:2px;display:flex;align-items:center}
 .ib:active{opacity:.35}

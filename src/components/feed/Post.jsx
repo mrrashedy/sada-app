@@ -81,17 +81,20 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
           <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{clean(item.title)}</div>
           {!longTitle && (item.brief || (item.tags && item.tags.length > 0) || (item.flags && item.flags.length > 0)) && (
             <div className="pbody" dir="auto">
-              {item.brief && clean(item.brief)}
-              {/* Country tags first — geographic context is the most natural
-                  hook for "what is this story about." Replaces the previous
-                  flag-image strip in the post header (.ph). */}
+              {/* Tags FIRST so they flow inline at the start of the body
+                  copy. Previously they came after item.brief and would wrap
+                  to a new line whenever the body text filled the row.
+                  Putting them before lets the brief text wrap UNDER them
+                  instead of around — saves the dedicated tag row. */}
               {item.flags && item.flags.length > 0 && item.flags.map(c => (
                 <span key={`f-${c}`} className="ptag ptag-inline ptag-country">{countryName(c)}</span>
               ))}
-              {/* Then topic / category tags. */}
               {item.tags && item.tags.length > 0 && item.tags.map((t, i) => (
                 <span key={`t-${i}`} className="ptag ptag-inline">{clean(t)}</span>
               ))}
+              {item.brief && (
+                <span className="pbody-text"> {clean(item.brief)}</span>
+              )}
             </div>
           )}
         </div>

@@ -7,11 +7,15 @@ import { shareArticle } from '../../lib/shareCard';
 import { countryName } from '../../lib/countryFlags';
 
 // All four .act icons inlined locally with identical geometry — same
-// All four icons share identical SVG specs — same viewBox, stroke width,
-// linecap, linejoin. The + / − are also SVG (not text glyphs) so they
-// match the bookmark/share weight exactly. Previously +/- were rendered
-// as font characters and the typographic ink was visibly heavier than the
-// 1.2 px stroked icons even at font-weight 300.
+// All four icons share identical SVG specs and the same MINIMAL stroke
+// vocabulary — only straight lines, no curves, no containers. Each icon
+// is 1-3 line segments, so + / − / save / share all read as members of
+// the same family.
+//
+//   + : two crossed lines        (add to important)
+//   − : one horizontal line      (subtract / dismiss)
+//   ⌐ : an inverted-flag shape   (save — vertical pole + small flag)
+//   ↗ : two-stroke corner arrow  (share — diagonal + arrowhead)
 const ICON_PROPS = {
   width: 16, height: 16, viewBox: '0 0 24 24',
   fill: 'none', stroke: 'currentColor', strokeWidth: 1.2,
@@ -19,14 +23,19 @@ const ICON_PROPS = {
 };
 const Plus  = () => <svg {...ICON_PROPS}><path d="M12 5v14M5 12h14"/></svg>;
 const Minus = () => <svg {...ICON_PROPS}><path d="M5 12h14"/></svg>;
-const Bookmark = ({ filled }) => (
-  <svg {...ICON_PROPS} fill={filled?'currentColor':'none'} strokeWidth={filled?0:1.2}>
-    <path d="M6 4a1 1 0 011-1h10a1 1 0 011 1v17l-6-4-6 4V4z"/>
+const Save  = ({ filled }) => (
+  // Flag shape — vertical pole + triangular flag. All straight lines, no
+  // curves. When filled, the flag area fills with currentColor.
+  <svg {...ICON_PROPS}>
+    <path d="M7 4v17"/>
+    <path d="M7 4l11 4-11 4" fill={filled?'currentColor':'none'}/>
   </svg>
 );
 const Share = () => (
+  // Two strokes only: a diagonal line and an L-shaped arrowhead.
   <svg {...ICON_PROPS}>
-    <path d="M12 3v13M7 8l5-5 5 5M5 14v6a1 1 0 001 1h12a1 1 0 001-1v-6"/>
+    <path d="M7 17L17 7"/>
+    <path d="M9 7h8v8"/>
   </svg>
 );
 
@@ -109,7 +118,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
           onClick={() => { Sound.tap(); onHide?.(item); }}
         ><Minus /></button>
         <button className={`util-btn ${isSaved?'on':''}`} aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>
-          <Bookmark filled={isSaved} />
+          <Save filled={isSaved} />
         </button>
         <button className="util-btn" aria-label="مشاركة" onClick={()=>{Sound.share();shareArticle(item);}}>
           <Share />

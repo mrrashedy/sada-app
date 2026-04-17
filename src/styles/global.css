@@ -106,15 +106,16 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .pname-btn{
   background:none;border:none;padding:0;margin:0;cursor:pointer;
   font-family:var(--ft);
-  display:inline-flex;align-items:center;gap:0;
+  display:inline-flex;align-items:center;gap:6px;
   border-radius:6px;
   transition:color .15s,filter .15s;
 }
 .pname-btn:hover .pname{color:var(--or);filter:drop-shadow(0 0 4px rgba(255,109,0,.4))}
 .pname-btn:active .pname{color:var(--or);filter:drop-shadow(0 0 7px rgba(255,109,0,.65))}
-/* Favicon trails the source name. margin-inline-start places the gap
-   on the side closest to the name (the visual LEFT in RTL, RIGHT in LTR). */
-.pname-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;margin-inline-start:6px;margin-left:0;filter:grayscale(.7) contrast(1.15)}
+/* Favicon (now icon-before-name): no margin — gap handled by the
+   .pname-btn flex container so the spacing is symmetric and doesn't
+   overlap the source name text. */
+.pname-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;filter:grayscale(.7) contrast(1.15);flex-shrink:0}
 .pflags{display:inline-flex;align-items:center;gap:2px;margin-right:5px;vertical-align:middle}
 .pflag{width:12px;height:12px;border-radius:50%;object-fit:cover;vertical-align:middle}
 .ptime{font-size:10px;color:var(--t4);margin-right:6px;display:inline-flex;align-items:center;gap:4px;letter-spacing:.2px}

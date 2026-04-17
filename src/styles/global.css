@@ -40,7 +40,8 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .tabs{display:flex;border-bottom:.5px solid var(--g1);flex-shrink:0}
 .tab{flex:1;text-align:center;padding:11px 0;font-size:13px;font-weight:500;color:var(--t4);cursor:pointer;background:none;border:none;font-family:var(--ft);position:relative;transition:color .2s}
 .tab.on{color:var(--bk);font-weight:700}
-.tab.on::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--bk);border-radius:1px}
+/* Active tab underline shifts to orange — orange marks "where action lives." */
+.tab.on::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--or);border-radius:1px}
 
 /* Stories row */
 .stories{display:flex;gap:10px;padding:10px 28px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
@@ -65,23 +66,27 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .content.content-full{padding-top:0;padding-bottom:0}
 
 /* Post card */
-.post{padding:5px 14px 3px 14px;border-bottom:.5px solid var(--g1);overflow:hidden}
+/* CHRLS-inspired: more breathing room (10/16/8 was 5/14/3), faint warm
+   tint (almost imperceptible) elevates the card off the page background. */
+.post{padding:10px 16px 8px 16px;border-bottom:.5px solid var(--g1);overflow:hidden;background:rgba(255,109,0,.012)}
 .post .ptitle,.post .pbody,.post .strap,.post .pactions{margin-left:10px}
 .post .strap{margin-left:12px}
 .ph{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .pav{width:34px;height:34px;border-radius:50%;border:1px solid var(--g1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--t1);background:var(--bg);flex-shrink:0}
 .pinfo{flex:1;min-width:0}
-.pname{font-size:13px;font-weight:600;color:var(--t3)}
+/* Source name + time-ago shift to system mono — CHRLS-style "metadata as
+   technical label" treatment. Falls back gracefully for Arabic glyphs. */
+.pname{font-size:12px;font-weight:600;color:var(--t3);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.2px}
 .pname-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;margin-left:6px;filter:grayscale(.7) contrast(1.15)}
 .pflags{display:inline-flex;align-items:center;gap:2px;margin-right:5px;vertical-align:middle}
 .pflag{width:12px;height:12px;border-radius:50%;object-fit:cover;vertical-align:middle}
-.ptime{font-size:11px;color:var(--t4);margin-right:6px;display:inline-flex;align-items:center;gap:4px}
+.ptime{font-size:10px;color:var(--t4);margin-right:6px;display:inline-flex;align-items:center;gap:4px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:.2px}
 .ptime-dot{width:6px;height:6px;border-radius:50%;background:var(--rd);flex-shrink:0;animation:hp 1.2s ease infinite}
 .ptag{display:inline-block;font-size:10px;font-weight:600;color:var(--or);border:1px solid rgba(255,109,0,.2);padding:2px 9px;border-radius:6px;letter-spacing:.3px}
 .ptag.brk{color:var(--rd);border-color:rgba(211,47,47,.2)}
 /* Inline tag variant — flows with the body text so the last line of the body
    can carry tags when there's room, saving vertical space in the card. */
-.ptag-inline{padding:1px 7px;margin-inline-start:6px;font-size:9px;vertical-align:middle;line-height:1.4}
+.ptag-inline{padding:1px 7px;margin-inline-start:6px;font-size:9px;vertical-align:middle;line-height:1.4;letter-spacing:.6px;font-weight:700}
 /* Country tags — neutral gray, distinct from the orange topic tags so the
    eye separates "where" from "what" without color overload. */
 .ptag-country{color:var(--t2);border-color:var(--g1);background:var(--f1)}
@@ -110,7 +115,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .bnav{display:flex;align-items:center;border-top:.5px solid var(--g1);padding:14px 0 max(22px, env(safe-area-inset-bottom, 22px));position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1)}
 .bnav-hide{transform:translateY(100%)}
 .bnav-item{flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;background:none;border:none;color:var(--t4);font-family:var(--ft);padding:6px 0;transition:color .2s}
-.bnav-item.on{color:var(--bk)}
+.bnav-item.on{color:var(--or)}
 .bnav-icon{display:inline-flex;align-items:center;justify-content:center}
 .bnav-item:not(.bnav-center) .bnav-icon svg{width:24px;height:24px}
 

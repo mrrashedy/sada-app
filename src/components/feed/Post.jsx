@@ -4,8 +4,20 @@ import { useTick } from '../../hooks/useTick';
 import { liveTimeAgo } from '../../lib/timeAgo';
 import { Sound } from '../../lib/sounds';
 import { shareArticle } from '../../lib/shareCard';
-import { ReactionBar } from '../social/ReactionBar';
 import { countryName } from '../../lib/countryFlags';
+
+// Up/down arrows inline — kept here instead of in Icons.jsx so the action
+// row of Post.jsx tells its own story without spelunking another file.
+const ArrowUp = ({ filled }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={filled ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 19V5M5 12l7-7 7 7"/>
+  </svg>
+);
+const ArrowDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 5v14M19 12l-7 7-7-7"/>
+  </svg>
+);
 
 const PERSON_RE = /رئيس|وزير|نائب|أمير|ملك|سفير|قائد|أمين|زعيم|قاض|مبعوث|صرّح|صرح|أعلن|أكد|قال|يقول|طالب|دعا|أردوغان|ترامب|بايدن|نتنياهو|بوتين|ماكرون|زيلينسكي|بن سلمان/;
 
@@ -19,7 +31,7 @@ function clean(s) {
     .replace(/&[a-z]+;/gi,' ').replace(/<[^>]*>/g,'').trim();
 }
 
-export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, showImg, reactionCounts, userReactions, onToggleReaction, commentCount, onComment }) {
+export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, showImg }) {
   useTick(1000);
   const isPerson = showImg && item.realImg && PERSON_RE.test(item.title || '');
 
@@ -74,9 +86,24 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
         </div>
       )}
       <div className="pactions">
-        <ReactionBar articleId={item.id} counts={reactionCounts} userReactions={userReactions} onToggle={onToggleReaction} commentCount={commentCount} onComment={()=>onComment?.(item)} compact />
-        <button className="act" onClick={()=>{Sound.share();shareArticle(item);}}>{I.share()}</button>
-        <button className={`act ${isSaved?'saved':''}`} onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>{I.bookmark(isSaved)}</button>
+        {/* Up = mark as important (toggleInterest). Filled state when active. */}
+        <button
+          className={`act ${isInterested?'important':''}`}
+          aria-label="مهم"
+          onClick={() => { isInterested ? Sound.unsave() : Sound.save(); onInterest?.(item); }}
+        >
+          <ArrowUp filled={isInterested} />
+        </button>
+        {/* Down = remove from feed (toggleHide). Single-shot dismissal. */}
+        <button
+          className="act"
+          aria-label="غير مهم"
+          onClick={() => { Sound.tap(); onHide?.(item); }}
+        >
+          <ArrowDown />
+        </button>
+        <button className="act" aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>{I.bookmark(isSaved)}</button>
+        <button className="act" aria-label="مشاركة" onClick={()=>{Sound.share();shareArticle(item);}}>{I.share()}</button>
       </div>
     </div>
   );

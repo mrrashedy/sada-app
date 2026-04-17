@@ -107,6 +107,10 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .act.liked svg{animation:hp .3s ease}
 .act.interested{color:var(--rd)}
 .act.interested svg{animation:hp .3s ease}
+/* Up-arrow active state — 'مهم' marked. Brand orange + small bounce. */
+.act.important{color:var(--or)}
+.act.important svg{animation:hp .3s ease}
+.act.saved{color:var(--or)}
 .act.saved{color:var(--bk)}
 
 /* Bottom nav */

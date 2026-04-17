@@ -120,6 +120,19 @@ export default function Sada() {
   // Learned interests — tags the user cares about, with weights
   const [interests, setInterests] = useState(() => { try { return JSON.parse(localStorage.getItem('sada-interests')||'{}'); } catch { return {}; } });
   const [interestedIds, setInterestedIds] = useState(() => { try { const s=localStorage.getItem('sada-interested'); return s?new Set(JSON.parse(s)):new Set(); } catch { return new Set(); } });
+  // hiddenIds — items the user dismissed via the down-arrow (غير مهم).
+  // They get filtered out of allFeed and never re-appear, even on refetch
+  // (the filter runs after the API response is merged into displayed feed).
+  // Persisted to localStorage so dismissals survive reload.
+  const [hiddenIds, setHiddenIds] = useState(() => { try { const s=localStorage.getItem('sada-hidden'); return s?new Set(JSON.parse(s)):new Set(); } catch { return new Set(); } });
+  const toggleHide = useCallback((item) => {
+    setHiddenIds(prev => {
+      const next = new Set(prev);
+      next.add(item.id);
+      try { localStorage.setItem('sada-hidden', JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
   const toggleInterest = useCallback((item) => {
     const id = item.id;
     setInterestedIds(prev => {
@@ -477,7 +490,14 @@ export default function Sada() {
   }, [rawTrending, radarOverrides, applyRadarOverrides]);
 
   // Filter by enabled sources
-  const sourcedFeed = allFeed.filter(item => { const sid=item.s?.id; return !sid || sources[sid]!==false; });
+  // Filter out: (a) sources the user muted, (b) individual items the user
+  // dismissed via the down-arrow. Hidden items never re-appear, even after
+  // the API re-merges them.
+  const sourcedFeed = allFeed.filter(item => {
+    if (hiddenIds.has(item.id)) return false;
+    const sid = item.s?.id;
+    return !sid || sources[sid] !== false;
+  });
   const userTopics = userPrefs.topics||[];
 
   // Client-side flagship boost REMOVED per user request — pure recency only.
@@ -697,7 +717,7 @@ export default function Sada() {
           {!loading&&displayFeed.length===0&&feedTab==='important'&&userTopics.length===0&&Object.keys(interests).length===0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>اضغط "يهمني" على الأخبار لتعليم التطبيق ما يهمك</div>}
           {!loading&&displayFeed.length===0&&feedTab==='important'&&userTopics.length>0&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار تطابق اهتماماتك حالياً</div>}
           {!loading&&displayFeed.length===0&&feedTab==='now'&&<div style={{ padding:'40px 20px',textAlign:'center',color:'var(--t4)',fontSize:13 }}>لا توجد أخبار عاجلة حالياً</div>}
-          {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={`${item.id}-${i}`} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} onInterest={toggleInterest} isInterested={interestedIds.has(item.id)} showImg={i>=4&&i%4!==3} reactionCounts={reactionCounts[item.id]} userReactions={userReactions[item.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[item.id]?.comment||0} onComment={handleComment}/>))}
+          {!loading&&displayFeed.slice(0,visibleCount).map((item,i)=>(<Post key={`${item.id}-${i}`} item={item} delay={i<20?i*.04:0} onOpen={setArticle} onSave={toggleSave} isSaved={savedIds.has(item.id)} onInterest={toggleInterest} isInterested={interestedIds.has(item.id)} onHide={toggleHide} showImg={i>=4&&i%4!==3}/>))}
           {!loading&&visibleCount<displayFeed.length&&(<div className="load-more"><div className="spinner" style={{ width:18,height:18,border:'2px solid var(--g2)',borderTopColor:'var(--t3)',borderRadius:'50%',animation:'spin .6s linear infinite',margin:'0 auto' }}/></div>)}
           <div style={{ height:20 }}/>
         </>)}

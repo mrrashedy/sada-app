@@ -52,7 +52,7 @@ function clean(s) {
     .replace(/&[a-z]+;/gi,' ').replace(/<[^>]*>/g,'').trim();
 }
 
-export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, showImg }) {
+export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, onSelectSource, showImg }) {
   useTick(1000);
   // 'hiding' transient state — true between the user's تجاهل tap and the
   // moment we call onHide() to actually remove the item from the feed.
@@ -85,8 +85,19 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
     <div className={`post${item._new ? ' post-new' : ''}${hiding ? ' post-hiding' : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
       <div className="ph">
         <div className="pinfo">
-          {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
-          <span className="pname">{item.s.n}</span>
+          {/* Source logo + name as a single clickable target — tapping it
+              activates the source filter on the strip above (and scrolls
+              to top), so a tap on الجزيرة inside any post highlights its
+              ring up top and shows only its items in the feed. */}
+          <button
+            type="button"
+            className="pname-btn"
+            onClick={(e) => { e.stopPropagation(); onSelectSource?.(item.s.n); }}
+            aria-label={`عرض أخبار ${item.s.n}`}
+          >
+            {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
+            <span className="pname">{item.s.n}</span>
+          </button>
           {/* Wire-service dateline — full Arabic country names between the
               source and the time, flanked by hairline pipes. Reads as a
               press-bureau filing tag. */}

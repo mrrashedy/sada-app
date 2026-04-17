@@ -756,20 +756,33 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
       return res;
     } finally { clearTimeout(t); }
   };
+  // Aggressive retry: Google News from CF edge IPs is throttled and slow
+  // (often 15-25s, sometimes 30s+). Sources whose ONLY upstream is a GN
+  // proxy (france24, lbci, almamlaka, daraj, cnn_biz_ar...) were dropping
+  // to zero items because a single 15s timeout killed the whole fetch.
+  // New budget: 25s primary, 20s retry #1, 15s retry #2. Worst case ~60s
+  // per feed but bounded; the slowest source defines aggregateFeeds() time.
+  const isGN = (u) => u.includes('news.google.com');
   const fetchWithRetry = async (feedUrl) => {
-    try {
-      const res = await fetchOnce(feedUrl, 15000);
-      if (res.ok) return res;
-      if (res.status >= 500) {
-        // server-side hiccup — one retry
-        return await fetchOnce(feedUrl, 10000).catch(() => res);
+    const t1 = isGN(feedUrl) ? 25000 : 15000;
+    const t2 = isGN(feedUrl) ? 20000 : 12000;
+    const t3 = isGN(feedUrl) ? 15000 :  8000;
+    let lastErr = null;
+    let lastRes = null;
+    for (const t of [t1, t2, t3]) {
+      try {
+        const res = await fetchOnce(feedUrl, t);
+        lastRes = res;
+        if (res.ok) return res;
+        if (res.status < 500) return res;  // 4xx — don't retry
+        // 5xx falls through to next attempt
+      } catch (err) {
+        lastErr = err;
+        // AbortError / network — try again with smaller budget
       }
-      return res;
-    } catch (err) {
-      // network error / abort — one retry
-      try { return await fetchOnce(feedUrl, 10000); }
-      catch { throw err; }
     }
+    if (lastRes) return lastRes;
+    throw lastErr || new Error('fetch failed');
   };
   const fetches = sourcesForKind(kind).flatMap(([id, source]) => {
     return (source.feeds || []).map(async (feedUrl) => {
@@ -856,8 +869,12 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
   const preFiltered = allItems
     .filter(i => !isGoogleNewsChannelTitle(i))
     .filter(i => {
-      const ts = i.timestamp || 0;
-      if (!ts) return true; // keep items without a timestamp (rare; don't punish)
+      const ts = i.timestamp;
+      // Keep items with no timestamp / unparseable date (rare; don't punish).
+      // NaN check matters: `new Date('bad-date').getTime()` returns NaN and
+      // comparisons against NaN are always false, which would silently drop
+      // the item. Outlets like elkhabar sometimes ship malformed pubDates.
+      if (!ts || Number.isNaN(ts)) return true;
       const age = _freshNow - ts;
       return age >= 0 && age <= FRESHNESS_WINDOW_MS;
     });
@@ -1071,6 +1088,14 @@ function buildPayload(data, layer, limit, cacheMeta) {
   const curatedFeed = applyAdminLayer(data.feed, layer);
   // Recompute breaking from curated feed so manual is_breaking items + override hides are reflected
   const breaking = curatedFeed.filter(f => f.isBreaking).slice(0, 20);
+  // Diagnostic: per-source item counts. Lets us see at a glance which
+  // sources are silently dropping (timeouts, empty feeds, etc.) without
+  // having to scrape the full payload. Returned on every response.
+  const _bySource = {};
+  for (const it of curatedFeed) {
+    const sid = it.s?.id || it.sourceId || '?';
+    _bySource[sid] = (_bySource[sid] || 0) + 1;
+  }
   return {
     ok: true,
     count: Math.min(curatedFeed.length, limit),
@@ -1079,6 +1104,7 @@ function buildPayload(data, layer, limit, cacheMeta) {
     breaking,
     radarOverrides: layer?.radarOverrides || [],
     _cache: cacheMeta,
+    _bySource,
   };
 }
 

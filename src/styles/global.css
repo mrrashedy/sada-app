@@ -1,11 +1,6 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-/* Silver palette — cool neutral grays replace the previous warm cream scheme.
-   Orange accent (--or) intentionally preserved as brand contrast against the
-   cool tones (works exactly the same as before for .ptag, .s-ring, تحديث pill).
-   To revert to the warm palette, swap the bg/f1/g1/g2/t* tokens back to the
-   #F8F6F1 / #EEECE7 / #E0DED8 / #D0CEC8 / #1A1A1A / #3D3D3D / etc. set. */
-:root{--bg:#F3F4F6;--f1:#E9EBED;--g1:#D9DCDF;--g2:#C5C9CD;--t1:#1F2328;--t2:#444A52;--t3:#787E85;--t4:#A8ACB0;--bk:#1F2328;--rd:#D32F2F;--bl:#1565C0;--gn:#2E7D32;--or:#FF6D00;--ft:-apple-system,"SF Arabic","SF Pro Arabic",system-ui,sans-serif}
-[data-theme="dark"]{--bg:#0F1115;--f1:#181B20;--g1:rgba(255,255,255,.07);--g2:rgba(255,255,255,.12);--t1:#E8EBEE;--t2:#A0A4A8;--t3:#686B70;--t4:#3B3E42;--bk:#E8EBEE;--rd:#EF5350;--bl:#42A5F5;--gn:#66BB6A;--or:#FFA040}
+:root{--bg:#F8F6F1;--f1:#EEECE7;--g1:#E0DED8;--g2:#D0CEC8;--t1:#1A1A1A;--t2:#3D3D3D;--t3:#757575;--t4:#A8A8A8;--bk:#1A1A1A;--rd:#D32F2F;--bl:#1565C0;--gn:#2E7D32;--or:#FF6D00;--ft:-apple-system,"SF Arabic","SF Pro Arabic",system-ui,sans-serif}
+[data-theme="dark"]{--bg:#0E0E0E;--f1:#161616;--g1:rgba(255,255,255,.08);--g2:rgba(255,255,255,.13);--t1:#ECEAE5;--t2:#A8A6A0;--t3:#686664;--t4:#3A3A38;--bk:#ECEAE5;--rd:#EF5350;--bl:#42A5F5;--gn:#66BB6A;--or:#FFA040}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{0%{opacity:0;transform:translateY(-16px)}60%{opacity:1;transform:translateY(0)}100%{opacity:1;transform:translateY(0)}}
 /* .post-new animation disabled — was causing flicker on every poll under

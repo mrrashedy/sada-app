@@ -588,7 +588,12 @@ export default function Sada() {
               Threshold: >=5 so trickle updates don't pop a banner. Subtle
               frosted-glass chip matching the app's dark palette. */}
           {pendingCount>=5 && !isAtTop && (
-            <div style={{ position:'sticky', top:8, zIndex:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
+            // Fixed (not sticky) so the pill sits at a predictable viewport
+            // offset just below the header bar — sticky inside .content was
+            // landing mid-screen depending on internal padding/strip heights.
+            // Centered on viewport which coincides with the centered .app
+            // container on desktop and is always-centered on mobile.
+            <div style={{ position:'fixed', top:64, left:'50%', transform:'translateX(-50%)', zIndex:50, pointerEvents:'none' }}>
               <button
                 onClick={() => {
                   Sound.tap();

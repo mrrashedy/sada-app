@@ -530,6 +530,16 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       elNodes.forEach(n => {
         n.style.display = lowZoom ? 'none' : '';
       });
+      // Also hide the WebGL truth circles at high zoom so HTML hologram
+      // markers are the only thing visible there — no duplication.
+      try {
+        if (map.getLayer('spots-core')) {
+          map.setLayoutProperty('spots-core', 'visibility', lowZoom ? 'visible' : 'none');
+        }
+        if (map.getLayer('spots-glow')) {
+          map.setLayoutProperty('spots-glow', 'visibility', lowZoom ? 'visible' : 'none');
+        }
+      } catch {}
     };
     applyZoomClass();
     map.on('zoom', applyZoomClass);

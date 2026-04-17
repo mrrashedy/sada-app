@@ -1,0 +1,28 @@
+name: Warm Feed Cache
+
+on:
+  schedule:
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: warm-feed-cache
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Warm news pool
+        run: |
+          curl -sS --max-time 60 -o /dev/null -w 'news:  HTTP=%{http_code} time=%{time_total}s\n' \
+            'https://101n.app/api/feeds?kind=news&refresh=1'
+      - name: Warm map pool
+        run: |
+          curl -sS --max-time 60 -o /dev/null -w 'map:   HTTP=%{http_code} time=%{time_total}s\n' \
+            'https://101n.app/api/feeds?kind=map&refresh=1'
+      - name: Warm radar pool
+        run: |
+          curl -sS --max-time 60 -o /dev/null -w 'radar: HTTP=%{http_code} time=%{time_total}s\n' \
+            'https://101n.app/api/feeds?kind=radar&refresh=1'

@@ -6,11 +6,36 @@ import { Sound } from '../../lib/sounds';
 import { shareArticle } from '../../lib/shareCard';
 import { countryName } from '../../lib/countryFlags';
 
-// No icons. The card actions read as words because the card already has
-// enough visual noise (logo, image, tags). Two binary-opinion buttons
-// carry tiny directional markers (▲ / ▼) so the UP/DOWN polarity is
-// instantly readable. Two utility actions (save / share) are just text
-// links — they're verbs, not opinions.
+// All four .act icons inlined locally with identical geometry — same
+// 18×18 viewBox, same 1.7 stroke, same round linecap + linejoin. Filled
+// state for the up-arrow uses a stroke-width bump (no fills), keeping
+// the visual language consistent.
+const STROKE = 1.7;
+const SVG_PROPS = {
+  width: 18, height: 18, viewBox: '0 0 24 24',
+  fill: 'none', stroke: 'currentColor',
+  strokeLinecap: 'round', strokeLinejoin: 'round',
+};
+const ArrowUp = ({ filled }) => (
+  <svg {...SVG_PROPS} strokeWidth={filled ? STROKE + 0.6 : STROKE}>
+    <path d="M12 20V5M6 11l6-6 6 6"/>
+  </svg>
+);
+const ArrowDown = () => (
+  <svg {...SVG_PROPS} strokeWidth={STROKE}>
+    <path d="M12 4v15M18 13l-6 6-6-6"/>
+  </svg>
+);
+const Bookmark = ({ filled }) => (
+  <svg {...SVG_PROPS} strokeWidth={filled ? STROKE + 0.6 : STROKE}>
+    <path d="M6 4a1 1 0 011-1h10a1 1 0 011 1v17l-6-4-6 4V4z"/>
+  </svg>
+);
+const Share = () => (
+  <svg {...SVG_PROPS} strokeWidth={STROKE}>
+    <path d="M12 3v13M7 8l5-5 5 5M5 14v6a1 1 0 001 1h12a1 1 0 001-1v-6"/>
+  </svg>
+);
 
 const PERSON_RE = /رئيس|وزير|نائب|أمير|ملك|سفير|قائد|أمين|زعيم|قاض|مبعوث|صرّح|صرح|أعلن|أكد|قال|يقول|طالب|دعا|أردوغان|ترامب|بايدن|نتنياهو|بوتين|ماكرون|زيلينسكي|بن سلمان/;
 
@@ -78,42 +103,29 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
           <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 30%',display:'block' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
         </div>
       )}
-      <div className="pactions pactions-text">
-        {/* OPINION pair — chunky text buttons with polarity markers.
-            Visually grouped by background tint (subtle pill).            */}
-        <div className="pactions-opinion">
-          <button
-            className={`act-text ${isInterested ? 'on' : ''}`}
-            aria-label="مهم"
-            onClick={() => { isInterested ? Sound.unsave() : Sound.save(); onInterest?.(item); }}
-          >
-            <span className="act-mark">▲</span>مهم
-          </button>
-          <button
-            className="act-text act-text-down"
-            aria-label="تجاهل"
-            onClick={() => { Sound.tap(); onHide?.(item); }}
-          >
-            <span className="act-mark">▼</span>تجاهل
-          </button>
-        </div>
-        {/* UTILITY pair — plain text links. Verbs, not opinions. */}
-        <div className="pactions-util">
-          <button
-            className={`act-link ${isSaved ? 'on' : ''}`}
-            aria-label="حفظ"
-            onClick={() => { isSaved ? Sound.unsave() : Sound.save(); onSave(item.id); }}
-          >
-            {isSaved ? 'محفوظ' : 'حفظ'}
-          </button>
-          <button
-            className="act-link"
-            aria-label="مشاركة"
-            onClick={() => { Sound.share(); shareArticle(item); }}
-          >
-            مشاركة
-          </button>
-        </div>
+      <div className="pactions">
+        {/* Up = mark as important (toggleInterest). Filled state when active. */}
+        <button
+          className={`act ${isInterested?'important':''}`}
+          aria-label="مهم"
+          onClick={() => { isInterested ? Sound.unsave() : Sound.save(); onInterest?.(item); }}
+        >
+          <ArrowUp filled={isInterested} />
+        </button>
+        {/* Down = remove from feed (toggleHide). Single-shot dismissal. */}
+        <button
+          className="act"
+          aria-label="غير مهم"
+          onClick={() => { Sound.tap(); onHide?.(item); }}
+        >
+          <ArrowDown />
+        </button>
+        <button className={`act ${isSaved?'saved':''}`} aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>
+          <Bookmark filled={isSaved} />
+        </button>
+        <button className="act" aria-label="مشاركة" onClick={()=>{Sound.share();shareArticle(item);}}>
+          <Share />
+        </button>
       </div>
     </div>
   );

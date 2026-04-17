@@ -579,7 +579,7 @@ export default function Sada() {
       {/* Header */}
       {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
         <div className="hdr-top">
-          <div className="logo"><span className="logo-icon">غ</span>غرفة الأخبار</div>
+          <div className="logo"><img src="/logo.svg" alt="غرفة الأخبار" className="logo-img" onError={e=>{e.currentTarget.src='/logo.png';}}/></div>
           <div className="hdr-r">
             <button className="ib" onClick={()=>{Sound.tap();setSrch(true);}}>{I.search()}</button>
             <button className="ib" onClick={handleHeaderRefresh}>{I.globe()}</button>

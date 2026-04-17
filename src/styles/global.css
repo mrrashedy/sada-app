@@ -27,8 +27,12 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .hdr{position:fixed;top:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1)}
 .hdr-top{display:flex;justify-content:space-between;align-items:center;padding:max(12px, env(safe-area-inset-top, 12px)) 28px 10px}
 .hdr-hide{transform:translateY(-100%)}
-.logo{font-size:17px;font-weight:800;letter-spacing:-.3px;display:flex;align-items:center;gap:7px}
-.logo-icon{width:28px;height:28px;background:var(--bk);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;border-radius:8px;letter-spacing:0;flex-shrink:0}
+.logo{display:flex;align-items:center}
+/* Custom logo image — height-bound so it scales on the header. The
+   image's intrinsic aspect ratio is preserved by width:auto. Color
+   inverts on dark theme via filter. */
+.logo-img{height:28px;width:auto;display:block}
+[data-theme="dark"] .logo-img{filter:invert(1)}
 .hdr-r{display:flex;gap:16px;align-items:center}
 .ib{background:none;border:none;cursor:pointer;color:var(--t1);padding:2px;display:flex;align-items:center}
 .ib:active{opacity:.35}

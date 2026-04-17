@@ -7,19 +7,25 @@
    pure-recency sort. Items still get the _new flag in state in case other
    UI wants it, but no visual animation fires. */
 .post-new{}
-/* Elegant fall-away when the user hits تجاهل (−). Slight rise, then
-   slide down + tilt + scale + fade. Pointer events disabled during the
-   animation so taps don't register on a leaving card. */
+/* Elegant fall-away when the user hits تجاهل (−).
+   Three-phase choreography (700 ms total):
+     0-15%  — gentle rise (4 px up, slight scale-up) — leaf catches air
+     15-30% — pause / settle into the fall
+     30-100% — slow tilt back (perspective rotateX), drift down, scale,
+              gentle blur, fade to zero, height/padding collapse
+   ease-out-quart curve gives the long graceful tail.                 */
 @keyframes fallAway{
-  0%   { opacity:1; transform:translateY(0) rotate(0) scale(1); max-height:600px; }
-  20%  { opacity:1; transform:translateY(-6px) rotate(0) scale(1); }
-  100% { opacity:0; transform:translateY(70px) rotate(-2.5deg) scale(.94); max-height:0; padding-top:0; padding-bottom:0; margin:0; border-color:transparent; }
+  0%   { opacity:1; transform:perspective(900px) translateY(0) rotateX(0) rotate(0) scale(1); max-height:600px; filter:blur(0); }
+  15%  { opacity:1; transform:perspective(900px) translateY(-4px) rotateX(0) rotate(0) scale(1.003); }
+  30%  { opacity:.98; transform:perspective(900px) translateY(0) rotateX(2deg) rotate(-.3deg) scale(1); }
+  100% { opacity:0; transform:perspective(900px) translateY(72px) rotateX(18deg) rotate(-1.6deg) scale(.93); max-height:0; padding-top:0; padding-bottom:0; margin:0; border-color:transparent; filter:blur(2px); }
 }
 .post-hiding{
-  animation:fallAway .38s cubic-bezier(.45,.05,.55,.95) forwards;
+  animation:fallAway .7s cubic-bezier(.22,.61,.36,1) forwards;
   pointer-events:none;
   overflow:hidden;
-  transform-origin:50% 30%;
+  transform-origin:50% 20%;
+  will-change:transform,opacity,max-height,filter;
 }
 @keyframes hp{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
 @keyframes fi{from{opacity:0}to{opacity:1}}
@@ -36,7 +42,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Header */
 /* Live indicator breathing pulse */
 @keyframes livePulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.6}}
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--gn);animation:livePulse 2s ease infinite;flex-shrink:0}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--rd);animation:livePulse 2s ease infinite;flex-shrink:0}
 
 .hdr{position:fixed;top:0;left:0;right:0;max-width:430px;margin:0 auto;background:var(--bg);z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1)}
 .hdr-top{display:flex;justify-content:space-between;align-items:center;padding:max(12px, env(safe-area-inset-top, 12px)) 28px 10px}

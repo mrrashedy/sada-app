@@ -351,8 +351,8 @@ export default function Sada() {
       id: item.id||`i-${i}`, s: { n:item.source?.name||'مصدر', i:item.source?.initial||'؟', id:sid, domain:srcMeta?.domain, logo:srcMeta?.logo, tier:item.source?.tier },
       t: item.time||'الآن', pubTs: item.timestamp || (Date.now() - i*60000),
       title: item.title,
-      body: ((b) => { if (!b) return null; return b.replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,800)||null; })(item.body),
-      brief: ((b) => { if (!b) return null; b=b.replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim(); if (b.length<=180) return b||null; const sub=b.slice(0,180); const sent=Math.max(sub.lastIndexOf('. '),sub.lastIndexOf('。'),sub.lastIndexOf('؟ '),sub.lastIndexOf('! '),sub.lastIndexOf('.\n')); if (sent>60) return b.slice(0,sent+1).trim()||null; const word=sub.lastIndexOf(' '); return (word>60?b.slice(0,word):sub).trim()||null; })(item.body),
+      body: ((b) => { if (!b) return null; return b.replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim().slice(0,1800)||null; })(item.body),
+      brief: ((b) => { if (!b) return null; b=b.replace(/https?:\/\/\S+/g,'').replace(/&[a-z#0-9]+;/g,' ').replace(/\s+/g,' ').trim(); if (b.length<=180) return b||null; const sub=b.slice(0,180); const sent=Math.max(sub.lastIndexOf('. '),sub.lastIndexOf('، '),sub.lastIndexOf(', ')); if (sent>60) return b.slice(0,sent+1).trim()||null; return null; })(item.body),
       realImg: item.image||null, link: item.link,
       tag: item.categories?.[0]||null, tags: allTags,
       brk: item.categories?.[0]==='عاجل'||!!item.title?.includes('عاجل'),
@@ -690,7 +690,7 @@ export default function Sada() {
 
         {nav==='radar'   && <RadarView trending={trending} allFeed={radarItems.length ? radarItems : allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}} onRefresh={radarRefresh || refresh} refreshing={loading}/>}
         {nav==='depth'   && <DepthFeed onOpen={setDepthDoc}/>}
-        {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={mapItems.length ? mapItems : allFeed}/>}
+        {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}
         {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}
         {nav==='settings'&& <SettingsView sources={sources} toggleSource={toggleSource} userPrefs={userPrefs} onUpdatePrefs={updatePrefs} onResetPrefs={resetPrefs} theme={theme} toggleTheme={toggleTheme} auth={auth} onOpenAuth={()=>setShowAuth(true)} onOpenProfile={()=>setShowProfile(true)} onOpenAdmin={()=>setNav('admin')}/>}
         {nav==='admin'   && <AdminPanel onClose={()=>setNav('settings')}/>}
@@ -715,7 +715,7 @@ export default function Sada() {
       }}><span className="bnav-icon">{item.icon(false)}</span></button>))}</div>}
 
       {/* Overlays */}
-      {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} onOpenRelated={(r)=>{setArticle(null);setTimeout(()=>setArticle(r),50);}} relatedArticles={allFeed}/>}
+      {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} onOpenRelated={(r)=>{setArticle(null);setTimeout(()=>setArticle(r),50);}} onOpenRadar={(tag)=>{setArticle(null);setNav('radar');}} relatedArticles={allFeed}/>}
       {depthDoc&&<DepthDetail doc={depthDoc} onClose={()=>{Sound.close();setDepthDoc(null);}}/>}
       {srch&&<SearchView onClose={()=>{Sound.close();setSrch(false);}} feed={allFeed} onOpen={setArticle} onOpenProfile={id=>{ setSrch(false); setProfileUserId(id); }}/>}
       {notifs&&<NotificationPanel allFeed={allFeed} onClose={()=>{Sound.close();setNotifs(false);}} onOpen={setArticle}/>}

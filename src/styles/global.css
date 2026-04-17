@@ -64,18 +64,15 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .content{
   flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
   padding-top:95px;padding-bottom:70px;overflow-anchor:auto;
-  /* Geopolitical texture — diagonal cross-hatch evoking old atlas /
-     engraving prints. ~3% opacity total. Two diagonal directions at 45°
-     and -45° create a subtle weave. Reads as 'printed on paper.' */
+  /* Geopolitical texture — dotted half-tone, evoking newsprint or
+     atlas stipple. Tiny dots (~1px) on a 14px grid at 3.5% opacity.
+     Reads as 'printed paper' rather than 'designed pattern.' */
   background-color:var(--bg);
-  background-image:
-    repeating-linear-gradient(45deg, transparent 0, transparent 7px, rgba(0,0,0,.018) 7px, rgba(0,0,0,.018) 8px),
-    repeating-linear-gradient(-45deg, transparent 0, transparent 7px, rgba(0,0,0,.018) 7px, rgba(0,0,0,.018) 8px);
+  background-image:radial-gradient(circle at center, rgba(0,0,0,.035) 0.7px, transparent 1.2px);
+  background-size:14px 14px;
 }
 [data-theme="dark"] .content{
-  background-image:
-    repeating-linear-gradient(45deg, transparent 0, transparent 7px, rgba(255,255,255,.022) 7px, rgba(255,255,255,.022) 8px),
-    repeating-linear-gradient(-45deg, transparent 0, transparent 7px, rgba(255,255,255,.022) 7px, rgba(255,255,255,.022) 8px);
+  background-image:radial-gradient(circle at center, rgba(255,255,255,.04) 0.7px, transparent 1.2px);
 }
 .post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}

@@ -230,7 +230,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
       const map = new ML.Map({
         container: mapContainerRef.current,
-        style: 'https://api.maptiler.com/maps/satellite-v4/style.json?key=4N5DoFylw84fAtpCt9kl',
+        style: 'https://api.maptiler.com/maps/dataviz-dark/style.json?key=4N5DoFylw84fAtpCt9kl',
         center: [38, 28], zoom: 3.2, pitch: 0, bearing: 0,
         minZoom: 1.8, maxZoom: 10,
         attributionControl: false, maxPitch: 0,
@@ -326,6 +326,60 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       map.on('load', () => {
         setMapReady(true);
 
+        // ── Clean dot layer ─────────────────────────────────
+        // Native WebGL circles — pixel-accurate at every zoom, no drift.
+        // Size and color scale with story count. No rings, no labels.
+        if (!map.getSource('spots')) {
+          map.addSource('spots', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+          });
+          // Soft halo
+          map.addLayer({
+            id: 'spots-halo',
+            type: 'circle',
+            source: 'spots',
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['get','n'],
+                1, 10, 5, 18, 15, 28, 40, 44],
+              'circle-color': '#ff8a1a',
+              'circle-blur': 0.9,
+              'circle-opacity': ['interpolate', ['linear'], ['get','n'],
+                1, 0.22, 40, 0.55],
+            },
+          });
+          // Solid dot
+          map.addLayer({
+            id: 'spots-dot',
+            type: 'circle',
+            source: 'spots',
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['get','n'],
+                1, 4, 5, 7, 15, 11, 40, 16],
+              'circle-color': ['interpolate', ['linear'], ['get','n'],
+                1, '#ffb56b', 5, '#ff9a3d', 15, '#ff7a14', 40, '#ff5a00'],
+              'circle-stroke-width': 1,
+              'circle-stroke-color': 'rgba(0,0,0,.45)',
+            },
+          });
+          map.on('click', 'spots-dot', (e) => {
+            const f = e.features && e.features[0];
+            if (!f) return;
+            const spotId = f.properties?.id;
+            const spot = spotsRef.current.find(s => s.id === spotId);
+            if (!spot) return;
+            try { map._idleStop && map._idleStop(); } catch {}
+            setSel(spot);
+            map.flyTo({
+              center:[spot.lng, spot.lat-1.2], zoom:6, pitch:0, bearing:0,
+              duration:1600,
+              easing: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
+            });
+          });
+          map.on('mouseenter', 'spots-dot', () => { map.getCanvas().style.cursor = 'pointer'; });
+          map.on('mouseleave', 'spots-dot', () => { map.getCanvas().style.cursor = ''; });
+        }
+
 
         // Click fallback for low-zoom (when DOM markers are small/clustered)
         map.on('click', (e) => {
@@ -374,85 +428,17 @@ export function NewsMap({ onClose, liveFeed=[] }) {
   // Editorial markers — simple dots sized by story count
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
-    const ML = window.maplibregl;
-    if (!ML) return;
     const map = mapRef.current;
-    const markers = [];
-
-    spots.forEach((spot) => {
-      const n = spot.stories.length;
-      // Holographic ring footprint — stays small enough that at low zoom
-      // the rings don't visibly spill into neighboring countries. The CENTER
-      // core dot is always the true capital coordinate.
-      const ringSize = Math.round(Math.max(32, Math.min(64, 28 + Math.sqrt(n) * 10)));
-      const coreSize = Math.max(7, Math.min(11, 5 + Math.sqrt(n) * 1.4));
-      const hue = 28; // warm orange hologram
-      const accent = `hsl(${hue}, 100%, 60%)`;
-      const accentSoft = `hsla(${hue}, 100%, 62%, .6)`;
-      const accentFaint = `hsla(${hue}, 100%, 62%, .2)`;
-      const hitSize = Math.max(28, ringSize * 0.55);
-
-      const el = document.createElement('div');
-      el.className = 'nm-marker';
-      // 1×1 anchor — MapLibre centers this single pixel on the lat/lng.
-      // All hologram chrome below is absolutely positioned relative to
-      // this point and visually overflows, but has no effect on where
-      // MapLibre thinks the marker is. No drift possible.
-      el.style.cssText = `
-        width:1px;height:1px;
-        position:relative;
-        pointer-events:none;
-        -webkit-user-select:none; user-select:none;
-        -webkit-touch-callout:none;
-        -webkit-tap-highlight-color:transparent;
-      `;
-
-      // Three staggered expanding rings + static footprint ring + rotating tick ring + core beam
-      el.innerHTML = `
-        <div class="nm-holo-ring" style="--s:${ringSize}px;--c:${accentSoft};animation-delay:0s"></div>
-        <div class="nm-holo-ring" style="--s:${ringSize}px;--c:${accentSoft};animation-delay:.9s"></div>
-        <div class="nm-holo-ring" style="--s:${ringSize}px;--c:${accentSoft};animation-delay:1.8s"></div>
-        <div class="nm-holo-footprint" style="--s:${ringSize}px;--c:${accentFaint};"></div>
-        <div class="nm-holo-ticks" style="--s:${ringSize}px;--c:${accentSoft};"></div>
-        <div class="nm-holo-crosshair" style="--s:${Math.round(ringSize*.62)}px;--c:${accentSoft};"></div>
-        <div class="nm-marker-hit" style="
-          position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-          width:${hitSize}px; height:${hitSize}px; border-radius:50%;
-          pointer-events:auto; cursor:pointer;
-        ">
-          <div class="nm-holo-core" style="--s:${coreSize}px;--c:${accent};"></div>
-        </div>
-        <div class="nm-marker-label" style="
-          position:absolute; left:50%; top:calc(50% + ${Math.round(ringSize/2) + 3}px);
-          transform:translateX(-50%);
-          font-size:10px; font-weight:700; color:${accent};
-          font-family:var(--ft); direction:rtl; letter-spacing:.04em;
-          background:rgba(6,14,22,.78); padding:2px 8px; border-radius:2px;
-          white-space:nowrap; pointer-events:none;
-          border:.5px solid ${accentSoft};
-          text-shadow:0 0 6px ${accentSoft};
-        ">${spot.city} <span style="opacity:.6;font-weight:500">· ${n}</span></div>
-      `;
-
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Stop idle drift
-        try { map._idleStop && map._idleStop(); } catch {}
-        setSel(spot);
-        map.flyTo({
-          center: [spot.lng, spot.lat - 1.2], zoom: 6, pitch: 0, bearing: 0,
-          duration: 1600,
-          easing: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
-        });
-      });
-
-      const marker = new ML.Marker({ element: el, anchor: 'center' })
-        .setLngLat([spot.lng, spot.lat])
-        .addTo(map);
-      markers.push(marker);
+    const src = map.getSource('spots');
+    if (!src) return;
+    src.setData({
+      type: 'FeatureCollection',
+      features: spots.map(s => ({
+        type: 'Feature',
+        properties: { id: s.id, n: s.stories.length, city: s.city },
+        geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+      })),
     });
-
-    return () => { markers.forEach(m => m.remove()); };
   }, [mapReady, spots]);
 
   const handleClose = () => {

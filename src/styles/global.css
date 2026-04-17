@@ -66,9 +66,9 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .content.content-full{padding-top:0;padding-bottom:0}
 
 /* Post card */
-/* CHRLS-inspired: more breathing room (10/16/8 was 5/14/3), faint warm
-   tint (almost imperceptible) elevates the card off the page background. */
-.post{padding:10px 16px 8px 16px;border-bottom:.5px solid var(--g1);overflow:hidden;background:rgba(255,109,0,.012)}
+/* Compact card padding — was 10/16/8/16, tightened to 6/16/4 per user.
+   Faint warm tint kept for the subtle card-elevation effect. */
+.post{padding:6px 16px 4px 16px;border-bottom:.5px solid var(--g1);overflow:hidden;background:rgba(255,109,0,.012)}
 .post .ptitle,.post .pbody,.post .strap,.post .pactions{margin-left:10px}
 .post .strap{margin-left:12px}
 .ph{display:flex;align-items:center;gap:8px;margin-bottom:4px}
@@ -102,11 +102,10 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Post actions */
 .pactions{display:flex;align-items:center;justify-content:center;gap:48px;margin-top:3px}
 /* All four post actions sit in a single centered row, all rendered as
-   identical-spec SVGs (1.2 px stroke, 16x16, round caps). Active = orange.
-   Dismiss (−) hint at red on hover/press to telegraph the destructive
-   nature without committing color before the tap. */
-.pactions-pm{justify-content:center;gap:48px;padding:4px 0 2px;margin-top:3px}
-.util-btn{background:none;border:none;cursor:pointer;color:var(--t2);padding:4px 0;display:inline-flex;align-items:center;transition:color .15s,transform .12s}
+   identical-spec SVGs. Active = orange. Dismiss (−) hint at red on
+   hover/press. Compact padding + lighter ink for less visual weight. */
+.pactions-pm{justify-content:center;gap:48px;padding:2px 0 0;margin-top:2px}
+.util-btn{background:none;border:none;cursor:pointer;color:var(--t3);padding:3px 0;display:inline-flex;align-items:center;transition:color .15s,transform .12s;opacity:.75}
 .util-btn:active{transform:scale(.85);opacity:.6}
 .util-btn.on{color:var(--or)}
 .util-minus:hover,.util-minus:active{color:var(--rd)}

@@ -580,10 +580,32 @@ export default function Sada() {
       {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
         <div className="hdr-top">
           <div className="logo">
-            {/* Wordmark: NEWSROOM in a modern executive sans (SF Pro Display
-                / Inter), heavy weight, tight letter-spacing, uppercase. */}
-            <svg className="logo-svg" viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" aria-label="NEWSROOM" preserveAspectRatio="xMidYMid meet">
-              <text x="450" y="100" textAnchor="middle" dominantBaseline="central" fontSize="130" fontWeight="300" letterSpacing="14" fill="currentColor">newsroom</text>
+            {/* Wordmark: NEWSROOM with iOS-classic glossy treatment.
+                Layer 1: text with vertical gradient (dark mid, lighter
+                          edges) + a soft drop shadow.
+                Layer 2: same text with a top-half white shine overlay
+                          mimicking the iOS-1-through-6 button gloss. */}
+            <svg className="logo-svg" viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" aria-label="NEWSROOM" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="logoGloss" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#666"/>
+                  <stop offset="48%" stopColor="#1a1a1a"/>
+                  <stop offset="52%" stopColor="#000"/>
+                  <stop offset="100%" stopColor="#333"/>
+                </linearGradient>
+                <linearGradient id="logoShine" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#fff" stopOpacity=".75"/>
+                  <stop offset="48%" stopColor="#fff" stopOpacity=".15"/>
+                  <stop offset="50%" stopColor="#fff" stopOpacity="0"/>
+                </linearGradient>
+                <filter id="logoShadow" x="-5%" y="-10%" width="110%" height="140%">
+                  <feDropShadow dx="0" dy="3" stdDeviation="2.5" floodOpacity=".25"/>
+                </filter>
+              </defs>
+              {/* Base text with gloss gradient + drop shadow */}
+              <text x="450" y="115" textAnchor="middle" dominantBaseline="central" fontSize="155" fontWeight="900" letterSpacing="2" fill="url(#logoGloss)" filter="url(#logoShadow)">NEWSROOM</text>
+              {/* Shine overlay — same text, white gradient on top half only */}
+              <text x="450" y="115" textAnchor="middle" dominantBaseline="central" fontSize="155" fontWeight="900" letterSpacing="2" fill="url(#logoShine)">NEWSROOM</text>
             </svg>
           </div>
           <div className="hdr-r">

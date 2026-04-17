@@ -230,62 +230,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
       const map = new ML.Map({
         container: mapContainerRef.current,
-        style: {
-          version: 8,
-          sources: {
-            // Editorial atlas — monochrome base tile + reference labels
-            // layer on top so country/major-city names stay readable
-            // without the heatmap or terrain clutter.
-            // Topographic base — contour lines & hillshading give the
-            // stacked-paper terrain look. Desaturated heavily into slate.
-            'topo': {
-              type: 'raster',
-              tiles: [
-                'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
-                'https://b.tile.opentopomap.org/{z}/{x}/{y}.png',
-                'https://c.tile.opentopomap.org/{z}/{x}/{y}.png',
-              ],
-              tileSize: 256, maxzoom: 17,
-              attribution: '© OpenTopoMap (CC-BY-SA)',
-            },
-            // Dark reference labels on top so city/country names stay legible
-            'ref': {
-              type: 'raster',
-              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256, maxzoom: 16,
-            },
-          },
-          layers: [
-            // Slate slab underneath so OTM's cream background becomes charcoal
-            {
-              id: 'bg',
-              type: 'background',
-              paint: { 'background-color': '#1a1d22' },
-            },
-            {
-              id: 'topo',
-              type: 'raster',
-              source: 'topo',
-              paint: {
-                'raster-saturation': -1,
-                'raster-contrast': 0.35,
-                'raster-brightness-min': 0.08,
-                'raster-brightness-max': 0.55,
-                'raster-opacity': 0.85,
-              },
-            },
-            {
-              id: 'ref',
-              type: 'raster',
-              source: 'ref',
-              paint: {
-                'raster-opacity': 0.78,
-                'raster-brightness-min': 0.55,
-                'raster-brightness-max': 1.0,
-              },
-            },
-          ],
-        },
+        style: 'https://api.maptiler.com/maps/satellite-v4/style.json?key=4N5DoFylw84fAtpCt9kl',
         center: [38, 28], zoom: 3.2, pitch: 0, bearing: 0,
         minZoom: 1.8, maxZoom: 10,
         attributionControl: false, maxPitch: 0,
@@ -539,15 +484,6 @@ export function NewsMap({ onClose, liveFeed=[] }) {
         background:'radial-gradient(ellipse 90% 75% at 50% 50%, transparent 0%, rgba(18,21,26,.45) 70%, rgba(8,10,14,.85) 100%)',
       }}/>
 
-      {/* ─── LAVA CANYON GLOW (diagonal warm rift) ─── */}
-      <div style={{ position:'absolute', inset:0, zIndex:11, pointerEvents:'none',
-        background:'linear-gradient(112deg, transparent 35%, rgba(255,110,30,.09) 48%, rgba(255,80,10,.14) 52%, rgba(255,110,30,.08) 58%, transparent 72%)',
-        mixBlendMode:'screen',
-      }}/>
-      <div style={{ position:'absolute', inset:0, zIndex:12, pointerEvents:'none',
-        background:'radial-gradient(ellipse 28% 60% at 52% 50%, rgba(255,120,40,.18) 0%, rgba(255,80,10,.07) 35%, transparent 70%)',
-        mixBlendMode:'screen',
-      }}/>
 
       {/* ─── DIGITAL CLOCKS (glass pill) ─── */}
       <div style={{

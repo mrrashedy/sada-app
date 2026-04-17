@@ -603,47 +603,13 @@ export default function Sada() {
               misleading because the user couldn't tell when (or whether)
               new items had actually arrived. */}
 
-          {/* Refresh pill — pure NOTIFICATION. Items have ALREADY been merged
-              into the feed; this pill just tells the user N new items arrived
-              since they last looked at the top, and on tap scrolls them up.
-              Threshold: >=5 so trickle updates don't pop a banner. Subtle
-              frosted-glass chip matching the app's dark palette. */}
-          {pendingCount>=5 && !isAtTop && (
-            // Fixed (not sticky) so the pill sits at a predictable viewport
-            // offset just below the header bar — sticky inside .content was
-            // landing mid-screen depending on internal padding/strip heights.
-            // Centered on viewport which coincides with the centered .app
-            // container on desktop and is always-centered on mobile.
-            <div style={{ position:'fixed', top:64, left:'50%', transform:'translateX(-50%)', zIndex:50, pointerEvents:'none' }}>
-              <button
-                onClick={() => {
-                  Sound.tap();
-                  flushPending();
-                  contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                style={{
-                  pointerEvents:'auto',
-                  // Translucent orange — uses the app's --or hue (#FF6D00 light /
-                  // #FFA040 dark) at ~50% alpha so content underneath is still
-                  // legible. backdrop-filter blurs whatever's behind the chip.
-                  background:'rgba(255,109,0,.55)',
-                  backdropFilter:'blur(14px) saturate(1.4)',
-                  WebkitBackdropFilter:'blur(14px) saturate(1.4)',
-                  color:'#fff',
-                  fontSize:11,
-                  fontWeight:700,
-                  fontFamily:'var(--ft)',
-                  padding:'6px 28px',
-                  borderRadius:'999px',
-                  border:'1px solid rgba(255,255,255,.15)',
-                  cursor:'pointer',
-                  boxShadow:'0 2px 10px rgba(255,109,0,.25)',
-                }}
-              >
-                تحديث
-              </button>
-            </div>
-          )}
+          {/* Refresh pill removed per user — JSX deleted, but ALL the
+              underlying logic is preserved untouched: useNews still
+              tracks pendingCount + flushPending, App.jsx still auto-
+              flushes when the user reaches the top, the live indicator
+              still shows '· N جديد' for trickle updates, the refresh
+              button + pull-to-refresh still call flushPending. Only the
+              floating orange notification chip is gone. */}
 
           {/* Live indicator */}
           {isLive&&(

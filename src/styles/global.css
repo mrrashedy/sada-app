@@ -783,3 +783,10 @@ textarea.auth-input{line-height:1.6}
 .nm-holo-crosshair{position:absolute;left:50%;top:50%;width:var(--s);height:var(--s);margin-left:calc(var(--s)/-2);margin-top:calc(var(--s)/-2);pointer-events:none;background:linear-gradient(90deg,transparent calc(50% - .5px),var(--c) calc(50% - .5px),var(--c) calc(50% + .5px),transparent calc(50% + .5px)),linear-gradient(0deg,transparent calc(50% - .5px),var(--c) calc(50% - .5px),var(--c) calc(50% + .5px),transparent calc(50% + .5px));-webkit-mask:radial-gradient(circle,transparent 5px,#000 5px,#000 calc(50% - 6px),transparent calc(50% - 6px));mask:radial-gradient(circle,transparent 5px,#000 5px,#000 calc(50% - 6px),transparent calc(50% - 6px));opacity:.35}
 .nm-holo-core{width:var(--s);height:var(--s);border-radius:50%;background:var(--c);box-shadow:0 0 0 1px rgba(0,0,0,.55),0 0 10px var(--c),0 0 24px var(--c);animation:nmHoloCore 2s ease-in-out infinite}
 @keyframes nmHoloCore{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.75}}
+
+/* Minimal mode at low zoom — only the core dot remains on the true coord */
+.nm-marker.nm-marker-min .nm-holo-ring,
+.nm-marker.nm-marker-min .nm-holo-footprint,
+.nm-marker.nm-marker-min .nm-holo-ticks,
+.nm-marker.nm-marker-min .nm-holo-crosshair,
+.nm-marker.nm-marker-min .nm-marker-label{display:none}

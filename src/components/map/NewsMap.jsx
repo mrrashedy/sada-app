@@ -447,7 +447,23 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       markers.push(marker);
     });
 
-    return () => { markers.forEach(m => m.remove()); };
+    // Zoom-adaptive chrome: at low zoom, all markers hide their rings
+    // and labels so only the tiny core dot (pinned to the true coord)
+    // remains. This prevents the "cluster drift" you see when ring
+    // chrome piles up around crowded regions like MENA.
+    const applyZoomClass = () => {
+      const z = map.getZoom();
+      const lowZoom = z < 4.2;
+      const elNodes = document.querySelectorAll('.nm-marker');
+      elNodes.forEach(n => n.classList.toggle('nm-marker-min', lowZoom));
+    };
+    applyZoomClass();
+    map.on('zoom', applyZoomClass);
+
+    return () => {
+      map.off('zoom', applyZoomClass);
+      markers.forEach(m => m.remove());
+    };
   }, [mapReady, spots]);
 
   const handleClose = () => {

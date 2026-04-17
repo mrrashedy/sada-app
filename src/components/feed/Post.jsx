@@ -80,7 +80,11 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
               source and the time, flanked by hairline pipes. Reads as a
               press-bureau filing tag. */}
           {item.flags && item.flags.length > 0 && (
-            <span className="pdateline">{item.flags.map(countryName).join(' ')}</span>
+            <span className="pdateline">
+              {item.flags.map((c, i) => (
+                <span key={c} className="pdateline-item">{countryName(c)}</span>
+              ))}
+            </span>
           )}
           <span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span>
         </div>

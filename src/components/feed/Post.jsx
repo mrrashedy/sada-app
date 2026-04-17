@@ -93,16 +93,8 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>
         <div style={isPerson ? { flex:1,minWidth:0 } : undefined}>
           <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{clean(item.title)}</div>
-          {!longTitle && (item.brief || (item.flags && item.flags.length > 0)) && (
-            <div className="pbody" dir="auto">
-              {item.brief && clean(item.brief)}
-              {/* ONLY country tags now (topic/category tags removed). Tags
-                  render AFTER the brief so they sit at the end of the body
-                  text inline. */}
-              {item.flags && item.flags.length > 0 && item.flags.map(c => (
-                <span key={`f-${c}`} className="ptag ptag-inline ptag-country">{countryName(c)}</span>
-              ))}
-            </div>
+          {!longTitle && item.brief && (
+            <div className="pbody" dir="auto">{clean(item.brief)}</div>
           )}
         </div>
         {isPerson && (

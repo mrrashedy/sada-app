@@ -106,7 +106,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
    Dismiss (−) hint at red on hover/press to telegraph the destructive
    nature without committing color before the tap. */
 .pactions-pm{justify-content:center;gap:48px;padding:4px 0 2px;margin-top:3px}
-.util-btn{background:none;border:none;cursor:pointer;color:var(--t3);padding:4px 0;display:inline-flex;align-items:center;transition:color .15s,transform .12s}
+.util-btn{background:none;border:none;cursor:pointer;color:var(--t2);padding:4px 0;display:inline-flex;align-items:center;transition:color .15s,transform .12s}
 .util-btn:active{transform:scale(.85);opacity:.6}
 .util-btn.on{color:var(--or)}
 .util-minus:hover,.util-minus:active{color:var(--rd)}

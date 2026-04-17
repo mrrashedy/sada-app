@@ -73,25 +73,22 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
   return (
     <div className={`post${item._new ? ' post-new' : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
       <div className="ph">
-        <div className="pinfo">
-          {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
-          <span className="pname">{item.s.n}</span>
-          {/* Country attribution lives here next to the source name (was a
-              bordered chip in the body — too noisy). Plain text in the same
-              gray as .pname, separated by a middot. Reads as 'source ·
-              country.' */}
-          {item.flags && item.flags.length > 0 && (
-            <span className="pname-country"> · {item.flags.map(countryName).join(' · ')}</span>
-          )}
-          <span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span>
-        </div>
+        <div className="pinfo">{(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}<span className="pname">{item.s.n}</span><span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span></div>
         <button className="ib" style={{ color:'var(--t4)', padding:0 }}>{I.more()}</button>
       </div>
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>
         <div style={isPerson ? { flex:1,minWidth:0 } : undefined}>
           <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{clean(item.title)}</div>
-          {!longTitle && item.brief && (
-            <div className="pbody" dir="auto">{clean(item.brief)}</div>
+          {!longTitle && (item.brief || (item.flags && item.flags.length > 0)) && (
+            <div className="pbody" dir="auto">
+              {item.brief && clean(item.brief)}
+              {/* ONLY country tags now (topic/category tags removed). Tags
+                  render AFTER the brief so they sit at the end of the body
+                  text inline. */}
+              {item.flags && item.flags.length > 0 && item.flags.map(c => (
+                <span key={`f-${c}`} className="ptag ptag-inline ptag-country">{countryName(c)}</span>
+              ))}
+            </div>
           )}
         </div>
         {isPerson && (

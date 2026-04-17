@@ -64,22 +64,16 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .content{
   flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
   padding-top:95px;padding-bottom:70px;overflow-anchor:auto;
-  /* Newspaper texture — fine halftone dots in warm ink tone.
-     Two layers at different scales (8px and 13px) overlap to break
-     the perfect grid into something that reads as "printed on paper"
-     rather than "designed pattern." Warm sepia-ish ink instead of
-     pure black so it reads as ink-on-cream, not pixel-on-screen. */
+  /* Map texture — topographic contour lines via inline SVG. Faint
+     wavy horizontals at varying spacing simulate elevation contours
+     on a topo map. Sepia-brown ink on cream, ~5% opacity so it reads
+     as a faint chart underlay, not a literal map. */
   background-color:var(--bg);
-  background-image:
-    radial-gradient(circle at center, rgba(80,55,30,.045) 0.5px, transparent 1px),
-    radial-gradient(circle at center, rgba(80,55,30,.030) 0.4px, transparent 1px);
-  background-size:8px 8px, 13px 13px;
-  background-position:0 0, 4px 6px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><g fill='none' stroke='%235a3920' stroke-opacity='0.07' stroke-width='0.6'><path d='M0,30 Q60,15 120,30 T240,30'/><path d='M0,55 Q60,42 120,55 T240,55'/><path d='M0,82 Q60,68 120,80 T240,82'/><path d='M0,115 Q60,98 120,115 T240,115'/><path d='M0,145 Q60,130 120,145 T240,145'/><path d='M0,175 Q60,162 120,175 T240,175'/><path d='M0,205 Q60,192 120,205 T240,205'/></g></svg>");
+  background-size:240px 240px;
 }
 [data-theme="dark"] .content{
-  background-image:
-    radial-gradient(circle at center, rgba(255,245,225,.05) 0.5px, transparent 1px),
-    radial-gradient(circle at center, rgba(255,245,225,.035) 0.4px, transparent 1px);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><g fill='none' stroke='%23ffeed0' stroke-opacity='0.08' stroke-width='0.6'><path d='M0,30 Q60,15 120,30 T240,30'/><path d='M0,55 Q60,42 120,55 T240,55'/><path d='M0,82 Q60,68 120,80 T240,82'/><path d='M0,115 Q60,98 120,115 T240,115'/><path d='M0,145 Q60,130 120,145 T240,145'/><path d='M0,175 Q60,162 120,175 T240,175'/><path d='M0,205 Q60,192 120,205 T240,205'/></g></svg>");
 }
 .post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}

@@ -55,7 +55,6 @@ export const SOURCES = [
   { n:"الغد",          i:"غ",  id:"alghad",        domain:"alghad.com"            },
   { n:"الميادين",      i:"مي", id:"almayadeen",    domain:"almayadeen.net",       hideFromStrip:true },
   { n:"الأخبار اللبنانية",i:"أخ",id:"alakhbar_lb", domain:"al-akhbar.com",        hideFromStrip:true },
-  { n:"درج",           i:"در", id:"daraj",         domain:"daraj.media",          hideFromStrip:true },
   { n:"ترجمات عبرية",  i:"عب", id:"qudsn_heb",     domain:"t.me"                  },
   { n:"نعرف",          i:"نع", id:"ne3raf",        domain:"youtube.com",          hideFromStrip:true },
   { n:"زيد بنيامين",   i:"زب", id:"zaid_benjamin", domain:"x.com",                hideFromStrip:true },
@@ -113,18 +112,13 @@ export const SOURCES = [
   // مجلات الفنون والتصوير الفرنسية
   { n:"Beaux Arts",           i:"BA",  id:"beauxarts",     domain:"beauxarts.com",           photoOnly: true },
   // ── Gap-fill batch (Apr 2026) — mirrors functions/api/feeds.js
-  { n:"وفا",            i:"وف", id:"wafa_ps",      domain:"wafa.ps"            },
   { n:"معا الإخبارية",  i:"مع", id:"maan_news",    domain:"maannews.net"       },
-  { n:"قدس برس",        i:"قب", id:"qudspress",    domain:"qudspress.com"      },
   { n:"المصدر اليمني",  i:"مص", id:"almasdar_ye",  domain:"almasdaronline.com" },
   { n:"شفق نيوز",       i:"شف", id:"shafaq",       domain:"shafaq.com"         },
-  { n:"رووداو",         i:"رو", id:"rudaw_ar",     domain:"rudaw.net"          },
-  { n:"العالم",         i:"عل", id:"alalam",       domain:"alalam.ir"          },
   { n:"TRT عربي",       i:"TR", id:"trt_arabi",    domain:"trtarabi.com"       },
   { n:"الأناضول",       i:"أن", id:"anadolu_ar",   domain:"aa.com.tr"          },
   { n:"الرياض",         i:"ري", id:"alriyadh",     domain:"alriyadh.com"       },
   { n:"البيان",         i:"بي", id:"albayan_ae",   domain:"albayan.ae"         },
-  { n:"رصيف22",         i:"ر22",id:"raseef22",     domain:"raseef22.net"       },
 
   { n:"Connaissance des Arts",i:"CA",  id:"connaissance",  domain:"connaissancedesarts.com", photoOnly: true },
   { n:"Le Journal des Arts",  i:"JA",  id:"jda",           domain:"lejournaldesarts.fr",     photoOnly: true },

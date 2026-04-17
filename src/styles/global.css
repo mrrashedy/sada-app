@@ -64,20 +64,19 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .content{
   flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
   padding-top:95px;padding-bottom:70px;overflow-anchor:auto;
-  /* Atmospheric texture — soft diffuse gray bleeds, no grain/noise.
-     Per user reference image: amorphous blurred ink-bleed shapes,
-     two large soft radial gradients only. Fixed attachment so the
-     atmosphere stays put as the user scrolls. */
+  /* Typography-as-texture, per user reference. A giant faint Arabic
+     letterform 'ص' (for صدى/Sada) bleeds through the feed background.
+     Fixed attachment so the watermark stays anchored as the user
+     scrolls — like a sheet of frosted glass over a printed mark. */
   background-color:var(--bg);
-  background-image:
-    radial-gradient(ellipse 55% 70% at 25% 35%, rgba(60,60,60,.10), transparent 70%),
-    radial-gradient(ellipse 50% 65% at 75% 65%, rgba(80,80,80,.07), transparent 70%);
-  background-attachment:fixed, fixed;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><text x='300' y='430' text-anchor='middle' font-family='%22SF Arabic%22, %22Noto Naskh Arabic%22, serif' font-size='560' font-weight='900' fill='%23000' fill-opacity='0.045'>ص</text></svg>");
+  background-position:center 18%;
+  background-size:88% auto;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
 }
 [data-theme="dark"] .content{
-  background-image:
-    radial-gradient(ellipse 55% 70% at 25% 35%, rgba(220,220,220,.06), transparent 70%),
-    radial-gradient(ellipse 50% 65% at 75% 65%, rgba(200,200,200,.04), transparent 70%);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'><text x='300' y='430' text-anchor='middle' font-family='%22SF Arabic%22, %22Noto Naskh Arabic%22, serif' font-size='560' font-weight='900' fill='%23fff' fill-opacity='0.05'>ص</text></svg>");
 }
 .post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}

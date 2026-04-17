@@ -95,8 +95,14 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
             onClick={(e) => { e.stopPropagation(); onSelectSource?.(item.s.n); }}
             aria-label={`عرض أخبار ${item.s.n}`}
           >
-            {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
+            {/* Name first in DOM order — in RTL this puts the name text at
+                the visual RIGHT edge, aligning its right edge with the
+                title row's right edge below. The favicon trails to its
+                LEFT. Previously the favicon was first, which indented the
+                name text inward from the right and broke alignment with
+                the title. */}
             <span className="pname">{item.s.n}</span>
+            {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
           </button>
           {/* Wire-service dateline — full Arabic country names between the
               source and the time, flanked by hairline pipes. Reads as a

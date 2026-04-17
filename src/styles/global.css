@@ -101,12 +101,11 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 
 /* Post actions */
 .pactions{display:flex;align-items:center;justify-content:center;gap:48px;margin-top:3px}
-/* + / − action language — symmetric. All four buttons sit in a single
-   centered row, evenly spaced, no borders or pills. Just bold glyphs
-   (the + and −) and quiet outline icons (save and share) at matching
-   visual weight. Reads as one cohesive control bar. */
-.pactions-pm{justify-content:center;gap:48px;padding:6px 0 2px;margin-top:5px;border-top:.5px solid var(--g1)}
-.pm-btn{background:none;border:none;color:var(--t3);font-family:var(--ft);font-size:20px;font-weight:600;line-height:1;cursor:pointer;transition:color .15s,transform .12s;padding:4px 0;width:18px;display:inline-flex;align-items:center;justify-content:center}
+/* + / − action language. All four buttons sit in a single centered row,
+   evenly spaced. Light strokes / regular weight — not bold. No top border
+   line above the row (cleaner separation from the post body). */
+.pactions-pm{justify-content:center;gap:48px;padding:4px 0 2px;margin-top:3px}
+.pm-btn{background:none;border:none;color:var(--t3);font-family:var(--ft);font-size:20px;font-weight:400;line-height:1;cursor:pointer;transition:color .15s,transform .12s;padding:4px 0;width:18px;display:inline-flex;align-items:center;justify-content:center}
 .pm-btn:active{transform:scale(.85);opacity:.6}
 .pm-plus.on{color:var(--or)}
 .pm-minus:hover,.pm-minus:active{color:var(--rd)}

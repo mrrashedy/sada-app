@@ -7,11 +7,10 @@ import { shareArticle } from '../../lib/shareCard';
 import { countryName } from '../../lib/countryFlags';
 
 // All four .act icons inlined locally with identical geometry — same
-// + / − style. Opinion pair is purely typographic — bold plus/minus
-// glyphs inside small circular buttons (Reddit/HN lineage). Save and
-// share stay as light outline icons on the other side, deliberately
-// LIGHTER weight than the +/− so the eye groups them as utility.
-const STROKE = 1.6;
+// + / − style. All four actions sit in one centered row at matching
+// visual weight: light strokes on the icons, regular (not bold) weight
+// on the typographic +/−. Active states use color, never weight.
+const STROKE = 1.2;
 const Bookmark = ({ filled }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill={filled?'currentColor':'none'} stroke="currentColor" strokeWidth={filled?0:STROKE} strokeLinejoin="round">
     <path d="M6 4a1 1 0 011-1h10a1 1 0 011 1v17l-6-4-6 4V4z"/>

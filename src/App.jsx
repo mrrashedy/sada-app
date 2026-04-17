@@ -580,16 +580,13 @@ export default function Sada() {
       {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
         <div className="hdr-top">
           <div className="logo">
-            {/* Inline SVG so the @font-face declaration in global.css
-                actually applies to the <text> element. The <img>-loaded
-                version of /logo.svg can't access page fonts. */}
-            <svg className="logo-svg" viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" aria-label="غرفة الأخبار">
-              <defs>
-                <path id="logo-arc" d="M 60,200 Q 400,100 740,200"/>
-              </defs>
-              <text fontSize="180" fontWeight="900" fill="currentColor" letterSpacing="-2">
-                <textPath href="#logo-arc" startOffset="50%" textAnchor="middle">غرفة الأخبار</textPath>
-              </text>
+            {/* Inline SVG so the @font-face from global.css applies to
+                the <text> element (img-loaded SVGs can't access page fonts).
+                Straight baseline — the custom Madinet Al Bat typeface
+                already has the angular character; the previous arc was
+                distorting the letterforms. */}
+            <svg className="logo-svg" viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-label="غرفة الأخبار">
+              <text x="400" y="170" textAnchor="middle" fontSize="170" fontWeight="900" fill="currentColor" direction="rtl">غرفة الأخبار</text>
             </svg>
           </div>
           <div className="hdr-r">

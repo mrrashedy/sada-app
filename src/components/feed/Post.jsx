@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef } from 'react';
+import { useState, useLayoutEffect, useRef, useEffect } from 'react';
 import { I } from '../shared/Icons';
 import { useTick } from '../../hooks/useTick';
 import { liveTimeAgo } from '../../lib/timeAgo';
@@ -17,7 +17,7 @@ import { countryName } from '../../lib/countryFlags';
 //   ↗ : diagonal + L-shaped arrowhead     (share — outward direction)
 const ICON_PROPS = {
   width: 18, height: 18, viewBox: '0 0 24 24',
-  fill: 'none', stroke: 'currentColor', strokeWidth: 1.6,
+  fill: 'none', stroke: 'currentColor', strokeWidth: 3,
   strokeLinecap: 'round', strokeLinejoin: 'round',
 };
 const Plus  = () => <svg {...ICON_PROPS}><path d="M12 5v14M5 12h14"/></svg>;
@@ -52,20 +52,97 @@ function clean(s) {
     .replace(/&[a-z]+;/gi,' ').replace(/<[^>]*>/g,'').trim();
 }
 
+// Strip trailing source attributions — publishers pad headlines/briefs with
+// " - DW.com", " | Al Jazeera", "الجزيرة نت", domain names, etc. We peel off
+// any occurrences at either end, along with the common separators, so the
+// copy reads like content instead of a press-release signoff.
+function stripSource(s, sourceName, domain) {
+  if (!s) return s;
+  let out = s;
+  // Collect candidate tokens to strip
+  const tokens = new Set();
+  if (sourceName) {
+    tokens.add(sourceName);
+    // Split multi-word names so "دويتشه فيله" also matches just "فيله"
+    sourceName.split(/\s+/).forEach(t => { if (t.length >= 3) tokens.add(t); });
+  }
+  if (domain) {
+    tokens.add(domain);
+    tokens.add(domain.replace(/^www\./,''));
+    const bare = domain.replace(/^www\./,'').split('.')[0];
+    if (bare && bare.length >= 3) tokens.add(bare);
+    // Full domain as "X.com" / "X.net" etc.
+    tokens.add(domain.replace(/^www\./,''));
+  }
+  // Generic domain pattern at end — strip any "word.tld" tail
+  const GENERIC_DOMAIN = /[\s\-|–—,،]*\b[A-Za-z][A-Za-z0-9\-]{1,30}\.(?:com|net|org|co|co\.uk|ae|sa|eg|jo|ma|dz|tn|ly|ps|tv|media|news|info)\b[\s.،,]*$/i;
+  // Run multiple passes until stable
+  for (let i = 0; i < 4; i++) {
+    const before = out;
+    // Trailing source tokens with separators
+    for (const t of tokens) {
+      if (!t) continue;
+      const esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const tailRe = new RegExp(`[\\s\\-|–—,،]*${esc}[\\s.،,]*$`, 'i');
+      out = out.replace(tailRe, '').trim();
+      const headRe = new RegExp(`^[\\s.،,]*${esc}[\\s\\-|–—,،]*`, 'i');
+      out = out.replace(headRe, '').trim();
+    }
+    // Generic trailing domain
+    out = out.replace(GENERIC_DOMAIN, '').trim();
+    // Orphan trailing separators
+    out = out.replace(/[\s\-|–—،,:.؟!]+$/, '').trim();
+    if (out === before) break;
+  }
+  return out || s;
+}
+
 export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, onSelectSource, showImg }) {
   useTick(1000);
   // 'hiding' transient state — true between the user's تجاهل tap and the
   // moment we call onHide() to actually remove the item from the feed.
   // While true, the .post-hiding class plays the fallAway animation.
   const [hiding, setHiding] = useState(false);
+  // Undo window — after tap on −, show a 5s toast row instead of removing
+  // immediately. Tap "تراجع" to restore, or wait for the bar to elapse.
+  const [undoing, setUndoing] = useState(false);
+  const undoTimerRef = useRef(null);
   const handleHide = () => {
-    if (hiding) return;
+    if (hiding || undoing) return;
     Sound.tap();
-    setHiding(true);
-    // Match the .post-hiding animation duration (380 ms in CSS).
-    setTimeout(() => onHide?.(item), 380);
+    setUndoing(true);
+    undoTimerRef.current = setTimeout(() => {
+      setUndoing(false);
+      setHiding(true);
+      setTimeout(() => onHide?.(item), 380);
+    }, 5000);
   };
-  const isPerson = showImg && item.realImg && PERSON_RE.test(item.title || '');
+  const handleUndo = () => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = null;
+    Sound.tap();
+    setUndoing(false);
+  };
+  useEffect(() => () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); }, []);
+  // Transient anim states for interaction feedback
+  const [plusAnim, setPlusAnim] = useState(0);
+  const [saveAnim, setSaveAnim] = useState(0);
+  const fireInterest = () => {
+    setPlusAnim(a => a + 1);
+    isInterested ? Sound.unsave() : Sound.save();
+    onInterest?.(item);
+  };
+  const fireSave = () => {
+    setSaveAnim(a => a + 1);
+    isSaved ? Sound.unsave() : Sound.save();
+    onSave(item.id);
+  };
+  // Vertical portrait thumbnail only makes sense when there's body copy to
+  // sit beside it — otherwise the photo reads as an awkward sidebar. If the
+  // brief is hidden (breaking news or overflowing headline), fall back to
+  // the horizontal strap like any other card.
+  const hasBrief = !!item.brief && !item.brk;
+  const isPerson = showImg && item.realImg && hasBrief && PERSON_RE.test(item.title || '');
 
   // If the headline wraps to more than 3 lines, it's self-explanatory — hide
   // the body/brief so the card stays compact and doesn't duplicate content.
@@ -82,7 +159,13 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
   }, [item.title]);
 
   return (
-    <div className={`post${item._new ? ' post-new' : ''}${hiding ? ' post-hiding' : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
+    <div className={`post${item._new ? ' post-new' : ''}${hiding ? ' post-hiding' : ''}${item.brk ? ' post-brk' : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
+      {undoing ? (
+        <div className="post-undo">
+          <span className="post-undo-text">تم الإخفاء</span>
+          <button type="button" className="post-undo-btn" onClick={handleUndo}>تراجع</button>
+        </div>
+      ) : (<>
       <div className="ph">
         <div className="pinfo">
           {/* Source logo + name as a single clickable target — tapping it
@@ -114,46 +197,48 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
               ))}
             </span>
           )}
-          <span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span>
+          <span className="ptime">{item.brk && <span className="ptime-dot"/>}{(() => { const t = liveTimeAgo(item.pubTs); return <span key={t} className="ptime-tick">{t}</span>; })()}</span>
         </div>
       </div>
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>
         <div style={isPerson ? { flex:1,minWidth:0 } : undefined}>
-          <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{clean(item.title)}</div>
-          {!longTitle && item.brief && (
-            <div className="pbody" dir="auto">{clean(item.brief)}</div>
+          <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer', ...(longTitle ? { fontSize:15, fontWeight:500, lineHeight:1.5, color:'var(--t2)' } : {}), ...(item.brk ? { textAlign:'center' } : {}) }}>{stripSource(clean(item.title), item.s?.n, item.s?.domain)}</div>
+          {!longTitle && !item.brk && item.brief && (
+            <div className="pbody" dir="auto">{stripSource(clean(item.brief), item.s?.n, item.s?.domain)}</div>
           )}
         </div>
         {isPerson && (
-          <div onClick={()=>onOpen(item)} style={{ width:72,height:96,borderRadius:10,overflow:'hidden',flexShrink:0,cursor:'pointer',marginLeft:12 }}>
+          <div className="pphoto" onClick={()=>onOpen(item)} style={{ width:72,height:96,borderRadius:4,overflow:'hidden',flexShrink:0,cursor:'pointer',marginLeft:12 }}>
             <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 15%',display:'block' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
           </div>
         )}
       </div>
       {showImg && item.realImg && !isPerson && (
-        <div className="strap strap-grid" style={{ height:90, borderRadius:10 }} onClick={()=>onOpen(item)}>
+        <div className="strap strap-grid" style={{ height:90, borderRadius:4 }} onClick={()=>onOpen(item)}>
           <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 30%',display:'block' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
         </div>
       )}
       <div className="pactions pactions-pm">
         {/* All four buttons identical SVG spec — same viewBox + stroke. */}
         <button
-          className={`util-btn ${isInterested?'on':''}`}
+          key={`p-${plusAnim}`}
+          className={`util-btn util-ripple util-pop ${isInterested?'on':''}`}
           aria-label="مهم"
-          onClick={() => { isInterested ? Sound.unsave() : Sound.save(); onInterest?.(item); }}
+          onClick={fireInterest}
         ><Plus /></button>
         <button
           className="util-btn util-minus"
           aria-label="تجاهل"
           onClick={handleHide}
         ><Minus /></button>
-        <button className={`util-btn ${isSaved?'on':''}`} aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>
+        <button key={`s-${saveAnim}`} className={`util-btn ${saveAnim?'util-twinkle':''} ${isSaved?'on':''}`} aria-label="حفظ" onClick={fireSave}>
           <Save />
         </button>
         <button className="util-btn" aria-label="مشاركة" onClick={()=>{Sound.share();shareArticle(item);}}>
           <Share />
         </button>
       </div>
+      </>)}
     </div>
   );
 }

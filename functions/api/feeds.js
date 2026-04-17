@@ -402,6 +402,15 @@ function parseXML(xml) {
 
     // Atom uses <published> or <updated>, RSS uses <pubDate>
     const pubDate = get('pubDate') || get('published') || get('updated');
+    // Author — RSS2 uses <author>, Atom/DC uses <dc:creator>. Strip any
+    // email-address wrapping ("name@domain (Real Name)") down to just the name.
+    let author = get('dc:creator') || get('author') || '';
+    if (author) {
+      const parenMatch = author.match(/\(([^)]+)\)/);
+      if (parenMatch) author = parenMatch[1];
+      author = author.replace(/<[^>]+>/g, '').replace(/\S+@\S+/g, '').trim();
+      author = author.slice(0, 80);
+    }
 
     let image = '';
     const mediaMatch = block.match(/url=["']([^"']+\.(jpg|jpeg|png|webp)[^"']*)/i);
@@ -422,7 +431,7 @@ function parseXML(xml) {
 
     const isBreaking = title.includes('عاجل') || title.includes('breaking') || title.toLowerCase().includes('urgent');
     if (isBreaking && !categories.includes('عاجل')) categories.unshift('عاجل');
-    items.push({ title, link, description: description.slice(0, 800), pubDate, image, categories, timestamp: pubDate ? new Date(pubDate).getTime() : 0, isBreaking });
+    items.push({ title, link, description: description.slice(0, 1800), pubDate, image, categories, author, timestamp: pubDate ? new Date(pubDate).getTime() : 0, isBreaking });
   }
   return items;
 }
@@ -522,7 +531,7 @@ async function fetchNewsDataForKind(env, feedCache, kind = 'news') {
         return {
           title: (a.title || '').trim(),
           link: a.link,
-          description: body.slice(0, 800),
+          description: body.slice(0, 1800),
           pubDate: a.pubDate || '',
           image: a.image_url || '',
           categories: cats,
@@ -917,6 +926,7 @@ async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feed
     link: item.link,
     image: item.image,
     categories: item.categories,
+    author: item.author || '',
     time: timeAgo(item.pubDate),
     timestamp: item.timestamp || 0,
     _futureTs: !!(item.timestamp && item.timestamp > Date.now()),

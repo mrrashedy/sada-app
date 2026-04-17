@@ -290,6 +290,9 @@ export default function Sada() {
   // "أخبارك محدّثة" for 2.5s. Sound effect removed per design — refresh
   // is now silent.
   const handleHeaderRefresh = useCallback(async () => {
+    // Scroll to top first so the user sees the refresh land at item 0,
+    // not somewhere mid-feed where they happened to be reading.
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     try {
       const count = (await refresh()) || 0;
       setRefreshMsg(count > 0 ? `${count} خبر جديد` : 'أخبارك محدّثة');
@@ -628,7 +631,7 @@ export default function Sada() {
           {/* Breaking news ticker — removed per design */}
 
           {/* Source stories */}
-          <div className={`stories${activeSource?' stories-filtering':''}`}>{SOURCES.filter(s=>!s.photoOnly).map((s,i)=>{const logoSrc=s.logo||(s.domain?`https://www.google.com/s2/favicons?domain=${s.domain}&sz=128`:null);const isActive=activeSource===s.n;const isDim=activeSource&&!isActive;return(<div className={`story${isActive?' s-active':''}${isDim?' s-dim':''}`} key={i} onClick={()=>{Sound.tap();setActiveSource(prev=>prev===s.n?null:s.n);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}}><div className={`s-ring ${isActive?'':'seen'}`}><div className="s-av">{!logoSrc&&<span className="s-av-letter">{s.i}</span>}{logoSrc&&<img className={`s-av-logo${s.logo?' s-av-logo-raw':''}${s.tint?' s-av-logo-'+s.tint:''}`} src={logoSrc} alt="" loading="lazy" onError={e=>{e.currentTarget.outerHTML='<span class="s-av-letter">'+s.i.replace(/[<>&"]/g,'')+'</span>';}}/>}</div></div><div className="s-nm">{s.n}</div></div>);})}</div>
+          <div className={`stories${activeSource?' stories-filtering':''}`}>{SOURCES.filter(s=>!s.photoOnly && !s.id?.startsWith('gnews_')).map((s,i)=>{const logoSrc=s.logo||(s.domain?`https://www.google.com/s2/favicons?domain=${s.domain}&sz=128`:null);const isActive=activeSource===s.n;const isDim=activeSource&&!isActive;return(<div className={`story${isActive?' s-active':''}${isDim?' s-dim':''}`} key={i} onClick={()=>{Sound.tap();setActiveSource(prev=>prev===s.n?null:s.n);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}}><div className={`s-ring ${isActive?'':'seen'}`}><div className="s-av">{!logoSrc&&<span className="s-av-letter">{s.i}</span>}{logoSrc&&<img className={`s-av-logo${s.logo?' s-av-logo-raw':''}${s.tint?' s-av-logo-'+s.tint:''}`} src={logoSrc} alt="" loading="lazy" onError={e=>{e.currentTarget.outerHTML='<span class="s-av-letter">'+s.i.replace(/[<>&"]/g,'')+'</span>';}}/>}</div></div><div className="s-nm">{s.n}</div></div>);})}</div>
           {activeSource&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',background:'var(--f1)',borderBottom:'.5px solid var(--g1)' }}><span style={{ fontSize:13,fontWeight:700,color:'var(--t1)' }}>أخبار {activeSource}</span><button onClick={()=>setActiveSource(null)} style={{ fontSize:12,fontWeight:600,color:'var(--t3)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>عرض الكل ✕</button></div>)}
 
 
@@ -655,7 +658,22 @@ export default function Sada() {
       </div>
 
       {/* Bottom nav */}
-      {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`bnav${barsHidden?' bnav-hide':''}`}>{navItems.map(item=>(<button key={item.id} aria-label={item.label} className={`bnav-item ${item.center?'bnav-center':''} ${nav===item.id?'on':''}`} onClick={()=>{Sound.tap();setNav(item.id);}}><span className="bnav-icon">{item.icon(nav===item.id)}</span></button>))}</div>}
+      {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`bnav${barsHidden?' bnav-hide':''}`}>{navItems.map(item=>(<button key={item.id} aria-label={item.label} className={`bnav-item ${item.center?'bnav-center':''} ${nav===item.id?'on':''}`} onClick={()=>{
+        Sound.tap();
+        // If user taps the same nav button they're already on (specifically
+        // home → home), treat it as 'jump to top of this surface' — the
+        // standard mobile pattern (Twitter, Instagram, etc.). Without this,
+        // the tap is a silent no-op.
+        if (nav === item.id) {
+          if (item.id === 'home') {
+            contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+            // If items piled up while scrolled, surface them now too.
+            if (pendingCount > 0) flushPending();
+          }
+          return;
+        }
+        setNav(item.id);
+      }}><span className="bnav-icon">{item.icon(nav===item.id)}</span></button>))}</div>}
 
       {/* Overlays */}
       {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} onOpenRelated={(r)=>{setArticle(null);setTimeout(()=>setArticle(r),50);}} relatedArticles={allFeed}/>}

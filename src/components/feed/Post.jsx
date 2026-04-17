@@ -208,13 +208,13 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
           )}
         </div>
         {isPerson && (
-          <div className="pphoto" onClick={()=>onOpen(item)} style={{ width:72,height:96,borderRadius:4,overflow:'hidden',flexShrink:0,cursor:'pointer',marginLeft:12 }}>
+          <div className="pphoto" onClick={()=>onOpen(item)} style={{ width:72,height:96,borderRadius:8,overflow:'hidden',flexShrink:0,cursor:'pointer',marginLeft:12 }}>
             <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 15%',display:'block' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
           </div>
         )}
       </div>
       {showImg && item.realImg && !isPerson && (
-        <div className="strap strap-grid" style={{ height:90, borderRadius:4 }} onClick={()=>onOpen(item)}>
+        <div className="strap strap-grid" style={{ height:90, borderRadius:8 }} onClick={()=>onOpen(item)}>
           <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 30%',display:'block' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
         </div>
       )}

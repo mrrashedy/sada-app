@@ -81,6 +81,10 @@ export default function Sada() {
   const [seenTs, setSeenTs]     = useState(() => { try { return parseInt(localStorage.getItem('sada-seen-ts'))||0; } catch { return 0; } });
   const [sources, setSources]   = useState({});
   const [activeSource, setActiveSource] = useState(null);
+  // Source strip shows the first ~20 by default. User can expand to see all
+  // ~80 via the trailing "+المزيد" pill. Keeps the strip a single calm row
+  // instead of a wall of pills competing with the headline.
+  const [showAllSources, setShowAllSources] = useState(false);
   // (newCount state removed — the pill now reads pendingCount directly
   // from useNews. See the X-style buffered-feed comment below.)
   // (prevLen / prevIds removed — useNews now owns the new-items detection
@@ -283,24 +287,21 @@ export default function Sada() {
 
 
   // Pull-to-refresh & infinite scroll
-  const { pullY, refreshing, refreshMsg, setRefreshMsg, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD } = usePullToRefresh(contentRef, refresh);
+  // refreshMsg / setRefreshMsg removed from destructure — no UI consumes them
+  // anymore (the post-refresh toast was deleted; the pill + live indicator
+  // already convey freshness state).
+  const { pullY, refreshing, onTouchStart, onTouchMove, onTouchEnd, PULL_THRESHOLD } = usePullToRefresh(contentRef, refresh);
 
-  // Refresh button handler — shares the same toast banner as pull-to-refresh.
-  // Awaits the fetch's new-item count, then shows "N خبر جديد" or
-  // "أخبارك محدّثة" for 2.5s. Sound effect removed per design — refresh
-  // is now silent.
+  // Refresh button handler — silent. The pill + live indicator already
+  // convey state (the previous toast was redundant noise per UI cleanup).
   const handleHeaderRefresh = useCallback(async () => {
     // Scroll to top first so the user sees the refresh land at item 0,
     // not somewhere mid-feed where they happened to be reading.
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     try {
-      const count = (await refresh()) || 0;
-      setRefreshMsg(count > 0 ? `${count} خبر جديد` : 'أخبارك محدّثة');
-    } catch {
-      setRefreshMsg('تعذّر التحديث');
-    }
-    setTimeout(() => setRefreshMsg(null), 2500);
-  }, [refresh, setRefreshMsg]);
+      await refresh();
+    } catch {}
+  }, [refresh]);
   // Cap raised 200 → 1200: the API now serves up to 500 items per kind
   // and previously items 201+ were silently unreachable no matter how
   // far the user scrolled. 1200 leaves headroom for future API growth
@@ -639,7 +640,51 @@ export default function Sada() {
           {/* Breaking news ticker — removed per design */}
 
           {/* Source stories */}
-          <div className={`stories${activeSource?' stories-filtering':''}`}>{SOURCES.filter(s=>!s.photoOnly && !s.id?.startsWith('gnews_')).map((s,i)=>{const logoSrc=s.logo||(s.domain?`https://www.google.com/s2/favicons?domain=${s.domain}&sz=128`:null);const isActive=activeSource===s.n;const isDim=activeSource&&!isActive;return(<div className={`story${isActive?' s-active':''}${isDim?' s-dim':''}`} key={i} onClick={()=>{Sound.tap();setActiveSource(prev=>prev===s.n?null:s.n);contentRef.current?.scrollTo({top:0,behavior:'smooth'});}}><div className={`s-ring ${isActive?'':'seen'}`}><div className="s-av">{!logoSrc&&<span className="s-av-letter">{s.i}</span>}{logoSrc&&<img className={`s-av-logo${s.logo?' s-av-logo-raw':''}${s.tint?' s-av-logo-'+s.tint:''}`} src={logoSrc} alt="" loading="lazy" onError={e=>{e.currentTarget.outerHTML='<span class="s-av-letter">'+s.i.replace(/[<>&"]/g,'')+'</span>';}}/>}</div></div><div className="s-nm">{s.n}</div></div>);})}</div>
+          <div className={`stories${activeSource?' stories-filtering':''}`}>{(() => {
+            const allSources = SOURCES.filter(s => !s.photoOnly && !s.id?.startsWith('gnews_'));
+            // Always show the source the user has actively filtered to,
+            // even if it's beyond the 20-pill cutoff — otherwise tapping
+            // a source from the expanded view would seemingly disappear
+            // when the strip collapses back.
+            const visible = showAllSources
+              ? allSources
+              : (() => {
+                  const head = allSources.slice(0, 20);
+                  if (activeSource && !head.some(s => s.n === activeSource)) {
+                    const extra = allSources.find(s => s.n === activeSource);
+                    if (extra) head.push(extra);
+                  }
+                  return head;
+                })();
+            const hidden = allSources.length - visible.length;
+            const pills = visible.map((s, i) => {
+              const logoSrc = s.logo || (s.domain ? `https://www.google.com/s2/favicons?domain=${s.domain}&sz=128` : null);
+              const isActive = activeSource === s.n;
+              const isDim = activeSource && !isActive;
+              return (
+                <div className={`story${isActive?' s-active':''}${isDim?' s-dim':''}`} key={s.id || i}
+                  onClick={() => { Sound.tap(); setActiveSource(prev => prev===s.n?null:s.n); contentRef.current?.scrollTo({top:0,behavior:'smooth'}); }}>
+                  <div className={`s-ring ${isActive?'':'seen'}`}>
+                    <div className="s-av">
+                      {!logoSrc && <span className="s-av-letter">{s.i}</span>}
+                      {logoSrc && <img className={`s-av-logo${s.logo?' s-av-logo-raw':''}${s.tint?' s-av-logo-'+s.tint:''}`} src={logoSrc} alt="" loading="lazy" onError={e=>{e.currentTarget.outerHTML='<span class="s-av-letter">'+s.i.replace(/[<>&"]/g,'')+'</span>';}}/>}
+                    </div>
+                  </div>
+                  <div className="s-nm">{s.n}</div>
+                </div>
+              );
+            });
+            // "+المزيد" / "تقليص" toggle pill at the end of the strip.
+            if (hidden > 0 || showAllSources) {
+              pills.push(
+                <div className="story" key="__more__" onClick={() => { Sound.tap(); setShowAllSources(v => !v); }}>
+                  <div className="s-ring seen"><div className="s-av"><span className="s-av-letter" style={{ fontSize:11 }}>{showAllSources ? '−' : '+'}</span></div></div>
+                  <div className="s-nm">{showAllSources ? 'تقليص' : `+${hidden}`}</div>
+                </div>
+              );
+            }
+            return pills;
+          })()}</div>
           {activeSource&&(<div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',background:'var(--f1)',borderBottom:'.5px solid var(--g1)' }}><span style={{ fontSize:13,fontWeight:700,color:'var(--t1)' }}>أخبار {activeSource}</span><button onClick={()=>setActiveSource(null)} style={{ fontSize:12,fontWeight:600,color:'var(--t3)',background:'none',border:'none',cursor:'pointer',fontFamily:'var(--ft)' }}>عرض الكل ✕</button></div>)}
 
 

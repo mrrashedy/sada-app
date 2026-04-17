@@ -79,3 +79,11 @@ export function detectFlags(text) {
 export function flagUrl(code) {
   return `https://flagcdn.com/20x15/${code}.png`;
 }
+
+// Country code → canonical Arabic name. Uses the FIRST entry in each country's
+// `names` array (which is the Arabic name by convention in COUNTRY_CODES). Used
+// to render country tags inline in post bodies instead of flag images.
+const _NAME_BY_CODE = Object.fromEntries(COUNTRY_CODES.map(c => [c.code, c.names[0]]));
+export function countryName(code) {
+  return _NAME_BY_CODE[code] || code.toUpperCase();
+}

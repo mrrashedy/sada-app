@@ -5,7 +5,7 @@ import { liveTimeAgo } from '../../lib/timeAgo';
 import { Sound } from '../../lib/sounds';
 import { shareArticle } from '../../lib/shareCard';
 import { ReactionBar } from '../social/ReactionBar';
-import { flagUrl } from '../../lib/countryFlags';
+import { countryName } from '../../lib/countryFlags';
 
 const PERSON_RE = /رئيس|وزير|نائب|أمير|ملك|سفير|قائد|أمين|زعيم|قاض|مبعوث|صرّح|صرح|أعلن|أكد|قال|يقول|طالب|دعا|أردوغان|ترامب|بايدن|نتنياهو|بوتين|ماكرون|زيلينسكي|بن سلمان/;
 
@@ -40,17 +40,24 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
   return (
     <div className={`post${item._new ? ' post-new' : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
       <div className="ph">
-        <div className="pinfo">{(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}<span className="pname">{item.s.n}</span>{item.flags?.length>0&&<span className="pflags">{item.flags.map(c=><img key={c} className="pflag" src={flagUrl(c)} alt="" loading="lazy"/>)}</span>}<span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span></div>
+        <div className="pinfo">{(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}<span className="pname">{item.s.n}</span><span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span></div>
         <button className="ib" style={{ color:'var(--t4)', padding:0 }}>{I.more()}</button>
       </div>
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>
         <div style={isPerson ? { flex:1,minWidth:0 } : undefined}>
           <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{clean(item.title)}</div>
-          {!longTitle && (item.brief || (item.tags && item.tags.length > 0)) && (
+          {!longTitle && (item.brief || (item.tags && item.tags.length > 0) || (item.flags && item.flags.length > 0)) && (
             <div className="pbody" dir="auto">
               {item.brief && clean(item.brief)}
+              {/* Country tags first — geographic context is the most natural
+                  hook for "what is this story about." Replaces the previous
+                  flag-image strip in the post header (.ph). */}
+              {item.flags && item.flags.length > 0 && item.flags.map(c => (
+                <span key={`f-${c}`} className="ptag ptag-inline ptag-country">{countryName(c)}</span>
+              ))}
+              {/* Then topic / category tags. */}
               {item.tags && item.tags.length > 0 && item.tags.map((t, i) => (
-                <span key={i} className="ptag ptag-inline">{clean(t)}</span>
+                <span key={`t-${i}`} className="ptag ptag-inline">{clean(t)}</span>
               ))}
             </div>
           )}

@@ -380,14 +380,15 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
     spots.forEach((spot) => {
       const n = spot.stories.length;
-      // Holographic ring footprint — radius scales with event count
-      // (sqrt curve so 1 story is small, but 20 stories doesn't dwarf the map)
-      const ringSize = Math.round(Math.max(44, Math.min(140, 36 + Math.sqrt(n) * 24)));
-      const coreSize = Math.max(6, Math.min(12, 5 + Math.sqrt(n) * 1.6));
-      const hue = 190; // cyan hologram
-      const accent = `hsl(${hue}, 100%, 65%)`;
-      const accentSoft = `hsla(${hue}, 100%, 65%, .55)`;
-      const accentFaint = `hsla(${hue}, 100%, 65%, .18)`;
+      // Holographic ring footprint — stays small enough that at low zoom
+      // the rings don't visibly spill into neighboring countries. The CENTER
+      // core dot is always the true capital coordinate.
+      const ringSize = Math.round(Math.max(32, Math.min(64, 28 + Math.sqrt(n) * 10)));
+      const coreSize = Math.max(7, Math.min(11, 5 + Math.sqrt(n) * 1.4));
+      const hue = 28; // warm orange hologram
+      const accent = `hsl(${hue}, 100%, 60%)`;
+      const accentSoft = `hsla(${hue}, 100%, 62%, .6)`;
+      const accentFaint = `hsla(${hue}, 100%, 62%, .2)`;
       const hitSize = Math.max(28, ringSize * 0.55);
 
       const el = document.createElement('div');
@@ -417,7 +418,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
           <div class="nm-holo-core" style="--s:${coreSize}px;--c:${accent};"></div>
         </div>
         <div class="nm-marker-label" style="
-          position:absolute; left:50%; top:calc(50% + ${Math.round(ringSize/2) + 8}px);
+          position:absolute; left:50%; top:calc(50% + ${Math.round(ringSize/2) + 3}px);
           transform:translateX(-50%);
           font-size:10px; font-weight:700; color:${accent};
           font-family:var(--ft); direction:rtl; letter-spacing:.04em;

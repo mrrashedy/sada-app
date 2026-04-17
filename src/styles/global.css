@@ -86,7 +86,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
    eye separates "where" from "what" without color overload. */
 .ptag-country{color:var(--t2);border-color:var(--g1);background:var(--f1)}
 .pname-brk{margin-right:8px;padding:1px 7px;font-size:9px;vertical-align:middle}
-.ptitle{font-size:15px;font-weight:700;line-height:1.6;color:var(--t1);margin-bottom:3px;word-break:break-word}
+.ptitle{font-size:14px;font-weight:700;line-height:1.55;color:var(--t1);margin-bottom:3px;word-break:break-word}
 .pbody{font-size:13px;line-height:1.7;color:var(--t2);word-break:break-word}
 .pmore-t{color:var(--t4);font-weight:500;cursor:pointer}
 

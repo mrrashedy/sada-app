@@ -7,6 +7,20 @@
    pure-recency sort. Items still get the _new flag in state in case other
    UI wants it, but no visual animation fires. */
 .post-new{}
+/* Elegant fall-away when the user hits تجاهل (−). Slight rise, then
+   slide down + tilt + scale + fade. Pointer events disabled during the
+   animation so taps don't register on a leaving card. */
+@keyframes fallAway{
+  0%   { opacity:1; transform:translateY(0) rotate(0) scale(1); max-height:600px; }
+  20%  { opacity:1; transform:translateY(-6px) rotate(0) scale(1); }
+  100% { opacity:0; transform:translateY(70px) rotate(-2.5deg) scale(.94); max-height:0; padding-top:0; padding-bottom:0; margin:0; border-color:transparent; }
+}
+.post-hiding{
+  animation:fallAway .38s cubic-bezier(.45,.05,.55,.95) forwards;
+  pointer-events:none;
+  overflow:hidden;
+  transform-origin:50% 30%;
+}
 @keyframes hp{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
 @keyframes fi{from{opacity:0}to{opacity:1}}
 @keyframes sl{from{transform:translateX(100%)}to{transform:translateX(0)}}

@@ -54,6 +54,17 @@ function clean(s) {
 
 export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, showImg }) {
   useTick(1000);
+  // 'hiding' transient state — true between the user's تجاهل tap and the
+  // moment we call onHide() to actually remove the item from the feed.
+  // While true, the .post-hiding class plays the fallAway animation.
+  const [hiding, setHiding] = useState(false);
+  const handleHide = () => {
+    if (hiding) return;
+    Sound.tap();
+    setHiding(true);
+    // Match the .post-hiding animation duration (380 ms in CSS).
+    setTimeout(() => onHide?.(item), 380);
+  };
   const isPerson = showImg && item.realImg && PERSON_RE.test(item.title || '');
 
   // If the headline wraps to more than 3 lines, it's self-explanatory — hide
@@ -71,7 +82,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
   }, [item.title]);
 
   return (
-    <div className={`post${item._new ? ' post-new' : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
+    <div className={`post${item._new ? ' post-new' : ''}${hiding ? ' post-hiding' : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
       <div className="ph">
         <div className="pinfo">
           {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
@@ -118,7 +129,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
         <button
           className="util-btn util-minus"
           aria-label="تجاهل"
-          onClick={() => { Sound.tap(); onHide?.(item); }}
+          onClick={handleHide}
         ><Minus /></button>
         <button className={`util-btn ${isSaved?'on':''}`} aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>
           <Save />

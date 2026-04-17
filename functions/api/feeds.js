@@ -203,14 +203,14 @@ const SOURCES = {
   maan_news:   { name: "معا الإخبارية", initial: "مع", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amaannews.net&hl=ar&gl=SA&ceid=SA:ar"] },
   qudspress:   { name: "قدس برس", initial: "قب", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aqudspress.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Yemen — first dedicated source in the registry
-  almasdar_ye: { name: "المصدر اليمني", initial: "مص", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalmasdaronline.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  almasdar_ye: { name: "المصدر اليمني", initial: "مص", tier: 2, feeds: ["https://almasdaronline.com/rss","https://news.google.com/rss/search?q=site%3Aalmasdaronline.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Iraq — beyond Alsumaria
   shafaq:      { name: "شفق نيوز", initial: "شف", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Ashafaq.com&hl=ar&gl=SA&ceid=SA:ar"] },
   rudaw_ar:    { name: "رووداو", initial: "رو", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Arudaw.net+%22%2Farabic%22&hl=ar&gl=SA&ceid=SA:ar"] },
   // Iran (Arabic) — official-line balance for the registry
   alalam:      { name: "العالم", initial: "عل", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalalam.ir&hl=ar&gl=SA&ceid=SA:ar"] },
   // Turkey (Arabic) — first Turkey-Arabic outlets
-  trt_arabi:   { name: "TRT عربي", initial: "TR", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Atrtarabi.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  trt_arabi:   { name: "TRT عربي", initial: "TR", tier: 2, feeds: ["https://www.trtarabi.com/feed/rss.xml","https://news.google.com/rss/search?q=site%3Atrtarabi.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // الأناضول — Turkey's official wire (Anadolu Agency) Arabic service.
   // Direct RSS endpoint pattern is /ar/rss/default?cat=<category>; we hit
   // four sections in parallel (current/politics/world/economy) and keep

@@ -254,6 +254,39 @@ def analyze_pass(*, budget: int) -> dict[str, int]:
 # Entrypoint
 # ---------------------------------------------------------------------------
 
+def retry_errored_documents() -> dict[str, int]:
+    """Find every depth_documents row with analysis_status='error' and
+    flip it back to 'pending' so the next analyze pass picks it up.
+
+    Used when an API outage (e.g. Anthropic credit-balance exhaustion,
+    rate-limit storm, transient 5xx) marked a backlog of docs as failed.
+    Triggered manually from the GH Actions UI: workflow_dispatch with
+    mode=retry-errors.
+    """
+    sb = store.get_client()
+    rows = (
+        sb.table("depth_documents")
+        .select("id")
+        .eq("analysis_status", "error")
+        .limit(5000)
+        .execute()
+    ).data or []
+    ids = [r["id"] for r in rows]
+    if not ids:
+        logger.info("retry-errors: no errored docs found")
+        return {"retried": 0}
+    n = 0
+    CHUNK = 100
+    for i in range(0, len(ids), CHUNK):
+        batch = ids[i : i + CHUNK]
+        sb.table("depth_documents").update({"analysis_status": "pending"}).in_(
+            "id", batch
+        ).execute()
+        n += len(batch)
+    logger.info("retry-errors: %d errored docs requeued", n)
+    return {"retried": n}
+
+
 def reanalyze_language_mismatches() -> dict[str, int]:
     """Find docs whose source language is Arabic but whose existing
     analytical_conclusion is in English (no Arabic glyphs at all),
@@ -308,6 +341,16 @@ def main() -> int:
         help="skip analysis, only poll sources",
     )
     parser.add_argument(
+        "--retry-errors",
+        action="store_true",
+        help=(
+            "find all docs with analysis_status='error' (typically "
+            "left over from API outages, credit-balance failures, or "
+            "transient network errors), flip them back to 'pending' "
+            "and immediately drain them. Implies --analyze-only."
+        ),
+    )
+    parser.add_argument(
         "--reanalyze-language-mismatches",
         action="store_true",
         help=(
@@ -345,7 +388,12 @@ def main() -> int:
     # mismatch repair, then immediately drain the freshly-requeued docs
     # with the current prompt. Doing both in one workflow_dispatch run
     # means a single click in the GH Actions UI fixes the backlog.
-    if args.reanalyze_language_mismatches:
+    if args.retry_errors:
+        logger.info("starting error-retry pass")
+        summary["retry"] = retry_errored_documents()
+        logger.info("starting analyze pass (budget=%d)", args.analyze_budget)
+        summary["analyze"] = analyze_pass(budget=args.analyze_budget)
+    elif args.reanalyze_language_mismatches:
         logger.info("starting language-mismatch repair pass")
         summary["repair"] = reanalyze_language_mismatches()
         logger.info("starting analyze pass (budget=%d)", args.analyze_budget)

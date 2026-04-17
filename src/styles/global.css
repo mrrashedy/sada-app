@@ -189,7 +189,8 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
    regardless of the title's own reading direction. That way an English
    NYT headline reads left-to-right but still respects the same column
    boundary as an Arabic headline — the box feels identical. */
-.ptitle{font-size:var(--fs-md);font-weight:var(--fw-bd);line-height:var(--lh-snug);color:var(--t1);margin-bottom:var(--s1);letter-spacing:-.1px;word-break:break-word;padding-right:16px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ptitle{font-size:var(--fs-md);font-weight:var(--fw-bd);line-height:var(--lh-snug);color:#000;margin-bottom:var(--s1);letter-spacing:-.1px;word-break:break-word;padding-right:16px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+[data-theme="dark"] .ptitle{color:#FFF}
 .pbody{font-size:var(--fs-md);line-height:var(--lh-body);color:var(--t2);word-break:break-word;padding-right:16px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .post .strap{margin-right:16px;width:calc(100% - 16px);max-width:calc(100% - 16px)}
 .pactions{padding-right:16px}

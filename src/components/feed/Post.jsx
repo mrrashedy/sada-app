@@ -76,11 +76,11 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
         <div className="pinfo">
           {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
           <span className="pname">{item.s.n}</span>
-          {/* Wire-service dateline — country ISO code in monospace, like
-              real news copy ('REUTERS — TEHRAN —'). No chip, no border,
-              no orange. Just typography + a thin vertical pipe. */}
+          {/* Wire-service dateline — full Arabic country names between the
+              source and the time, flanked by hairline pipes. Reads as a
+              press-bureau filing tag. */}
           {item.flags && item.flags.length > 0 && (
-            <span className="pdateline">{item.flags.map(c => c.toUpperCase()).join(' · ')}</span>
+            <span className="pdateline">{item.flags.map(countryName).join(' · ')}</span>
           )}
           <span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span>
         </div>

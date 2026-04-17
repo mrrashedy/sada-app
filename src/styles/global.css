@@ -85,13 +85,12 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Inline tag variant — flows with the body text so the last line of the body
    can carry tags when there's room, saving vertical space in the card. */
 .ptag-inline{padding:1px 7px;margin-inline-start:6px;font-size:9px;vertical-align:middle;line-height:1.4;letter-spacing:.6px;font-weight:700}
-/* Wire-service dateline — country ISO code in mono, sits between source
-   name and time. Reads like real press copy ("AJ — TEHRAN — 5m ago").
-   Tiny vertical pipe separates it from the source name and the time. */
+/* Wire-service dateline — full Arabic country names between source
+   and time, flanked by hairline pipes. Press-bureau filing tag style. */
 .pdateline{
   display:inline-flex;align-items:center;
-  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  font-size:10px;font-weight:700;letter-spacing:1px;
+  font-family:var(--ft);
+  font-size:11px;font-weight:600;letter-spacing:.1px;
   color:var(--or);
   margin:0 8px;padding:0 8px;
   border-left:1px solid var(--g1);border-right:1px solid var(--g1);

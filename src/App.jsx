@@ -171,34 +171,55 @@ export default function Sada() {
     if (isAtTop && newCount > 0) ackNewItems();
   }, [isAtTop, newCount, ackNewItems]);
 
-  // Scroll-anchor compensation. When new items are prepended to the feed
-  // while the user has scrolled down, the natural browser behavior is for
-  // the user's view to slide DOWN by the height of the inserted content
-  // (because their scrollTop stays the same but content shifts). The user
-  // reported this as 'feed slides under my finger.'
+  // Element-level scroll anchoring — the X / Twitter pattern.
   //
-  // We compensate by capturing scrollHeight + scrollTop BEFORE every render
-  // and, if scrollHeight grows AND the user isn't at the top, bump scrollTop
-  // by the height delta. The user's viewport stays glued to whatever they
-  // were reading. CSS overflow-anchor:auto handles this in modern Chrome /
-  // Firefox, but Safari support is incomplete — this JS fallback covers it.
-  const scrollHRef = useRef(0);
-  const scrollTRef = useRef(0);
+  // Naive scrollHeight-delta compensation is fragile: it breaks when items
+  // are removed below the viewport, when images load and reflow, or when
+  // the cap-at-500 trims items off the bottom. The robust approach is to
+  // pin to a SPECIFIC visible element by id:
+  //
+  //   1. After every render, scan for the first item whose top is >= 0
+  //      (first one fully or partially in viewport from the top edge),
+  //      remember its id and its viewport-relative top offset.
+  //   2. On the NEXT render (after the feed mutated), find that same
+  //      element by data-id. If it shifted by N pixels (because items
+  //      were prepended above it), add N to scrollTop. The user's view
+  //      snaps back to exactly the item they were reading, regardless of
+  //      what happened above or below.
+  //
+  // Skip compensation entirely when the user is at the top — they want
+  // new items to appear naturally there.
+  const anchorRef = useRef(null);
   useLayoutEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-    const prevH = scrollHRef.current;
-    const prevT = scrollTRef.current;
-    const newH = el.scrollHeight;
-    const delta = newH - prevH;
-    // Only compensate when content was added above (not below), and only
-    // when the user isn't already at the top (where they want to see new
-    // items appear naturally).
-    if (delta > 0 && prevT > 120 && prevH > 0) {
-      el.scrollTop = prevT + delta;
+
+    // Phase 1 — restore: if we have a saved anchor from the last render,
+    // find that element in the new DOM and compensate scrollTop.
+    const saved = anchorRef.current;
+    if (saved && el.scrollTop > 120) {
+      const node = el.querySelector(`[data-id="${CSS.escape(saved.id)}"]`);
+      if (node) {
+        const newTop = node.getBoundingClientRect().top;
+        const containerTop = el.getBoundingClientRect().top;
+        const newRelTop = newTop - containerTop;
+        const delta = newRelTop - saved.top;
+        if (Math.abs(delta) > 1) el.scrollTop = el.scrollTop + delta;
+      }
     }
-    scrollHRef.current = el.scrollHeight;
-    scrollTRef.current = el.scrollTop;
+
+    // Phase 2 — capture: pick the new first-visible item for next time.
+    const containerTop = el.getBoundingClientRect().top;
+    const items = el.querySelectorAll('[data-id]');
+    let next = null;
+    for (const item of items) {
+      const relTop = item.getBoundingClientRect().top - containerTop;
+      if (relTop >= 0) {
+        next = { id: item.dataset.id, top: relTop };
+        break;
+      }
+    }
+    anchorRef.current = next;
   }, [liveFeed]);
   const secsSinceFetch = lastFetchAt ? Math.floor((Date.now() - lastFetchAt) / 1000) : null;
   const freshnessLabel = secsSinceFetch === null ? '' :

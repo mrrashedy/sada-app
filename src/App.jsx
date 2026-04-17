@@ -580,13 +580,13 @@ export default function Sada() {
       {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
         <div className="hdr-top">
           <div className="logo">
-            {/* Inline SVG so the @font-face from global.css applies to
-                the <text> element (img-loaded SVGs can't access page fonts).
-                Straight baseline — the custom Madinet Al Bat typeface
-                already has the angular character; the previous arc was
-                distorting the letterforms. */}
-            <svg className="logo-svg" viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" aria-label="غرفة الأخبار">
-              <text x="400" y="170" textAnchor="middle" fontSize="170" fontWeight="900" fill="currentColor" direction="rtl">غرفة الأخبار</text>
+            {/* Inline SVG (so @font-face applies). Generous viewBox with
+                overflow:visible so Arabic ascenders/descenders + the wide
+                custom font aren't clipped on any side. dominantBaseline
+                centers the text vertically in the box; preserveAspectRatio
+                keeps it balanced when CSS scales the SVG. */}
+            <svg className="logo-svg" viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg" aria-label="غرفة الأخبار" preserveAspectRatio="xMidYMid meet" style={{ overflow:'visible' }}>
+              <text x="450" y="120" textAnchor="middle" dominantBaseline="central" fontSize="150" fontWeight="900" fill="currentColor" direction="rtl">غرفة الأخبار</text>
             </svg>
           </div>
           <div className="hdr-r">

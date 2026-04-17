@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jan 2026 Payroll Visualization</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }
+  h1 { text-align: center; font-size: 28px; margin-bottom: 6px; color: #f8fafc; }
+  .subtitle { text-align: center; font-size: 14px; color: #94a3b8; margin-bottom: 32px; }
+  .dashboard { max-width: 1200px; margin: 0 auto; }
+
+  /* Summary Cards */
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+  .card-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .card-value { font-size: 28px; font-weight: 700; color: #f8fafc; }
+  .card-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .card.highlight { border-color: #6366f1; background: linear-gradient(135deg, #1e293b 0%, #1e1b4b 100%); }
+  .card.highlight .card-value { color: #a5b4fc; }
+
+  /* Chart Containers */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  .chart-box { background: #1e293b; border-radius: 12px; padding: 24px; border: 1px solid #334155; }
+  .chart-box h2 { font-size: 16px; margin-bottom: 16px; color: #cbd5e1; }
+  .chart-box.full { grid-column: 1 / -1; }
+
+  /* Table */
+  .table-box { background: #1e293b; border-radius: 12px; padding: 24px; border: 1px solid #334155; margin-bottom: 24px; }
+  .table-box h2 { font-size: 16px; margin-bottom: 16px; color: #cbd5e1; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; border-bottom: 2px solid #334155; }
+  td { padding: 12px; font-size: 14px; border-bottom: 1px solid #1e293b; }
+  tr { background: #0f172a; }
+  tr:hover { background: #1a2332; }
+  td:last-child { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
+  .badge-ft { background: #064e3b; color: #6ee7b7; }
+  .badge-pt { background: #4c1d95; color: #c4b5fd; }
+  .bar-cell { display: flex; align-items: center; gap: 10px; }
+  .bar-bg { flex: 1; height: 8px; background: #334155; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+
+  @media (max-width: 768px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+  <h1>💰 January 2026 Payroll</h1>
+  <p class="subtitle">Monthly Salary & Expense Breakdown</p>
+
+  <!-- Summary Cards -->
+  <div class="cards">
+    <div class="card highlight">
+      <div class="card-label">Total Payroll (EGP)</div>
+      <div class="card-value">240,050</div>
+      <div class="card-sub">≈ $4,555 USD</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Team Members</div>
+      <div class="card-value">8</div>
+      <div class="card-sub">6 full-time · 2 part-time</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Avg. Salary (EGP)</div>
+      <div class="card-value">28,169</div>
+      <div class="card-sub">Full-time employees only</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Extra Expenses</div>
+      <div class="card-value">14,700</div>
+      <div class="card-sub">EGP + $244.20 USD</div>
+    </div>
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="charts-row">
+    <div class="chart-box">
+      <h2>💼 Salary by Employee</h2>
+      <canvas id="barChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h2>🏢 Salary by Department</h2>
+      <canvas id="deptPie"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts Row 2 -->
+  <div class="charts-row">
+    <div class="chart-box">
+      <h2>📊 Salary vs Expenses Breakdown</h2>
+      <canvas id="doughnutChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h2>⏱️ Full-Time vs Part-Time Spend</h2>
+      <canvas id="ftptChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Detailed Table -->
+  <div class="table-box">
+    <h2>📋 Detailed Employee Breakdown</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Role</th>
+          <th>Department</th>
+          <th>Type</th>
+          <th>Salary (EGP)</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const employees = [
+  { name: "Mariam El Wetery", role: "PM", dept: "PM & Production", type: "full", salary: 40000 },
+  { name: "Shehab Shaheen", role: "Creative Director", dept: "Design", type: "part", salary: 40000 },
+  { name: "Haidi El Kayal", role: "Content Editor", dept: "Copywriting", type: "full", salary: 40000 },
+  { name: "Lina Sakr", role: "Content Producer", dept: "PM & Production", type: "full", salary: 35000 },
+  { name: "Arwa Hesham", role: "Social Media Mgr", dept: "Marketing", type: "full", salary: 30000 },
+  { name: "Mostafa Shokry", role: "Animator", dept: "Design", type: "full", salary: 25000 },
+  { name: "Aya Adel", role: "Graphic Designer", dept: "Design", type: "part", salary: 9350 },
+  { name: "Youssef Gado", role: "Graphic Designer", dept: "Design", type: "full", salary: 7000 },
+];
+
+const expenses = [
+  { name: "Henry 8th Video Editing", amount: 12000 },
+  { name: "Flight Ticket Change", amount: 1400 },
+  { name: "VO Studio Rental", amount: 1300 },
+];
+
+const maxSalary = Math.max(...employees.map(e => e.salary));
+const colors = ["#818cf8","#a78bfa","#c084fc","#e879f9","#f472b6","#fb923c","#fbbf24","#34d399"];
+
+// --- Bar Chart ---
+new Chart(document.getElementById("barChart"), {
+  type: "bar",
+  data: {
+    labels: employees.map(e => e.name.split(" ")[0]),
+    datasets: [{
+      label: "Salary (EGP)",
+      data: employees.map(e => e.salary),
+      backgroundColor: colors,
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    indexAxis: "y",
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => `EGP ${ctx.raw.toLocaleString()}` } }
+    },
+    scales: {
+      x: { grid: { color: "#334155" }, ticks: { color: "#94a3b8", callback: v => `${v/1000}K` } },
+      y: { grid: { display: false }, ticks: { color: "#e2e8f0", font: { size: 12 } } }
+    }
+  }
+});
+
+// --- Department Pie ---
+const deptData = {};
+employees.forEach(e => { deptData[e.dept] = (deptData[e.dept] || 0) + e.salary; });
+new Chart(document.getElementById("deptPie"), {
+  type: "pie",
+  data: {
+    labels: Object.keys(deptData),
+    datasets: [{
+      data: Object.values(deptData),
+      backgroundColor: ["#818cf8","#f472b6","#fbbf24","#34d399"],
+      borderWidth: 2,
+      borderColor: "#1e293b"
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: "bottom", labels: { color: "#cbd5e1", padding: 16, font: { size: 12 } } },
+      tooltip: { callbacks: { label: ctx => `EGP ${ctx.raw.toLocaleString()} (${((ctx.raw/226350)*100).toFixed(1)}%)` } }
+    }
+  }
+});
+
+// --- Doughnut: Salaries vs Expenses ---
+const totalSalaries = employees.reduce((s,e) => s+e.salary, 0);
+const totalExpEGP = expenses.reduce((s,e) => s+e.amount, 0);
+new Chart(document.getElementById("doughnutChart"), {
+  type: "doughnut",
+  data: {
+    labels: ["Salaries", "VO / Editing / Travel", "Midjourney (USD)"],
+    datasets: [{
+      data: [totalSalaries, totalExpEGP, 12860],
+      backgroundColor: ["#818cf8","#fb923c","#34d399"],
+      borderWidth: 2,
+      borderColor: "#1e293b"
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: "60%",
+    plugins: {
+      legend: { position: "bottom", labels: { color: "#cbd5e1", padding: 16 } },
+      tooltip: { callbacks: { label: ctx => `EGP ${ctx.raw.toLocaleString()}` } }
+    }
+  }
+});
+
+// --- FT vs PT ---
+const ftTotal = employees.filter(e => e.type === "full").reduce((s,e) => s+e.salary, 0);
+const ptTotal = employees.filter(e => e.type === "part").reduce((s,e) => s+e.salary, 0);
+new Chart(document.getElementById("ftptChart"), {
+  type: "bar",
+  data: {
+    labels: ["Full-Time", "Part-Time"],
+    datasets: [{
+      data: [ftTotal, ptTotal],
+      backgroundColor: ["#6ee7b7","#c4b5fd"],
+      borderRadius: 8,
+      borderSkipped: false,
+      barThickness: 60
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => `EGP ${ctx.raw.toLocaleString()}` } }
+    },
+    scales: {
+      y: { grid: { color: "#334155" }, ticks: { color: "#94a3b8", callback: v => `${v/1000}K` } },
+      x: { grid: { display: false }, ticks: { color: "#e2e8f0", font: { size: 14, weight: "bold" } } }
+    }
+  }
+});
+
+// --- Table ---
+const tbody = document.getElementById("tableBody");
+employees.sort((a,b) => b.salary - a.salary).forEach((e, i) => {
+  const pct = (e.salary / maxSalary * 100).toFixed(0);
+  const badgeClass = e.type === "full" ? "badge-ft" : "badge-pt";
+  const badgeLabel = e.type === "full" ? "Full-time" : "Part-time";
+  tbody.innerHTML += `<tr>
+    <td><strong>${e.name}</strong></td>
+    <td>${e.role}</td>
+    <td>${e.dept}</td>
+    <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+    <td>
+      <div class="bar-cell">
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${colors[i]}"></div></div>
+        <span>${e.salary.toLocaleString()}</span>
+      </div>
+    </td>
+  </tr>`;
+});
+</script>
+</body>
+</html>

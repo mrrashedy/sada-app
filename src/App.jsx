@@ -132,8 +132,43 @@ export default function Sada() {
   }, []);
 
   // Source toggles
-  useEffect(() => { try { const s=localStorage.getItem('sada-sources'); if(s) setSources(JSON.parse(s)); } catch {} }, []);
-  const toggleSource = useCallback(i => { setSources(prev => { const next={...prev,[i]:prev[i]===false?true:false}; try { localStorage.setItem('sada-sources',JSON.stringify(next)); } catch {} return next; }); }, []);
+  // Source toggle state is keyed by source ID (string), not array index.
+  // Indexes shift whenever a source is added/removed from sources.js, which
+  // silently re-mutes the wrong outlets — that bit users on 2026-04-17.
+  // We migrate the legacy 'sada-sources' (index-keyed) into the new
+  // 'sada-sources-v2' (id-keyed) on first load, then delete the legacy key.
+  useEffect(() => {
+    try {
+      const v2 = localStorage.getItem('sada-sources-v2');
+      if (v2) { setSources(JSON.parse(v2)); return; }
+      const legacy = localStorage.getItem('sada-sources');
+      if (legacy) {
+        // Best-effort migration: if the index-keyed map matches the current
+        // SOURCES array length, translate index → id; otherwise drop it
+        // (indices have shifted and we cannot recover the original mapping).
+        const obj = JSON.parse(legacy);
+        const migrated = {};
+        const keys = Object.keys(obj).map(k => parseInt(k, 10)).filter(k => !Number.isNaN(k));
+        const maxIdx = keys.length ? Math.max(...keys) : -1;
+        if (maxIdx < SOURCES.length) {
+          for (const k of keys) {
+            const sid = SOURCES[k]?.id;
+            if (sid && obj[k] === false) migrated[sid] = false;
+          }
+        }
+        setSources(migrated);
+        localStorage.setItem('sada-sources-v2', JSON.stringify(migrated));
+        localStorage.removeItem('sada-sources');
+      }
+    } catch {}
+  }, []);
+  const toggleSource = useCallback(id => {
+    setSources(prev => {
+      const next = { ...prev, [id]: prev[id] === false ? true : false };
+      try { localStorage.setItem('sada-sources-v2', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   // Live feed
   // Three independent feed hooks — each vertical has its own data pipeline.
@@ -446,7 +481,7 @@ export default function Sada() {
   }, [rawTrending, radarOverrides, applyRadarOverrides]);
 
   // Filter by enabled sources
-  const sourcedFeed = allFeed.filter(item => { const idx=SOURCES.findIndex(s=>s.n===item.s?.n); return idx===-1||sources[idx]!==false; });
+  const sourcedFeed = allFeed.filter(item => { const sid=item.s?.id; return !sid || sources[sid]!==false; });
   const userTopics = userPrefs.topics||[];
 
   // Client-side flagship boost REMOVED per user request — pure recency only.

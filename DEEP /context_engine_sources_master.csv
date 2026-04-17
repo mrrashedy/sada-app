@@ -1,0 +1,310 @@
+name,category,region,language,priority,url
+White House,official,USA,English,Tier 1,https://www.whitehouse.gov/
+U.S. Department of State,official,USA,English,Tier 1,https://www.state.gov/
+U.S. Department of Defense,official,USA,English,Tier 1,https://www.defense.gov/
+U.S. Treasury Department,official,USA,English,Tier 1,https://home.treasury.gov/
+Federal Reserve,official,USA,English,Tier 1,https://www.federalreserve.gov/
+U.S. Energy Information Administration,official,USA,English,Tier 2,https://www.eia.gov/
+"UK Foreign, Commonwealth & Development Office",official,UK,English,Tier 1,https://www.gov.uk/government/organisations/foreign-commonwealth-development-office
+Bank of England,official,UK,English,Tier 2,https://www.bankofengland.co.uk/
+German Federal Foreign Office,official,Germany,German/English,Tier 2,https://www.auswaertiges-amt.de/en
+French Ministry for Europe and Foreign Affairs,official,France,French/English,Tier 2,https://www.diplomatie.gouv.fr/en/
+Banque de France,official,France,French/English,Tier 3,https://www.banque-france.fr/en
+European Commission,official,EU,Multilingual,Tier 1,https://commission.europa.eu/
+European Council,official,EU,Multilingual,Tier 2,https://www.consilium.europa.eu/en/european-council/
+European Central Bank,official,EU,English,Tier 1,https://www.ecb.europa.eu/
+European External Action Service,official,EU,English,Tier 2,https://www.eeas.europa.eu/
+NATO,official,Global,English,Tier 2,https://www.nato.int/
+Ministry of Foreign Affairs of China,official,China,Chinese/English,Tier 1,https://www.fmprc.gov.cn/eng/
+State Council of China,official,China,Chinese/English,Tier 2,https://english.www.gov.cn/
+People's Bank of China,official,China,Chinese/English,Tier 1,https://www.pbc.gov.cn/en/3688006/index.html
+National Development and Reform Commission,official,China,Chinese/English,Tier 2,https://en.ndrc.gov.cn/
+Ministry of Commerce of China,official,China,Chinese/English,Tier 3,http://english.mofcom.gov.cn/
+Ministry of Foreign Affairs of Russia,official,Russia,Russian/English,Tier 1,https://mid.ru/en/
+Central Bank of Russia,official,Russia,Russian/English,Tier 2,https://www.cbr.ru/eng/
+Ministry of External Affairs India,official,India,English,Tier 1,https://www.mea.gov.in/
+Reserve Bank of India,official,India,English,Tier 2,https://www.rbi.org.in/
+NITI Aayog,official,India,English,Tier 2,https://www.niti.gov.in/
+Ministry of Foreign Affairs Turkey,official,Turkey,Turkish/English,Tier 2,https://www.mfa.gov.tr/default.en.mfa
+Central Bank of the Republic of Türkiye,official,Turkey,Turkish/English,Tier 3,https://www.tcmb.gov.tr/wps/wcm/connect/EN/TCMB+EN/Main+Menu
+Ministry of Foreign Affairs Israel,official,Israel,Hebrew/English,Tier 2,https://www.gov.il/en/departments/ministry_of_foreign_affairs
+Bank of Israel,official,Israel,Hebrew/English,Tier 3,https://www.boi.org.il/en/
+Ministry of Foreign Affairs Saudi Arabia,official,Saudi Arabia,Arabic/English,Tier 1,https://www.mofa.gov.sa/en
+Saudi Ministry of Economy and Planning,official,Saudi Arabia,Arabic/English,Tier 2,https://www.mep.gov.sa/en
+Saudi Central Bank,official,Saudi Arabia,Arabic/English,Tier 2,https://www.sama.gov.sa/en-US/Pages/default.aspx
+Public Investment Fund,official,Saudi Arabia,Arabic/English,Tier 1,https://www.pif.gov.sa/en/
+UAE Ministry of Foreign Affairs,official,UAE,Arabic/English,Tier 1,https://www.mofa.gov.ae/en
+Central Bank of the UAE,official,UAE,Arabic/English,Tier 2,https://www.centralbank.ae/en/
+Abu Dhabi Department of Economic Development,official,UAE,Arabic/English,Tier 3,https://added.gov.ae/
+Abu Dhabi Investment Authority,official,UAE,English,Tier 3,https://www.adia.ae/
+Mubadala,official,UAE,English,Tier 3,https://www.mubadala.com/
+Qatar Ministry of Foreign Affairs,official,Qatar,Arabic/English,Tier 1,https://www.mofa.gov.qa/en
+Qatar Central Bank,official,Qatar,Arabic/English,Tier 2,https://www.qcb.gov.qa/English/Pages/default.aspx
+Qatar Investment Authority,official,Qatar,English,Tier 1,https://www.qia.qa/
+Ministry of Foreign Affairs Egypt,official,Egypt,Arabic/English,Tier 1,https://mfa.gov.eg/English/Pages/default.aspx
+Central Bank of Egypt,official,Egypt,Arabic/English,Tier 1,https://www.cbe.org.eg/en/
+Information and Decision Support Center,official,Egypt,Arabic/English,Tier 2,https://www.idsc.gov.eg/
+Ministry of Foreign Affairs Jordan,official,Jordan,Arabic/English,Tier 2,https://mfa.gov.jo/en
+Central Bank of Jordan,official,Jordan,Arabic/English,Tier 3,https://www.cbj.gov.jo/Pages/viewpage.aspx?pageID=1
+Ministry of Foreign Affairs Morocco,official,Morocco,Arabic/French/English,Tier 2,https://www.diplomatie.ma/en
+Bank Al-Maghrib,official,Morocco,Arabic/French/English,Tier 3,https://www.bkam.ma/en
+Ministry of Foreign Affairs Algeria,official,Algeria,Arabic/French/English,Tier 2,https://www.mae.gov.dz/en
+Bank of Algeria,official,Algeria,French/Arabic,Tier 3,https://www.bank-of-algeria.dz/
+Ministry of Foreign Affairs Tunisia,official,Tunisia,Arabic/French/English,Tier 2,https://www.diplomatie.gov.tn/en/
+Central Bank of Tunisia,official,Tunisia,Arabic/French/English,Tier 3,https://www.bct.gov.tn/bct/siteprod/index.jsp
+Ministry of Foreign Affairs Oman,official,Oman,Arabic/English,Tier 2,https://www.fm.gov.om/
+Central Bank of Oman,official,Oman,Arabic/English,Tier 3,https://www.cbo.gov.om/
+Ministry of Foreign Affairs Kuwait,official,Kuwait,Arabic/English,Tier 2,https://www.mofa.gov.kw/en/
+Central Bank of Kuwait,official,Kuwait,Arabic/English,Tier 3,https://www.cbk.gov.kw/en/
+Ministry of Foreign Affairs Bahrain,official,Bahrain,Arabic/English,Tier 2,https://www.mofa.gov.bh/
+Central Bank of Bahrain,official,Bahrain,Arabic/English,Tier 3,https://www.cbb.gov.bh/
+Ministry of Foreign Affairs Iran,official,Iran,Persian/English,Tier 1,https://en.mfa.gov.ir/
+Central Bank of Iran,official,Iran,Persian/English,Tier 3,https://www.cbi.ir/default_en.aspx
+International Monetary Fund,multilateral,Global,English,Tier 1,https://www.imf.org/
+World Bank,multilateral,Global,English,Tier 1,https://www.worldbank.org/
+Bank for International Settlements,multilateral,Global,English,Tier 1,https://www.bis.org/
+United Nations,multilateral,Global,Multilingual,Tier 2,https://www.un.org/
+UNDP,multilateral,Global,Multilingual,Tier 2,https://www.undp.org/
+UNCTAD,multilateral,Global,English,Tier 2,https://unctad.org/
+UNESCWA,multilateral,Arab Region,Arabic/English,Tier 2,https://www.unescwa.org/
+UNEP,multilateral,Global,English,Tier 3,https://www.unep.org/
+UNHCR,multilateral,Global,Multilingual,Tier 3,https://www.unhcr.org/
+UN Women,multilateral,Global,Multilingual,Tier 3,https://www.unwomen.org/
+UNESCO,multilateral,Global,Multilingual,Tier 3,https://www.unesco.org/
+FAO,multilateral,Global,Multilingual,Tier 3,https://www.fao.org/
+WHO,multilateral,Global,Multilingual,Tier 3,https://www.who.int/
+International Labour Organization,multilateral,Global,Multilingual,Tier 3,https://www.ilo.org/
+International Organization for Migration,multilateral,Global,Multilingual,Tier 3,https://www.iom.int/
+World Trade Organization,multilateral,Global,Multilingual,Tier 2,https://www.wto.org/
+OECD,multilateral,Global,English,Tier 2,https://www.oecd.org/
+International Energy Agency,multilateral,Global,English,Tier 1,https://www.iea.org/
+International Renewable Energy Agency,multilateral,Global,English,Tier 2,https://www.irena.org/
+OPEC,multilateral,Global,English,Tier 1,https://www.opec.org/
+OPEC Fund for International Development,multilateral,Global,English,Tier 3,https://opecfund.org/
+International Maritime Organization,multilateral,Global,English,Tier 2,https://www.imo.org/
+World Economic Forum,multilateral,Global,English,Tier 2,https://www.weforum.org/
+Asian Infrastructure Investment Bank,multilateral,Global,English,Tier 2,https://www.aiib.org/
+New Development Bank,multilateral,Global South,English,Tier 2,https://www.ndb.int/
+African Development Bank,multilateral,Africa,English/French,Tier 2,https://www.afdb.org/
+Islamic Development Bank,multilateral,Global,Arabic/English,Tier 2,https://www.isdb.org/
+Arab Monetary Fund,multilateral,Arab Region,Arabic/English,Tier 2,https://www.amf.org.ae/
+Arab Fund for Economic and Social Development,multilateral,Arab Region,Arabic/English,Tier 3,https://www.arabfund.org/
+Arab Bank for Economic Development in Africa,multilateral,Arab Region/Africa,Arabic/English/French,Tier 3,https://www.badea.org/
+Gulf Cooperation Council,multilateral,Gulf,Arabic/English,Tier 2,https://www.gcc-sg.org/en-us/Pages/default.aspx
+League of Arab States,multilateral,Arab Region,Arabic/English,Tier 2,https://www.lasportal.org/
+African Union,multilateral,Africa,English/French/Arabic,Tier 3,https://au.int/
+ASEAN Secretariat,multilateral,Southeast Asia,English,Tier 3,https://asean.org/
+Brookings Institution,think_tank,USA,English,Tier 1,https://www.brookings.edu/
+Carnegie Endowment for International Peace,think_tank,USA,English,Tier 1,https://carnegieendowment.org/
+Council on Foreign Relations,think_tank,USA,English,Tier 1,https://www.cfr.org/
+Chatham House,think_tank,UK,English,Tier 1,https://www.chathamhouse.org/
+RAND Corporation,think_tank,USA,English,Tier 1,https://www.rand.org/
+Center for Strategic and International Studies,think_tank,USA,English,Tier 1,https://www.csis.org/
+Atlantic Council,think_tank,USA,English,Tier 2,https://www.atlanticcouncil.org/
+Wilson Center,think_tank,USA,English,Tier 2,https://www.wilsoncenter.org/
+Hoover Institution,think_tank,USA,English,Tier 3,https://www.hoover.org/
+New America,think_tank,USA,English,Tier 3,https://www.newamerica.org/
+Heritage Foundation,think_tank,USA,English,Tier 3,https://www.heritage.org/
+Peterson Institute for International Economics,think_tank,USA,English,Tier 2,https://www.piie.com/
+Center for a New American Security,think_tank,USA,English,Tier 2,https://www.cnas.org/
+Defense Priorities,think_tank,USA,English,Tier 3,https://www.defensepriorities.org/
+German Institute for International and Security Affairs (SWP),think_tank,Germany,German/English,Tier 2,https://www.swp-berlin.org/en
+European Council on Foreign Relations,think_tank,Europe,English,Tier 2,https://ecfr.eu/
+Bruegel,think_tank,Europe,English,Tier 2,https://www.bruegel.org/
+Clingendael Institute,think_tank,Netherlands,English,Tier 3,https://www.clingendael.org/
+Royal United Services Institute,think_tank,UK,English,Tier 2,https://www.rusi.org/
+International Institute for Strategic Studies,think_tank,UK,English,Tier 1,https://www.iiss.org/
+Stockholm International Peace Research Institute,think_tank,Sweden,English,Tier 1,https://www.sipri.org/
+Geneva Centre for Security Policy,think_tank,Switzerland,English,Tier 3,https://www.gcsp.ch/
+Centre for Economic Policy Research,think_tank,Europe,English,Tier 2,https://cepr.org/
+International Crisis Group,think_tank,Global,English,Tier 2,https://www.crisisgroup.org/
+Arab Center for Research and Policy Studies,think_tank,Qatar,Arabic/English,Tier 1,https://www.dohainstitute.org/en/lists/acrps-PDFDocumentLibrary
+Arab Center Washington DC,think_tank,USA/Arab,Arabic/English,Tier 1,https://arabcenterdc.org/
+Middle East Council on Global Affairs,think_tank,Qatar,Arabic/English,Tier 1,https://mecouncil.org/
+Doha Institute for Graduate Studies,think_tank,Qatar,Arabic/English,Tier 2,https://www.dohainstitute.org/en
+Middle East Institute,think_tank,USA,English,Tier 2,https://www.mei.edu/
+Al-Ahram Center for Political and Strategic Studies,think_tank,Egypt,Arabic,Tier 1,https://acpss.ahram.org.eg/
+Emirates Policy Center,think_tank,UAE,Arabic/English,Tier 1,https://epc.ae/en
+Emirates Center for Strategic Studies and Research,think_tank,UAE,Arabic/English,Tier 1,https://www.ecssr.ae/en/
+"Bahrain Center for Strategic, International and Energy Studies",think_tank,Bahrain,Arabic/English,Tier 2,https://www.dirasa.org.bh/
+Lebanese Center for Policy Studies,think_tank,Lebanon,Arabic/English,Tier 1,https://www.lcps-lebanon.org/
+Issam Fares Institute,think_tank,Lebanon,Arabic/English,Tier 1,https://www.aub.edu.lb/ifi/
+Arab Reform Initiative,think_tank,Regional,Arabic/English,Tier 1,https://www.arab-reform.net/
+Gulf Research Center,think_tank,Gulf,English/Arabic,Tier 2,https://www.grc.net/
+Al Sharq Forum,think_tank,Turkey/Qatar,Arabic/English,Tier 2,https://www.sharqforum.org/
+Arab Thought Forum,think_tank,Jordan,Arabic,Tier 2,https://www.arabthought.org/
+Royal Islamic Strategic Studies Centre,think_tank,Jordan,Arabic/English,Tier 3,https://rissc.jo/
+Al-Quds Center for Political Studies,think_tank,Jordan,Arabic,Tier 2,http://www.alqudscenter.org/
+Al-Zaytouna Centre for Studies and Consultations,think_tank,Lebanon/Palestine,Arabic,Tier 2,https://www.alzaytouna.net/
+Alternative Policy Solutions,think_tank,Egypt,Arabic/English,Tier 1,https://aps.aucegypt.edu/
+Moshe Dayan Center,think_tank,Israel,English,Tier 3,https://dayan.org/
+Begin-Sadat Center for Strategic Studies,think_tank,Israel,English,Tier 3,https://besacenter.org/
+Palestinian Center for Policy and Survey Research,think_tank,Palestine,Arabic/English,Tier 1,https://www.pcpsr.org/
+Carnegie Middle East Center,think_tank,Lebanon,Arabic/English,Tier 2,https://carnegie-mec.org/
+TRENDS Research & Advisory,think_tank,UAE,Arabic/English,Tier 2,https://trendsresearch.org/
+Sheikh Saud bin Saqr Al Qasimi Foundation for Policy Research,think_tank,UAE,Arabic/English,Tier 3,https://www.alqasimifoundation.com/en
+Dubai Public Policy Research Centre,think_tank,UAE,English,Tier 3,https://bhuth.ae/
+Arab Gulf States Institute in Washington,think_tank,USA/Gulf,English,Tier 2,https://agsiw.org/
+Orient XXI,think_tank_media,France/MENA,French/Arabic/English,Tier 3,https://orientxxi.info/
+IEMed,think_tank,Spain/Mediterranean,Spanish/English,Tier 3,https://www.iemed.org/
+Center for Arab Unity Studies,think_tank,Lebanon,Arabic,Tier 3,https://caus.org.lb/
+Egyptian Center for Thought and Strategic Studies,think_tank,Egypt,Arabic,Tier 2,https://ecss.com.eg/
+Shanghai Institutes for International Studies,think_tank,China,Chinese/English,Tier 2,https://en.siis.org.cn/
+China Institutes of Contemporary International Relations,think_tank,China,Chinese/English,Tier 2,https://www.cicir.ac.cn/EN
+Chinese Academy of Social Sciences,think_tank,China,Chinese/English,Tier 2,http://cass.cssn.cn/
+Center for China and Globalization,think_tank,China,Chinese/English,Tier 3,https://en.ccg.org.cn/
+Peking University Institute of International and Strategic Studies,think_tank,China,Chinese/English,Tier 3,https://iiss.pku.edu.cn/en/
+Tsinghua Center for International Security and Strategy,think_tank,China,Chinese/English,Tier 3,https://ciss.tsinghua.edu.cn/en/
+Valdai Discussion Club,think_tank,Russia,English/Russian,Tier 2,https://valdaiclub.com/
+Russian International Affairs Council,think_tank,Russia,English/Russian,Tier 2,https://russiancouncil.ru/en/
+IMEMO,think_tank,Russia,English/Russian,Tier 3,https://www.imemo.ru/en
+MGIMO research centers,think_tank,Russia,English/Russian,Tier 3,https://mgimo.ru/en/
+Observer Research Foundation,think_tank,India,English,Tier 2,https://www.orfonline.org/
+Manohar Parrikar Institute for Defence Studies and Analyses,think_tank,India,English,Tier 2,https://www.idsa.in/
+Gateway House,think_tank,India,English,Tier 3,https://www.gatewayhouse.in/
+RIS – Research and Information System for Developing Countries,think_tank,India,English,Tier 3,https://www.ris.org.in/
+Vivekananda International Foundation,think_tank,India,English,Tier 3,https://www.vifindia.org/
+S. Rajaratnam School of International Studies,think_tank,Singapore,English,Tier 2,https://www.rsis.edu.sg/
+ISEAS – Yusof Ishak Institute,think_tank,Singapore,English,Tier 2,https://www.iseas.edu.sg/
+Institute of Strategic and International Studies Malaysia,think_tank,Malaysia,English,Tier 3,https://www.isis.org.my/
+Korea Institute for International Economic Policy,think_tank,South Korea,English/Korean,Tier 3,https://www.kiep.go.kr/eng/main.do
+Asan Institute for Policy Studies,think_tank,South Korea,English,Tier 3,https://en.asaninst.org/
+Japan Institute of International Affairs,think_tank,Japan,English/Japanese,Tier 3,https://www.jiia.or.jp/en/
+South African Institute of International Affairs,think_tank,South Africa,English,Tier 3,https://saiia.org.za/
+Institute for Security Studies Africa,think_tank,Africa,English,Tier 3,https://issafrica.org/
+Fundação Getulio Vargas,think_tank,Brazil,Portuguese/English,Tier 3,https://portal.fgv.br/en
+BRICS Policy Center,think_tank,Brazil,English/Portuguese,Tier 3,https://bricspolicycenter.org/en/
+Cebri,think_tank,Brazil,Portuguese/English,Tier 3,https://cebri.org/en
+Elcano Royal Institute,think_tank,Spain,Spanish/English,Tier 3,https://www.realinstitutoelcano.org/en/
+Oxford Institute for Energy Studies,specialized,UK,English,Tier 1,https://www.oxfordenergy.org/
+King Abdullah Petroleum Studies and Research Center,specialized,Saudi Arabia,Arabic/English,Tier 1,https://www.kapsarc.org/
+CSIS Energy Security and Climate Change Program,specialized,USA,English,Tier 2,https://www.csis.org/programs/energy-security-and-climate-change-program
+Energy Intelligence,specialized,Global,English,Tier 2,https://www.energyintel.com/
+S&P Global Commodity Insights,specialized,Global,English,Tier 2,https://www.spglobal.com/commodityinsights/en
+Rystad Energy,specialized,Global,English,Tier 3,https://www.rystadenergy.com/
+Wood Mackenzie,specialized,Global,English,Tier 3,https://www.woodmac.com/
+BP,specialized,Global,English,Tier 3,https://www.bp.com/
+Shell,specialized,Global,English,Tier 3,https://www.shell.com/
+McKinsey Global Energy Perspective,specialized,Global,English,Tier 3,https://www.mckinsey.com/capabilities/sustainability/our-insights/global-energy-perspective-2024
+World Resources Institute,specialized,Global,English,Tier 3,https://www.wri.org/
+Rocky Mountain Institute,specialized,Global,English,Tier 3,https://rmi.org/
+Center on Global Energy Policy at Columbia SIPA,specialized,USA,English,Tier 2,https://www.energypolicy.columbia.edu/
+Institute of International Finance,specialized,Global,English,Tier 2,https://www.iif.com/
+Rhodium Group,specialized,USA,English,Tier 3,https://rhg.com/
+Capital Economics,specialized,Global,English,Tier 3,https://www.capitaleconomics.com/
+Fitch Ratings research,specialized,Global,English,Tier 3,https://www.fitchratings.com/research
+Moody’s Analytics,specialized,Global,English,Tier 3,https://www.moodysanalytics.com/
+S&P Global Ratings research,specialized,Global,English,Tier 3,https://www.spglobal.com/ratings/en/
+Goldman Sachs research,specialized,Global,English,Tier 3,https://www.goldmansachs.com/insights/
+J.P. Morgan research,specialized,Global,English,Tier 3,https://www.jpmorgan.com/insights
+Morgan Stanley research,specialized,Global,English,Tier 3,https://www.morganstanley.com/ideas
+Bloomberg Economics,specialized,Global,English,Tier 3,https://www.bloomberg.com/professional/product/economics/
+Harvard Kennedy School,university,USA,English,Tier 2,https://www.hks.harvard.edu/
+Belfer Center,university,USA,English,Tier 1,https://www.belfercenter.org/
+Stanford CDDRL,university,USA,English,Tier 3,https://cddrl.fsi.stanford.edu/
+Stanford CISAC,university,USA,English,Tier 2,https://cisac.fsi.stanford.edu/
+Columbia SIPA,university,USA,English,Tier 2,https://www.sipa.columbia.edu/
+Georgetown Walsh School of Foreign Service,university,USA,English,Tier 2,https://sfs.georgetown.edu/
+Prince Alwaleed Bin Talal Center for Muslim-Christian Understanding,university,USA,English,Tier 3,https://acmc.georgetown.edu/
+Princeton School of Public and International Affairs,university,USA,English,Tier 2,https://spia.princeton.edu/
+Yale Jackson School,university,USA,English,Tier 3,https://jackson.yale.edu/
+Johns Hopkins SAIS,university,USA,English,Tier 2,https://sais.jhu.edu/
+Tufts Fletcher School,university,USA,English,Tier 3,https://fletcher.tufts.edu/
+LSE Middle East Centre,university,UK,English,Tier 1,https://www.lse.ac.uk/middle-east-centre
+LSE IDEAS,university,UK,English,Tier 2,https://www.lse.ac.uk/ideas
+Blavatnik School of Government,university,UK,English,Tier 2,https://www.bsg.ox.ac.uk/
+Oxford Centre for the Study of African Economies,university,UK,English,Tier 3,https://www.csae.ox.ac.uk/
+Cambridge Centre for Geopolitics,university,UK,English,Tier 3,https://www.cges.geog.cam.ac.uk/
+Sciences Po,university,France,French/English,Tier 3,https://www.sciencespo.fr/en/
+Hertie School,university,Germany,English,Tier 3,https://www.hertie-school.org/en/
+Graduate Institute Geneva,university,Switzerland,English/French,Tier 3,https://www.graduateinstitute.ch/
+American University in Cairo,university,Egypt,Arabic/English,Tier 1,https://www.aucegypt.edu/
+School of Global Affairs and Public Policy at AUC,university,Egypt,Arabic/English,Tier 1,https://gapp.aucegypt.edu/
+American University of Beirut,university,Lebanon,Arabic/English,Tier 1,https://www.aub.edu.lb/
+University of Jordan Center for Strategic Studies,university,Jordan,Arabic/English,Tier 2,https://jcss.org/
+Hamad Bin Khalifa University,university,Qatar,Arabic/English,Tier 2,https://www.hbku.edu.qa/en
+Qatar University research institutes,university,Qatar,Arabic/English,Tier 3,https://www.qu.edu.qa/research
+Georgetown University in Qatar,university,Qatar,English,Tier 3,https://www.qatar.georgetown.edu/
+King Saud University,university,Saudi Arabia,Arabic/English,Tier 3,https://ksu.edu.sa/en
+King Abdulaziz University,university,Saudi Arabia,Arabic/English,Tier 3,https://www.kau.edu.sa/home_ENGLISH.aspx
+King Fahd University of Petroleum and Minerals,university,Saudi Arabia,Arabic/English,Tier 3,https://www.kfupm.edu.sa/
+United Arab Emirates University,university,UAE,Arabic/English,Tier 3,https://www.uaeu.ac.ae/en/
+Khalifa University,university,UAE,English,Tier 3,https://www.ku.ac.ae/
+Mohammed V University,university,Morocco,Arabic/French,Tier 3,https://um5r.ac.ma/
+Al Akhawayn University,university,Morocco,English,Tier 3,https://www.aui.ma/
+University of Tunis El Manar,university,Tunisia,Arabic/French,Tier 3,https://utm.rnu.tn/utm/fr
+University of Algiers,university,Algeria,Arabic/French,Tier 3,https://www.univ-alger.dz/
+American University of Sharjah,university,UAE,English,Tier 3,https://www.aus.edu/
+University of Sharjah,university,UAE,Arabic/English,Tier 3,https://www.sharjah.ac.ae/
+Peking University,university,China,Chinese/English,Tier 3,https://english.pku.edu.cn/
+Tsinghua University,university,China,Chinese/English,Tier 3,https://www.tsinghua.edu.cn/en/
+Fudan University,university,China,Chinese/English,Tier 3,https://www.fudan.edu.cn/en/
+Renmin University,university,China,Chinese/English,Tier 3,https://en.ruc.edu.cn/
+National University of Singapore,university,Singapore,English,Tier 3,https://www.nus.edu.sg/
+Jawaharlal Nehru University,university,India,English,Tier 3,https://www.jnu.ac.in/
+University of Cape Town,university,South Africa,English,Tier 3,https://www.uct.ac.za/
+University of São Paulo,university,Brazil,Portuguese/English,Tier 3,https://www5.usp.br/english/
+Financial Times,media,UK,English,Tier 1,https://www.ft.com/
+The Economist,media,UK,English,Tier 2,https://www.economist.com/
+Reuters Special Reports,media,Global,English,Tier 1,https://www.reuters.com/
+Bloomberg,media,Global,English,Tier 2,https://www.bloomberg.com/
+Wall Street Journal,media,USA,English,Tier 2,https://www.wsj.com/
+New York Times Investigations,media,USA,English,Tier 2,https://www.nytimes.com/section/investigations
+Washington Post investigations,media,USA,English,Tier 3,https://www.washingtonpost.com/investigations/
+Foreign Policy,media,USA,English,Tier 2,https://foreignpolicy.com/
+Foreign Affairs,media,USA,English,Tier 2,https://www.foreignaffairs.com/
+Le Monde Diplomatique,media,France,French/English,Tier 3,https://mondediplo.com/
+Project Syndicate,media,Global,English,Tier 3,https://www.project-syndicate.org/
+The Atlantic,media,USA,English,Tier 3,https://www.theatlantic.com/
+Politico Europe,media,Europe,English,Tier 3,https://www.politico.eu/
+Nikkei Asia,media,Asia,English,Tier 3,https://asia.nikkei.com/
+Semafor Gulf,media,Global/Gulf,English,Tier 3,https://www.semafor.com/
+The National,media,UAE,English,Tier 2,https://www.thenationalnews.com/
+Al Jazeera English,media,Qatar,English,Tier 1,https://www.aljazeera.com/
+Al Jazeera Arabic,media,Qatar,Arabic,Tier 1,https://www.aljazeera.net/
+Middle East Eye,media,UK/MENA,English,Tier 3,https://www.middleeasteye.net/
+Amwaj.media,media,MENA,English,Tier 3,https://amwaj.media/
+The Africa Report,media,Africa,English/French,Tier 3,https://www.theafricareport.com/
+Jeune Afrique,media,Africa,French,Tier 3,https://www.jeuneafrique.com/
+Rest of World,media,Global South,English,Tier 3,https://restofworld.org/
+The New Arab,media,MENA,English/Arabic,Tier 3,https://www.newarab.com/
+Haaretz analysis,media,Israel,English/Hebrew,Tier 3,https://www.haaretz.com/
+972 Magazine,media,Israel/Palestine,English,Tier 3,https://www.972mag.com/
+Bellingcat,media,Global,English,Tier 3,https://www.bellingcat.com/
+Der Spiegel international,media,Germany,German/English,Tier 3,https://www.spiegel.de/international/
+BBC long reads,media,UK,English,Tier 3,https://www.bbc.com/
+Arab Barometer,data,Arab Region,Arabic/English,Tier 1,https://www.arabbarometer.org/
+Arab Opinion Index,data,Arab Region,Arabic/English,Tier 1,https://www.dohainstitute.org/en/Lists/ACRPS-PDFDocumentLibrary/
+World Inequality Database,data,Global,English,Tier 2,https://wid.world/
+Our World in Data,data,Global,English,Tier 2,https://ourworldindata.org/
+Transparency International,data,Global,English,Tier 3,https://www.transparency.org/
+Freedom House,data,Global,English,Tier 3,https://freedomhouse.org/
+Varieties of Democracy,data,Global,English,Tier 3,https://www.v-dem.net/
+Fragile States Index,data,Global,English,Tier 3,https://fragilestatesindex.org/
+ACLED,data,Global,English,Tier 2,https://acleddata.com/
+Uppsala Conflict Data Program,data,Global,English,Tier 2,https://ucdp.uu.se/
+SIPRI databases,data,Global,English,Tier 2,https://www.sipri.org/databases
+UN Comtrade,data,Global,English,Tier 3,https://comtradeplus.un.org/
+World Bank Data,data,Global,English,Tier 3,https://data.worldbank.org/
+IMF Data,data,Global,English,Tier 3,https://www.imf.org/en/Data
+FAOSTAT,data,Global,English,Tier 3,https://www.fao.org/faostat/en/
+IEA data portals,data,Global,English,Tier 3,https://www.iea.org/data-and-statistics
+OPEC Annual Statistical Bulletin,data,Global,English,Tier 3,https://asb.opec.org/
+ILOSTAT,data,Global,English,Tier 3,https://ilostat.ilo.org/
+UNHCR data,data,Global,English,Tier 3,https://www.unhcr.org/data.html
+IOM displacement tracking,data,Global,English,Tier 3,https://dtm.iom.int/
+Munich Security Conference,conference,Germany,English,Tier 1,https://securityconference.org/en/
+Doha Forum,conference,Qatar,Arabic/English,Tier 1,https://dohaforum.org/
+World Government Summit,conference,UAE,Arabic/English,Tier 1,https://www.worldgovernmentsummit.org/
+Future Investment Initiative,conference,Saudi Arabia,English/Arabic,Tier 2,https://fii-institute.org/
+Boao Forum for Asia,conference,China,English/Chinese,Tier 3,https://english.boaoforum.org/
+St. Petersburg International Economic Forum,conference,Russia,English/Russian,Tier 3,https://forumspb.com/en/
+Raisina Dialogue,conference,India,English,Tier 2,https://www.orfonline.org/raisina-dialogue
+GLOBSEC,conference,Europe,English,Tier 3,https://www.globsec.org/
+Abu Dhabi Strategic Debate,conference,UAE,English,Tier 3,https://www.epc.ae/en/abu-dhabi-strategic-debate
+UN climate COP,conference,Global,Multilingual,Tier 3,https://unfccc.int/process-and-meetings/conferences
+IISS Manama Dialogue,conference,Bahrain,English,Tier 2,https://www.iiss.org/events/manama-dialogue/
+IISS Shangri-La Dialogue,conference,Singapore,English,Tier 2,https://www.iiss.org/events/shangri-la-dialogue/
+Qatar Economic Forum,conference,Qatar,English,Tier 3,https://www.qatareconomicforum.com/
+Milken Institute Global Conference,conference,USA,English,Tier 3,https://milkeninstitute.org/events/global-conference
+Paris Peace Forum,conference,France,English/French,Tier 3,https://parispeaceforum.org/

@@ -112,7 +112,7 @@ export function SettingsView({
   onOpenAuth, onOpenProfile, onOpenAdmin,
 }) {
   const showAdmin = auth.isLoggedIn && isAdmin(auth.user) && onOpenAdmin;
-  const selectedSourcesCount = SOURCES.filter((_, i) => sources[i] !== false).length;
+  const selectedSourcesCount = SOURCES.filter(s => sources[s.id] !== false).length;
 
   const toggleTopic = (id) => {
     const cur = new Set(userPrefs.topics || []);
@@ -182,12 +182,12 @@ export function SettingsView({
             rowGap: 16,
           }}
         >
-          {SOURCES.map((s, i) => (
+          {SOURCES.map((s) => (
             <SourceChip
               key={s.id}
               source={s}
-              on={sources[i] !== false}
-              onToggle={() => toggleSource(i)}
+              on={sources[s.id] !== false}
+              onToggle={() => toggleSource(s.id)}
             />
           ))}
         </div>

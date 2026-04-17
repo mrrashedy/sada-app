@@ -102,7 +102,7 @@ const SOURCES = {
   alsumaria: { name: "السومرية", initial: "سم", tier: 2, feeds: ["https://www.alsumaria.tv/Rss/iraq-latest-news/ar"] },
   // 24.ae direct RSS 403s. Google News proxy works.
   uae24:     { name: "24 الإمارات", initial: "٢", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3A24.ae&hl=ar&gl=SA&ceid=SA:ar"] },
-  alsharq:   { name: "الشرق", initial: "ق", tier: 2, feeds: ["https://al-sharq.com/rss/latestNews"] },
+  alsharq:   { name: "الشرق القطرية", initial: "ق", tier: 2, feeds: ["https://al-sharq.com/rss/latestNews"] },
   // alyaum.com returns 200 but 0 items from CF Workers. Add GN fallback.
   alyaum:    { name: "اليوم", initial: "ل", tier: 2, feeds: ["https://www.alyaum.com/rssFeed/1005","https://news.google.com/rss/search?q=site%3Aalyaum.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // alquds.co.uk direct feed socket-closes. Google News proxy works.

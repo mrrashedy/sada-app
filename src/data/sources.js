@@ -43,7 +43,7 @@ export const SOURCES = [
   { n:"عكاظ",          i:"ك",  id:"okaz",          domain:"okaz.com.sa"           },
   { n:"السومرية",      i:"سم", id:"alsumaria",     domain:"alsumaria.tv",         hideFromStrip:true },
   { n:"24 الإمارات",   i:"٢",  id:"uae24",         domain:"24.ae",                hideFromStrip:true },
-  { n:"الشرق",         i:"ق",  id:"alsharq",       domain:"al-sharq.com"          },
+  { n:"الشرق القطرية", i:"ق",  id:"alsharq",       domain:"al-sharq.com"          },
   { n:"اليوم",         i:"ل",  id:"alyaum",        domain:"alyaum.com"            },
   { n:"القدس العربي",  i:"ق",  id:"alquds",        domain:"alquds.co.uk"          },
   // مشرق عربي — لبنان، سوريا، الأردن، فلسطين

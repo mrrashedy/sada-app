@@ -64,16 +64,20 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .content{
   flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
   padding-top:95px;padding-bottom:70px;overflow-anchor:auto;
-  /* Map texture — topographic contour lines via inline SVG. Faint
-     wavy horizontals at varying spacing simulate elevation contours
-     on a topo map. Sepia-brown ink on cream, ~5% opacity so it reads
-     as a faint chart underlay, not a literal map. */
+  /* Atmospheric texture — soft diffuse gray bleeds, no grain/noise.
+     Per user reference image: amorphous blurred ink-bleed shapes,
+     two large soft radial gradients only. Fixed attachment so the
+     atmosphere stays put as the user scrolls. */
   background-color:var(--bg);
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><g fill='none' stroke='%235a3920' stroke-opacity='0.07' stroke-width='0.6'><path d='M0,30 Q60,15 120,30 T240,30'/><path d='M0,55 Q60,42 120,55 T240,55'/><path d='M0,82 Q60,68 120,80 T240,82'/><path d='M0,115 Q60,98 120,115 T240,115'/><path d='M0,145 Q60,130 120,145 T240,145'/><path d='M0,175 Q60,162 120,175 T240,175'/><path d='M0,205 Q60,192 120,205 T240,205'/></g></svg>");
-  background-size:240px 240px;
+  background-image:
+    radial-gradient(ellipse 55% 70% at 25% 35%, rgba(60,60,60,.10), transparent 70%),
+    radial-gradient(ellipse 50% 65% at 75% 65%, rgba(80,80,80,.07), transparent 70%);
+  background-attachment:fixed, fixed;
 }
 [data-theme="dark"] .content{
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'><g fill='none' stroke='%23ffeed0' stroke-opacity='0.08' stroke-width='0.6'><path d='M0,30 Q60,15 120,30 T240,30'/><path d='M0,55 Q60,42 120,55 T240,55'/><path d='M0,82 Q60,68 120,80 T240,82'/><path d='M0,115 Q60,98 120,115 T240,115'/><path d='M0,145 Q60,130 120,145 T240,145'/><path d='M0,175 Q60,162 120,175 T240,175'/><path d='M0,205 Q60,192 120,205 T240,205'/></g></svg>");
+  background-image:
+    radial-gradient(ellipse 55% 70% at 25% 35%, rgba(220,220,220,.06), transparent 70%),
+    radial-gradient(ellipse 50% 65% at 75% 65%, rgba(200,200,200,.04), transparent 70%);
 }
 .post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}

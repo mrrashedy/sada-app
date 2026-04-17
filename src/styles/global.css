@@ -85,9 +85,17 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Inline tag variant — flows with the body text so the last line of the body
    can carry tags when there's room, saving vertical space in the card. */
 .ptag-inline{padding:1px 7px;margin-inline-start:6px;font-size:9px;vertical-align:middle;line-height:1.4;letter-spacing:.6px;font-weight:700}
-/* Country tags — orange stroke, gray text, no fill. Distinct
-   geographic-context chip without competing with the post body. */
-.ptag-country{color:var(--t3);border-color:rgba(255,109,0,.55);background:transparent}
+/* Wire-service dateline — country ISO code in mono, sits between source
+   name and time. Reads like real press copy ("AJ — TEHRAN — 5m ago").
+   Tiny vertical pipe separates it from the source name and the time. */
+.pdateline{
+  display:inline-flex;align-items:center;
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:10px;font-weight:700;letter-spacing:1px;
+  color:var(--or);
+  margin:0 8px;padding:0 8px;
+  border-left:1px solid var(--g1);border-right:1px solid var(--g1);
+}
 .pname-brk{margin-right:8px;padding:1px 7px;font-size:9px;vertical-align:middle}
 .ptitle{font-size:14px;font-weight:700;line-height:1.55;color:var(--t1);margin-bottom:3px;word-break:break-word}
 .pbody{font-size:13px;line-height:1.7;color:var(--t2);word-break:break-word}

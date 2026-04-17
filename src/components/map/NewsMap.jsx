@@ -326,63 +326,6 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       map.on('load', () => {
         setMapReady(true);
 
-        // ── WebGL truth layer ─────────────────────────────────
-        // Native GeoJSON circles painted by MapLibre's own render
-        // pipeline — pixel-accurate at every zoom level. HTML markers
-        // can drift due to anchor/transform edge cases; these can't.
-        if (!map.getSource('spots')) {
-          map.addSource('spots', {
-            type: 'geojson',
-            data: { type: 'FeatureCollection', features: [] },
-          });
-          // Outer glow
-          map.addLayer({
-            id: 'spots-glow',
-            type: 'circle',
-            source: 'spots',
-            paint: {
-              'circle-radius': ['interpolate', ['linear'], ['zoom'],
-                1.5, ['interpolate', ['linear'], ['get','n'], 1, 6, 20, 14],
-                6,   ['interpolate', ['linear'], ['get','n'], 1, 10, 20, 26],
-              ],
-              'circle-color': '#ff9432',
-              'circle-blur': 0.85,
-              'circle-opacity': 0.55,
-            },
-          });
-          // Core dot
-          map.addLayer({
-            id: 'spots-core',
-            type: 'circle',
-            source: 'spots',
-            paint: {
-              'circle-radius': ['interpolate', ['linear'], ['zoom'],
-                1.5, ['interpolate', ['linear'], ['get','n'], 1, 2.5, 20, 4.5],
-                6,   ['interpolate', ['linear'], ['get','n'], 1, 4, 20, 7],
-              ],
-              'circle-color': '#ffb347',
-              'circle-stroke-width': 1,
-              'circle-stroke-color': 'rgba(0,0,0,.55)',
-            },
-          });
-          // Click handler on the native layer
-          map.on('click', 'spots-core', (e) => {
-            const f = e.features && e.features[0];
-            if (!f) return;
-            const spotId = f.properties?.id;
-            const spot = spotsRef.current.find(s => s.id === spotId);
-            if (!spot) return;
-            try { map._idleStop && map._idleStop(); } catch {}
-            setSel(spot);
-            map.flyTo({
-              center:[spot.lng, spot.lat-1.2], zoom:6, pitch:0, bearing:0,
-              duration:1600,
-              easing: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
-            });
-          });
-          map.on('mouseenter', 'spots-core', () => { map.getCanvas().style.cursor = 'pointer'; });
-          map.on('mouseleave', 'spots-core', () => { map.getCanvas().style.cursor = ''; });
-        }
 
         // Click fallback for low-zoom (when DOM markers are small/clustered)
         map.on('click', (e) => {
@@ -436,20 +379,6 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     const map = mapRef.current;
     const markers = [];
 
-    // Feed the native GeoJSON truth layer — this is what actually
-    // marks each location at the lat/lng, WebGL-accurate.
-    const src = map.getSource('spots');
-    if (src) {
-      src.setData({
-        type: 'FeatureCollection',
-        features: spots.map(s => ({
-          type: 'Feature',
-          properties: { id: s.id, n: s.stories.length, city: s.city },
-          geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
-        })),
-      });
-    }
-
     spots.forEach((spot) => {
       const n = spot.stories.length;
       // Holographic ring footprint — stays small enough that at low zoom
@@ -465,9 +394,13 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
       const el = document.createElement('div');
       el.className = 'nm-marker';
-      const wrap = ringSize + 20;
+      // 1×1 anchor — MapLibre centers this single pixel on the lat/lng.
+      // All hologram chrome below is absolutely positioned relative to
+      // this point and visually overflows, but has no effect on where
+      // MapLibre thinks the marker is. No drift possible.
       el.style.cssText = `
-        width:${wrap}px;height:${wrap}px;
+        width:1px;height:1px;
+        position:relative;
         pointer-events:none;
         -webkit-user-select:none; user-select:none;
         -webkit-touch-callout:none;
@@ -519,35 +452,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       markers.push(marker);
     });
 
-    // Zoom-adaptive chrome: at low zoom, hide HTML markers entirely
-    // (they can drift due to anchor edge cases). WebGL GeoJSON circles
-    // remain visible as the pixel-accurate truth layer. HTML markers
-    // only appear when zoomed in past 4.2 for the hologram detail.
-    const applyZoomClass = () => {
-      const z = map.getZoom();
-      const lowZoom = z < 4.2;
-      const elNodes = document.querySelectorAll('.nm-marker');
-      elNodes.forEach(n => {
-        n.style.display = lowZoom ? 'none' : '';
-      });
-      // Also hide the WebGL truth circles at high zoom so HTML hologram
-      // markers are the only thing visible there — no duplication.
-      try {
-        if (map.getLayer('spots-core')) {
-          map.setLayoutProperty('spots-core', 'visibility', lowZoom ? 'visible' : 'none');
-        }
-        if (map.getLayer('spots-glow')) {
-          map.setLayoutProperty('spots-glow', 'visibility', lowZoom ? 'visible' : 'none');
-        }
-      } catch {}
-    };
-    applyZoomClass();
-    map.on('zoom', applyZoomClass);
-
-    return () => {
-      map.off('zoom', applyZoomClass);
-      markers.forEach(m => m.remove());
-    };
+    return () => { markers.forEach(m => m.remove()); };
   }, [mapReady, spots]);
 
   const handleClose = () => {

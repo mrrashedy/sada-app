@@ -100,8 +100,6 @@ const SOURCES = {
   egypt_ind: { name: "Egypt Independent", initial: "EI", tier: 2, lang: "en", feeds: ["https://www.egyptindependent.com/feed/","https://news.google.com/rss/search?q=site%3Aegyptindependent.com&hl=en&gl=US&ceid=US:en"] },
   okaz:      { name: "عكاظ", initial: "ك", tier: 2, feeds: ["https://www.okaz.com.sa/rssFeed/0"] },
   alsumaria: { name: "السومرية", initial: "سم", tier: 2, feeds: ["https://www.alsumaria.tv/Rss/iraq-latest-news/ar"] },
-  // alkhaleej.ae returns 200 but 0 items from CF Workers. Add GN fallback.
-  alkhaleej: { name: "الخليج", initial: "خ", tier: 2, feeds: ["https://www.alkhaleej.ae/section/1110/rss.xml","https://news.google.com/rss/search?q=site%3Aalkhaleej.ae&hl=ar&gl=SA&ceid=SA:ar"] },
   // 24.ae direct RSS 403s. Google News proxy works.
   uae24:     { name: "24 الإمارات", initial: "٢", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3A24.ae&hl=ar&gl=SA&ceid=SA:ar"] },
   alsharq:   { name: "الشرق", initial: "ق", tier: 2, feeds: ["https://al-sharq.com/rss/latestNews"] },

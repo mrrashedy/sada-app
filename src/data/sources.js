@@ -42,7 +42,6 @@ export const SOURCES = [
   { n:"Egypt Independent",i:"EI", id:"egypt_ind",    domain:"egyptindependent.com"  },
   { n:"عكاظ",          i:"ك",  id:"okaz",          domain:"okaz.com.sa"           },
   { n:"السومرية",      i:"سم", id:"alsumaria",     domain:"alsumaria.tv"          },
-  { n:"الخليج",        i:"خ",  id:"alkhaleej",     domain:"alkhaleej.ae"          },
   { n:"24 الإمارات",   i:"٢",  id:"uae24",         domain:"24.ae"                 },
   { n:"الشرق",         i:"ق",  id:"alsharq",       domain:"al-sharq.com"          },
   { n:"اليوم",         i:"ل",  id:"alyaum",        domain:"alyaum.com"            },

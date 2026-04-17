@@ -47,7 +47,15 @@ export async function onRequest(context) {
   // ── GATE ─────────────────────────────────────────────────────────
   // /api/* is intentionally exempt so scheduler bots, cron workers, and
   // integrations keep working. Everything else requires the cookie.
-  if (!url.pathname.startsWith('/api/')) {
+  // Allow static assets (fonts, images, JS bundles, manifest, etc.)
+  // through the gate UNCONDITIONALLY. Without this, the password-gate
+  // HTML response replaces the asset bytes — fonts fail to load and
+  // browsers fall back to system Arabic, the manifest 404s, the PWA
+  // service worker can't register, etc. Detection is by extension:
+  // anything with a real file extension that ISN'T .html is an asset.
+  const isStaticAsset = /\.(?:ttf|otf|woff2?|eot|png|jpe?g|gif|svg|webp|ico|css|js|mjs|map|json|txt|xml|webmanifest|mp3|mp4|wav|ogg|woff|m4a)$/i.test(url.pathname);
+
+  if (!url.pathname.startsWith('/api/') && !isStaticAsset) {
     if (url.pathname === '/gate-login') {
       return handleGateLogin(request);
     }

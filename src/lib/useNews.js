@@ -86,7 +86,19 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
 
     try {
       const params = new URLSearchParams({
-        limit: '1200',
+        // Request the full server pool (5000) instead of the previous 1200.
+        // Reason: at 1200, the response only contains items from the ~30
+        // highest-volume sources (RT, breaking-news Twitter feeds, big
+        // Egyptian dailies). The other ~50 sources (Reuters, Mada Masr,
+        // Al-Akhbar, Sana, Al-Mayadeen, BBC EN, etc.) get sliced off
+        // because their freshest items are older than the 1200th most
+        // recent. Source-strip filter taps for those sources returned
+        // empty pools — what the user reported as 'these news agency
+        // were pulling content when I press them' (yesterday) being
+        // broken now. Pulling 5000 covers all 80 active sources in one
+        // request (~600KB instead of ~200KB; perfectly fine for cached
+        // CF edge response).
+        limit: '5000',
         t: silent ? Math.floor(Date.now() / 15000) : Date.now(),
       });
       // User-initiated refreshes send ?refresh=1 to force server re-aggregation.
@@ -126,7 +138,13 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
             // position instead of getting pinned to the top.
             const merged = [...fresh, ...prev];
             merged.sort((a, b) => ts(b) - ts(a));
-            return merged.slice(0, 500);
+            // Cap raised 500 → 3000 to match the bumped server response.
+            // 500 was crowding out low-volume sources (Reuters, Mada Masr,
+            // Al-Mayadeen, etc.) and breaking source-strip filtering. The
+            // visible window is still paginated by useInfiniteScroll so
+            // React only renders ~20 nodes at a time; holding 3000 in state
+            // is just an array of small objects (~600KB).
+            return merged.slice(0, 3000);
           });
         }
         // Only increment the new-items counter on SUBSEQUENT polls. On the

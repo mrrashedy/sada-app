@@ -101,6 +101,24 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 
 /* Post actions */
 .pactions{display:flex;align-items:center;justify-content:center;gap:48px;margin-top:3px}
+/* New text-based action language. Two clusters separated by space:
+     [مهم  تجاهل]                    حفظ · مشاركة
+   Opinion pair = small pill cluster with chunky labels + polarity marks.
+   Utility pair = plain text links separated by a middot.                  */
+.pactions-text{justify-content:space-between;gap:0;padding:6px 4px 2px;margin-top:6px;border-top:.5px solid var(--g1)}
+.pactions-opinion{display:inline-flex;align-items:center;gap:4px;background:var(--f1);border-radius:999px;padding:2px}
+.act-text{display:inline-flex;align-items:center;gap:5px;background:none;border:none;padding:5px 12px;border-radius:999px;font-family:var(--ft);font-size:11px;font-weight:700;color:var(--t2);cursor:pointer;letter-spacing:.2px;transition:background .15s,color .15s}
+.act-text:active{opacity:.6}
+.act-text .act-mark{font-size:8px;line-height:1;color:var(--t4);transition:color .15s}
+.act-text.on{background:var(--bg);color:var(--or);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.act-text.on .act-mark{color:var(--or)}
+.act-text-down:hover .act-mark,.act-text-down:active .act-mark{color:var(--rd)}
+.pactions-util{display:inline-flex;align-items:center;gap:14px}
+.act-link{background:none;border:none;padding:5px 4px;font-family:var(--ft);font-size:11px;font-weight:600;color:var(--t3);cursor:pointer;letter-spacing:.2px;transition:color .15s}
+.act-link:active{opacity:.5}
+.act-link.on{color:var(--or)}
+.act-link + .act-link{position:relative}
+.act-link + .act-link::before{content:'·';position:absolute;left:-9px;top:50%;transform:translateY(-50%);color:var(--t4);font-weight:700}
 .act{display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:11px;background:none;border:none;font-family:var(--ft);transition:color .15s;padding:3px 0}
 .act:active{opacity:.4}
 .act.liked{color:var(--rd)}

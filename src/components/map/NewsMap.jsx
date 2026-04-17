@@ -236,11 +236,19 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             // Editorial atlas — monochrome base tile + reference labels
             // layer on top so country/major-city names stay readable
             // without the heatmap or terrain clutter.
-            'dark': {
+            // Topographic base — contour lines & hillshading give the
+            // stacked-paper terrain look. Desaturated heavily into slate.
+            'topo': {
               type: 'raster',
-              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256, maxzoom: 16, attribution: '',
+              tiles: [
+                'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
+                'https://b.tile.opentopomap.org/{z}/{x}/{y}.png',
+                'https://c.tile.opentopomap.org/{z}/{x}/{y}.png',
+              ],
+              tileSize: 256, maxzoom: 17,
+              attribution: '© OpenTopoMap (CC-BY-SA)',
             },
+            // Dark reference labels on top so city/country names stay legible
             'ref': {
               type: 'raster',
               tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
@@ -248,15 +256,22 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             },
           },
           layers: [
+            // Slate slab underneath so OTM's cream background becomes charcoal
             {
-              id: 'dark',
+              id: 'bg',
+              type: 'background',
+              paint: { 'background-color': '#1a1d22' },
+            },
+            {
+              id: 'topo',
               type: 'raster',
-              source: 'dark',
+              source: 'topo',
               paint: {
                 'raster-saturation': -1,
-                'raster-contrast': 0.05,
-                'raster-brightness-min': 0.18,
-                'raster-brightness-max': 0.78,
+                'raster-contrast': 0.35,
+                'raster-brightness-min': 0.08,
+                'raster-brightness-max': 0.55,
+                'raster-opacity': 0.85,
               },
             },
             {
@@ -264,8 +279,8 @@ export function NewsMap({ onClose, liveFeed=[] }) {
               type: 'raster',
               source: 'ref',
               paint: {
-                'raster-opacity': 0.92,
-                'raster-brightness-min': 0.5,
+                'raster-opacity': 0.78,
+                'raster-brightness-min': 0.55,
                 'raster-brightness-max': 1.0,
               },
             },
@@ -515,13 +530,23 @@ export function NewsMap({ onClose, liveFeed=[] }) {
   return (
     <div style={{
       position:'fixed', top:0, left:0, right:0, bottom:0, zIndex:50,
-      display:'flex', flexDirection:'column', background:'#020408', height:'100dvh',
+      display:'flex', flexDirection:'column', background:'#12151a', height:'100dvh',
       opacity: entered ? 1 : 0, transition:'opacity .5s ease',
     }}>
 
-      {/* ─── SOFT VIGNETTE ─── */}
+      {/* ─── SLATE FRAME VIGNETTE ─── */}
       <div style={{ position:'absolute', inset:0, zIndex:10, pointerEvents:'none',
-        background:'radial-gradient(ellipse 80% 70% at 50% 48%, transparent 0%, rgba(2,4,8,0.35) 65%, rgba(2,4,8,0.8) 100%)',
+        background:'radial-gradient(ellipse 90% 75% at 50% 50%, transparent 0%, rgba(18,21,26,.45) 70%, rgba(8,10,14,.85) 100%)',
+      }}/>
+
+      {/* ─── LAVA CANYON GLOW (diagonal warm rift) ─── */}
+      <div style={{ position:'absolute', inset:0, zIndex:11, pointerEvents:'none',
+        background:'linear-gradient(112deg, transparent 35%, rgba(255,110,30,.09) 48%, rgba(255,80,10,.14) 52%, rgba(255,110,30,.08) 58%, transparent 72%)',
+        mixBlendMode:'screen',
+      }}/>
+      <div style={{ position:'absolute', inset:0, zIndex:12, pointerEvents:'none',
+        background:'radial-gradient(ellipse 28% 60% at 52% 50%, rgba(255,120,40,.18) 0%, rgba(255,80,10,.07) 35%, transparent 70%)',
+        mixBlendMode:'screen',
       }}/>
 
       {/* ─── DIGITAL CLOCKS (glass pill) ─── */}
@@ -571,13 +596,18 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
       {/* ─── BOTTOM GRADIENT ─── */}
       <div style={{
-        position:'absolute', bottom:0, left:0, right:0, height:120, zIndex:10, pointerEvents:'none',
-        background:'linear-gradient(to top, rgba(2,4,8,0.7) 0%, transparent 100%)',
+        position:'absolute', bottom:0, left:0, right:0, height:140, zIndex:13, pointerEvents:'none',
+        background:'linear-gradient(to top, rgba(8,10,14,0.85) 0%, rgba(12,15,20,0.4) 55%, transparent 100%)',
+      }}/>
+      {/* ─── TOP GRADIENT (deepens the carved-layer feel) ─── */}
+      <div style={{
+        position:'absolute', top:0, left:0, right:0, height:120, zIndex:13, pointerEvents:'none',
+        background:'linear-gradient(to bottom, rgba(8,10,14,0.7) 0%, transparent 100%)',
       }}/>
 
       {/* ─── LOADING ─── */}
       {!mapReady && (
-        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'#020408', zIndex:99 }}>
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'#12151a', zIndex:99 }}>
           <div style={{ textAlign:'center', color:'rgba(255,255,255,.35)', fontSize:13 }}>
             <div style={{ width:36, height:36, border:'2px solid rgba(255,255,255,.08)', borderTopColor:'#E53935', borderRadius:'50%', margin:'0 auto 14px', animation:'spin .8s linear infinite' }}/>
             جاري تحميل الخريطة…

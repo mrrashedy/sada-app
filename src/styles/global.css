@@ -105,7 +105,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
    evenly spaced. Light strokes / regular weight — not bold. No top border
    line above the row (cleaner separation from the post body). */
 .pactions-pm{justify-content:center;gap:48px;padding:4px 0 2px;margin-top:3px}
-.pm-btn{background:none;border:none;color:var(--t3);font-family:var(--ft);font-size:20px;font-weight:400;line-height:1;cursor:pointer;transition:color .15s,transform .12s;padding:4px 0;width:18px;display:inline-flex;align-items:center;justify-content:center}
+.pm-btn{background:none;border:none;color:var(--t3);font-family:-apple-system,system-ui,sans-serif;font-size:18px;font-weight:300;line-height:1;cursor:pointer;transition:color .15s,transform .12s;padding:4px 0;width:18px;display:inline-flex;align-items:center;justify-content:center}
 .pm-btn:active{transform:scale(.85);opacity:.6}
 .pm-plus.on{color:var(--or)}
 .pm-minus:hover,.pm-minus:active{color:var(--rd)}

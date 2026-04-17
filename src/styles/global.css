@@ -89,23 +89,27 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Compact card padding — was 10/16/8/16, tightened to 6/16/4 per user.
    Faint warm tint kept for the subtle card-elevation effect. */
 .post{padding:6px 16px 4px 16px;border-bottom:.5px solid var(--g1);overflow:hidden;background:rgba(255,109,0,.012)}
-.post .ptitle,.post .pbody,.post .strap,.post .pactions{margin-left:10px}
-.post .strap{margin-left:12px}
+/* Removed the legacy 10/12 px margin-left on .ptitle/.pbody/.strap/
+   .pactions — in RTL it was indenting them inward from the right
+   edge, creating a shift relative to the source name in .pinfo
+   (which had no such margin). All children of .post now align with
+   the post's own padding on both edges, identical right and left. */
 .ph{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .pav{width:34px;height:34px;border-radius:50%;border:1px solid var(--g1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--t1);background:var(--bg);flex-shrink:0}
 .pinfo{flex:1;min-width:0}
 .pname{font-size:12px;font-weight:600;color:var(--t3);letter-spacing:.2px}
 /* Source name + logo grouped in a clickable button. Tapping it activates
-   the source filter on the strip above (and scrolls to top), so any post
-   becomes a shortcut to "show me only this source." */
+   the source filter on the strip above (and scrolls to top). Touch state
+   glows orange to match the action-icon glow language. */
 .pname-btn{
   background:none;border:none;padding:0;margin:0;cursor:pointer;
   font-family:var(--ft);
   display:inline-flex;align-items:center;gap:0;
-  border-radius:6px;transition:opacity .15s,background .15s;
+  border-radius:6px;
+  transition:color .15s,filter .15s;
 }
-.pname-btn:hover{opacity:.7}
-.pname-btn:active{opacity:.5}
+.pname-btn:hover .pname{color:var(--or);filter:drop-shadow(0 0 4px rgba(255,109,0,.4))}
+.pname-btn:active .pname{color:var(--or);filter:drop-shadow(0 0 7px rgba(255,109,0,.65))}
 .pname-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;margin-left:6px;filter:grayscale(.7) contrast(1.15)}
 .pflags{display:inline-flex;align-items:center;gap:2px;margin-right:5px;vertical-align:middle}
 .pflag{width:12px;height:12px;border-radius:50%;object-fit:cover;vertical-align:middle}

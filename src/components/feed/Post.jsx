@@ -79,22 +79,15 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>
         <div style={isPerson ? { flex:1,minWidth:0 } : undefined}>
           <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer' }}>{clean(item.title)}</div>
-          {!longTitle && (item.brief || (item.tags && item.tags.length > 0) || (item.flags && item.flags.length > 0)) && (
+          {!longTitle && (item.brief || (item.flags && item.flags.length > 0)) && (
             <div className="pbody" dir="auto">
-              {/* Tags FIRST so they flow inline at the start of the body
-                  copy. Previously they came after item.brief and would wrap
-                  to a new line whenever the body text filled the row.
-                  Putting them before lets the brief text wrap UNDER them
-                  instead of around — saves the dedicated tag row. */}
+              {item.brief && clean(item.brief)}
+              {/* ONLY country tags now (topic/category tags removed). Tags
+                  render AFTER the brief so they sit at the end of the body
+                  text inline. */}
               {item.flags && item.flags.length > 0 && item.flags.map(c => (
                 <span key={`f-${c}`} className="ptag ptag-inline ptag-country">{countryName(c)}</span>
               ))}
-              {item.tags && item.tags.length > 0 && item.tags.map((t, i) => (
-                <span key={`t-${i}`} className="ptag ptag-inline">{clean(t)}</span>
-              ))}
-              {item.brief && (
-                <span className="pbody-text"> {clean(item.brief)}</span>
-              )}
             </div>
           )}
         </div>

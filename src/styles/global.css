@@ -85,9 +85,9 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Inline tag variant — flows with the body text so the last line of the body
    can carry tags when there's room, saving vertical space in the card. */
 .ptag-inline{padding:1px 7px;margin-inline-start:6px;font-size:9px;vertical-align:middle;line-height:1.4;letter-spacing:.6px;font-weight:700}
-/* Country tags — neutral gray, distinct from the orange topic tags so the
-   eye separates "where" from "what" without color overload. */
-.ptag-country{color:var(--t2);border-color:var(--g1);background:var(--f1)}
+/* Country tags — orange stroke, gray text, no fill. Distinct
+   geographic-context chip without competing with the post body. */
+.ptag-country{color:var(--t3);border-color:rgba(255,109,0,.55);background:transparent}
 .pname-brk{margin-right:8px;padding:1px 7px;font-size:9px;vertical-align:middle}
 .ptitle{font-size:14px;font-weight:700;line-height:1.55;color:var(--t1);margin-bottom:3px;word-break:break-word}
 .pbody{font-size:13px;line-height:1.7;color:var(--t2);word-break:break-word}

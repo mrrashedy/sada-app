@@ -6,16 +6,34 @@ import { Sound } from '../../lib/sounds';
 import { shareArticle } from '../../lib/shareCard';
 import { countryName } from '../../lib/countryFlags';
 
-// Up/down arrows inline — kept here instead of in Icons.jsx so the action
-// row of Post.jsx tells its own story without spelunking another file.
+// All four .act icons inlined locally with identical geometry — same
+// 18×18 viewBox, same 1.7 stroke, same round linecap + linejoin. Filled
+// state for the up-arrow uses a stroke-width bump (no fills), keeping
+// the visual language consistent.
+const STROKE = 1.7;
+const SVG_PROPS = {
+  width: 18, height: 18, viewBox: '0 0 24 24',
+  fill: 'none', stroke: 'currentColor',
+  strokeLinecap: 'round', strokeLinejoin: 'round',
+};
 const ArrowUp = ({ filled }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={filled ? 2.4 : 1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 19V5M5 12l7-7 7 7"/>
+  <svg {...SVG_PROPS} strokeWidth={filled ? STROKE + 0.6 : STROKE}>
+    <path d="M12 20V5M6 11l6-6 6 6"/>
   </svg>
 );
 const ArrowDown = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 5v14M19 12l-7 7-7-7"/>
+  <svg {...SVG_PROPS} strokeWidth={STROKE}>
+    <path d="M12 4v15M18 13l-6 6-6-6"/>
+  </svg>
+);
+const Bookmark = ({ filled }) => (
+  <svg {...SVG_PROPS} strokeWidth={filled ? STROKE + 0.6 : STROKE}>
+    <path d="M6 4a1 1 0 011-1h10a1 1 0 011 1v17l-6-4-6 4V4z"/>
+  </svg>
+);
+const Share = () => (
+  <svg {...SVG_PROPS} strokeWidth={STROKE}>
+    <path d="M12 3v13M7 8l5-5 5 5M5 14v6a1 1 0 001 1h12a1 1 0 001-1v-6"/>
   </svg>
 );
 
@@ -102,8 +120,12 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
         >
           <ArrowDown />
         </button>
-        <button className="act" aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>{I.bookmark(isSaved)}</button>
-        <button className="act" aria-label="مشاركة" onClick={()=>{Sound.share();shareArticle(item);}}>{I.share()}</button>
+        <button className={`act ${isSaved?'saved':''}`} aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>
+          <Bookmark filled={isSaved} />
+        </button>
+        <button className="act" aria-label="مشاركة" onClick={()=>{Sound.share();shareArticle(item);}}>
+          <Share />
+        </button>
       </div>
     </div>
   );

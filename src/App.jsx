@@ -580,13 +580,10 @@ export default function Sada() {
       {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
         <div className="hdr-top">
           <div className="logo">
-            {/* Inline SVG (so @font-face applies). Generous viewBox with
-                overflow:visible so Arabic ascenders/descenders + the wide
-                custom font aren't clipped on any side. dominantBaseline
-                centers the text vertically in the box; preserveAspectRatio
-                keeps it balanced when CSS scales the SVG. */}
-            <svg className="logo-svg" viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg" aria-label="غرفة الأخبار" preserveAspectRatio="xMidYMid meet" style={{ overflow:'visible' }}>
-              <text x="450" y="120" textAnchor="middle" dominantBaseline="central" fontSize="150" fontWeight="900" fill="currentColor" direction="rtl">غرفة الأخبار</text>
+            {/* Wordmark: NEWSROOM in a modern executive sans (SF Pro Display
+                / Inter), heavy weight, tight letter-spacing, uppercase. */}
+            <svg className="logo-svg" viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" aria-label="NEWSROOM" preserveAspectRatio="xMidYMid meet">
+              <text x="450" y="100" textAnchor="middle" dominantBaseline="central" fontSize="150" fontWeight="900" letterSpacing="6" fill="currentColor">NEWSROOM</text>
             </svg>
           </div>
           <div className="hdr-r">

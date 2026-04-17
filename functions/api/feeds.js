@@ -211,7 +211,18 @@ const SOURCES = {
   alalam:      { name: "العالم", initial: "عل", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalalam.ir&hl=ar&gl=SA&ceid=SA:ar"] },
   // Turkey (Arabic) — first Turkey-Arabic outlets
   trt_arabi:   { name: "TRT عربي", initial: "TR", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Atrtarabi.com&hl=ar&gl=SA&ceid=SA:ar"] },
-  anadolu_ar:  { name: "الأناضول", initial: "أن", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aaa.com.tr%2Far&hl=ar&gl=SA&ceid=SA:ar"] },
+  // الأناضول — Turkey's official wire (Anadolu Agency) Arabic service.
+  // Direct RSS endpoint pattern is /ar/rss/default?cat=<category>; we hit
+  // four sections in parallel (current/politics/world/economy) and keep
+  // the Google News proxy as a fallback in case CF Workers can't reach
+  // aa.com.tr from datacenter IPs.
+  anadolu_ar:  { name: "الأناضول", initial: "أن", tier: 2, feeds: [
+    "https://www.aa.com.tr/ar/rss/default?cat=guncel",
+    "https://www.aa.com.tr/ar/rss/default?cat=politika",
+    "https://www.aa.com.tr/ar/rss/default?cat=dunya",
+    "https://www.aa.com.tr/ar/rss/default?cat=ekonomi",
+    "https://news.google.com/rss/search?q=site%3Aaa.com.tr%2Far&hl=ar&gl=SA&ceid=SA:ar",
+  ] },
   // Saudi/UAE — deeper national press beyond Okaz / Alyaum / 24.ae / Alain
   alriyadh:    { name: "الرياض", initial: "ري", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalriyadh.com&hl=ar&gl=SA&ceid=SA:ar"] },
   albayan_ae:  { name: "البيان", initial: "بي", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalbayan.ae&hl=ar&gl=SA&ceid=SA:ar"] },

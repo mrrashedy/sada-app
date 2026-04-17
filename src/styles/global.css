@@ -88,7 +88,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Post card */
 /* Compact card padding — was 10/16/8/16, tightened to 6/16/4 per user.
    Faint warm tint kept for the subtle card-elevation effect. */
-.post{padding:6px 16px 4px 24px;border-bottom:.5px solid var(--g1);overflow:hidden;background:rgba(255,109,0,.012)}
+.post{padding:6px 16px 4px 24px;border-bottom:.5px solid var(--g2);overflow:hidden;background:rgba(255,109,0,.012)}
 /* Removed the legacy 10/12 px margin-left on .ptitle/.pbody/.strap/
    .pactions — in RTL it was indenting them inward from the right
    edge, creating a shift relative to the source name in .pinfo

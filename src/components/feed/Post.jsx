@@ -116,7 +116,6 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
           )}
           <span className="ptime">{item.brk && <span className="ptime-dot"/>}{liveTimeAgo(item.pubTs)}</span>
         </div>
-        <button className="ib" style={{ color:'var(--t4)', padding:0 }}>{I.more()}</button>
       </div>
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>
         <div style={isPerson ? { flex:1,minWidth:0 } : undefined}>

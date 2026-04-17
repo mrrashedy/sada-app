@@ -32,49 +32,93 @@ function checkSourceDrift(apiSources) {
 
 // No sample data — this is a production app
 
-// Default poll dropped from 15000 → 6000ms. Requests are cached server-side
-// (KV TTL 15s, cron warms every ~45s), so polling at 6s feels live without
-// adding meaningful load — most requests are cache HITs that return in ~50ms.
-export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
-  // Auto-updating feed. New items arrive automatically into the displayed
-  // list — no pending buffer, no manual flush. The X-style buffered design
-  // I tried earlier conflated two separate concerns:
-  //   • Reducing flicker (UX) — solved by killing the .post / .post-new
-  //     animations in styles/global.css.
-  //   • Pausing updates (a behavior change the user did NOT ask for).
-  // Reverted to auto-merge so the feed actually keeps populating as the
-  // server returns fresh items. Flicker stays gone because animations are
-  // off and React keys (item.id) keep DOM nodes stable across reorderings.
+// X-style stream engine.
+//
+// Three buffers:
+//   • feed (displayed)  — what the user sees. Mutates ONLY on explicit events:
+//                          first load, isAtTop poll, flushPending(), refresh().
+//                          Never mutates silently while the user is scrolled.
+//   • hiddenBuffer       — items fetched from the server but not yet shown.
+//                          Accumulates while the user is scrolled, flushed on
+//                          explicit user action OR auto-flushed when they
+//                          return to the top.
+//   • (server response)  — used per-poll for diff against displayed + hidden.
+//
+// The caller (App.jsx) provides isAtTopRef — a ref whose .current is true when
+// the user is within ~120px of the top of the feed scroll container. We pass
+// it as a ref (not a value) so the polling closure always sees the latest
+// scroll state without recreating the interval.
+//
+// Backend awareness: ZERO. The /api/feeds endpoint just returns the latest
+// items by recency. All buffering, scroll-position decisions, threshold logic,
+// pill behavior, and ack semantics live entirely in this hook + App.jsx.
+export function useNews(sources = [], kind = 'news', pollInterval = 6000, isAtTopRef = null) {
   const [feed, setFeed] = useState([]);
+  const [hiddenBuffer, setHiddenBuffer] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLive, setIsLive] = useState(false);
   const [serverBreaking, setServerBreaking] = useState([]);
   const [radarOverrides, setRadarOverrides] = useState([]);
   const [cacheAge, setCacheAge] = useState(null);
-  // newCount — items added in the most recent poll. Used by the live
-  // indicator ('· N جديد') so the user sees activity per poll.
-  const [newCount, setNewCount] = useState(0);
-  // lastFetchAt — wall-clock ms of the last successful poll. The live
-  // indicator's 'تحديث منذ X ث' label ticks off this.
   const [lastFetchAt, setLastFetchAt] = useState(null);
   const abortRef = useRef(null);
+
+  // Refs mirror state so the fetch closure (created once, called by setInterval)
+  // can read the latest values without being recreated on every state change.
+  const feedRef = useRef([]);
+  const hiddenRef = useRef([]);
+  feedRef.current = feed;
+  hiddenRef.current = hiddenBuffer;
+
+  // Constants
+  // FEED_CAP raised from 500 → 3000 so all 80 active sources have items in
+  // the displayed pool. Without this, the source-strip filter is empty for
+  // ~50 low-volume sources (Reuters, Mada Masr, Al-Akhbar, BBC EN, etc.).
+  // Rendering perf is unaffected — useInfiniteScroll paginates the visible
+  // window to ~20 nodes at a time; the in-state array just holds objects.
+  const FEED_CAP = 3000;
+  const HIDDEN_CAP = 1000;
+  const ts = (item) => item.pubTs || item.timestamp || 0;
+
+  // mergeByTime — pure helper. Combines two arrays of items, dedupes by id,
+  // sorts newest-first by timestamp, slices to cap.
+  const mergeByTime = (a, b, cap = FEED_CAP) => {
+    const seen = new Set();
+    const out = [];
+    for (const item of [...a, ...b]) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push(item);
+    }
+    out.sort((x, y) => ts(y) - ts(x));
+    return out.slice(0, cap);
+  };
+
+  // flushPending — move every item from hiddenBuffer into the displayed feed
+  // (merge by timestamp so anything older than the feed top lands in its real
+  // chronological position). Clear the buffer.
+  const flushPending = useCallback(() => {
+    if (hiddenRef.current.length === 0) return;
+    setFeed(prev => mergeByTime(hiddenRef.current, prev));
+    setHiddenBuffer([]);
+  }, []);
+
+  // ackNewItems — clear the buffer without merging. Used when the user is at
+  // the top and the items are already visible (or about to be) — we just zero
+  // the count so the pill doesn't fire spuriously when they scroll away.
+  const ackNewItems = useCallback(() => setHiddenBuffer([]), []);
 
   const fetchNews = useCallback(async (silent = false, forceRefresh = false) => {
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
 
     const startTime = Date.now();
-    // User-visible refreshes get a minimum loading duration so the radar
-    // spectrum animation is actually observable. The DO keeps the cache warm,
-    // so the network round-trip is typically ~150ms — too fast to see.
     const MIN_LOADING_MS = 1500;
 
     if (!silent) setLoading(true);
     setError(null);
 
-    // Helper that holds setLoading(false) until min duration has elapsed
-    // (visible refreshes only). Silent polls bypass this.
     const finishLoading = async () => {
       if (silent) { setLoading(false); return; }
       const elapsed = Date.now() - startTime;
@@ -101,8 +145,6 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
         limit: '5000',
         t: silent ? Math.floor(Date.now() / 15000) : Date.now(),
       });
-      // User-initiated refreshes send ?refresh=1 to force server re-aggregation.
-      // Silent polls read from the KV cache (warmed by the cron worker every 20s).
       if (forceRefresh) params.set('refresh', '1');
       if (kind && kind !== 'news') params.set('kind', kind);
       if (sources.length > 0) params.set('sources', sources.join(','));
@@ -118,53 +160,57 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
       const data = await res.json();
       checkSourceDrift(data.sources);
       if (data.ok && Array.isArray(data.feed) && data.feed.length > 0) {
-        // Auto-merge: every new item from the server goes straight into the
-        // displayed feed by timestamp order. The pill is just a NOTIFICATION
-        // that 5+ new items have piled up since the user last looked at the
-        // top — it does NOT gate when items appear. User's clarification:
-        // 'feed is to put them actually there, not store them until they get five.'
-        const ts = (item) => item.pubTs || item.timestamp || 0;
-        const isFirstLoad = feed.length === 0;
-        const prevIds = new Set(feed.map(p => p.id));
-        const freshIds = data.feed.filter(f => !prevIds.has(f.id));
-        const added = freshIds.length;
-        if (added > 0) {
-          setFeed(prev => {
-            const _prevIds = new Set(prev.map(p => p.id));
-            const fresh = data.feed.filter(f => !_prevIds.has(f.id));
-            if (fresh.length === 0) return prev;
-            // Merge by timestamp so late-arriving older items (Google News
-            // discovering a 10h-old story) land at their actual chronological
-            // position instead of getting pinned to the top.
-            const merged = [...fresh, ...prev];
-            merged.sort((a, b) => ts(b) - ts(a));
-            // Cap raised 500 → 3000 to match the bumped server response.
-            // 500 was crowding out low-volume sources (Reuters, Mada Masr,
-            // Al-Mayadeen, etc.) and breaking source-strip filtering. The
-            // visible window is still paginated by useInfiniteScroll so
-            // React only renders ~20 nodes at a time; holding 3000 in state
-            // is just an array of small objects (~600KB).
-            return merged.slice(0, 3000);
-          });
+        const isFirstLoad = feedRef.current.length === 0;
+        const displayedIds = new Set(feedRef.current.map(p => p.id));
+        const hiddenIds = new Set(hiddenRef.current.map(p => p.id));
+        // Items the server returned that we haven't shown OR buffered yet.
+        const fresh = data.feed.filter(
+          f => !displayedIds.has(f.id) && !hiddenIds.has(f.id)
+        );
+
+        if (isFirstLoad) {
+          // First load — drop the entire response into displayed (capped).
+          // The hidden buffer stays empty; nothing to surface yet.
+          setFeed(data.feed.slice(0, FEED_CAP));
+        } else if (forceRefresh) {
+          // Explicit refresh (button / pull-to-refresh) — merge everything
+          // straight into displayed regardless of scroll position. The user
+          // explicitly asked to see the latest.
+          if (fresh.length > 0) {
+            setFeed(prev => mergeByTime(fresh, prev));
+          }
+          setHiddenBuffer([]);
+        } else {
+          // Silent poll — scroll position decides.
+          const atTop = isAtTopRef ? !!isAtTopRef.current : true;
+          if (atTop) {
+            // User is at the top — auto-merge new items into displayed.
+            // They see them appear naturally. Empty the hidden buffer too
+            // (anything that was buffered between scroll events promotes now).
+            if (fresh.length > 0 || hiddenRef.current.length > 0) {
+              const merged = mergeByTime(
+                [...fresh, ...hiddenRef.current],
+                feedRef.current
+              );
+              setFeed(merged);
+              setHiddenBuffer([]);
+            }
+          } else if (fresh.length > 0) {
+            // User is scrolled — buffer silently. The displayed feed does
+            // NOT mutate. The pill (in App.jsx) appears at >= 5 items.
+            setHiddenBuffer(prev => mergeByTime(fresh, prev, HIDDEN_CAP));
+          }
         }
-        // Only increment the new-items counter on SUBSEQUENT polls. On the
-        // first load every item is technically 'fresh to the empty buffer,'
-        // which previously caused the pill to fire on app start with a
-        // count of 1200+. Skip that.
-        if (!isFirstLoad) {
-          setNewCount(prev => prev + added);
-        }
+
         setIsLive(true);
         setLastFetchAt(Date.now());
 
-        // Server-side breaking list (from KV cache) + admin radar overrides
-        // (fetched live from Supabase per-request, not cached in KV).
         if (data.breaking) setServerBreaking(data.breaking);
         if (Array.isArray(data.radarOverrides)) setRadarOverrides(data.radarOverrides);
         if (data._cache) setCacheAge(data._cache.age);
 
         await finishLoading();
-        return added;
+        return fresh.length;
       } else {
         throw new Error('Empty feed');
       }
@@ -177,20 +223,15 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
 
     await finishLoading();
     return 0;
-  }, [sources.join(','), kind]);
+  }, [sources.join(','), kind, isAtTopRef]);
 
   useEffect(() => {
     fetchNews(false);
-
-    // Poll at the specified interval. Main feed: 15s. Map/radar: 30s.
     const interval = setInterval(() => fetchNews(true), pollInterval);
-
-    // Refresh when tab becomes visible
     const onVisible = () => {
       if (document.visibilityState === 'visible') fetchNews(true);
     };
     document.addEventListener('visibilitychange', onVisible);
-
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
@@ -198,22 +239,18 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000) {
     };
   }, [fetchNews]);
 
-  // Manual refresh — explicit user action. Resets the new-items counter
-  // (since the user is acknowledging them by refreshing) and triggers a
-  // visible re-fetch.
+  // Manual refresh — explicit user action. Always force-fetches and merges
+  // straight into displayed (the per-poll scroll-position branch is bypassed
+  // by passing forceRefresh=true to fetchNews).
   const refresh = useCallback(async () => {
-    setNewCount(0);
     return fetchNews(false, true);
   }, [fetchNews]);
-
-  // ackNewItems — caller (the pill onClick) can clear the new-items count
-  // without forcing a re-fetch (items are already in the feed).
-  const ackNewItems = useCallback(() => setNewCount(0), []);
 
   return {
     feed, loading, error, isLive,
     serverBreaking, radarOverrides, cacheAge,
-    newCount,
+    pendingCount: hiddenBuffer.length,
+    flushPending,
     ackNewItems,
     lastFetchAt,
     refresh,

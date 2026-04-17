@@ -88,12 +88,14 @@ export default function Sada() {
   const contentRef              = useRef(null);
   const lastScrollY             = useRef(0);
   const [barsHidden, setBarsHidden] = useState(false);
-  // isAtTop — true when the user is within ~120px of the feed top. The
-  // 'تحديث' pill should NOT show when isAtTop is true: the user is already
-  // looking at the freshest items and any new arrivals are visible directly.
-  // The pill is only useful when the user has scrolled DOWN and needs a
-  // hint that new items have appeared above their current position.
+  // isAtTop — true when the user is within ~120px of the feed top.
+  // Used in two places:
+  //   1. As state — to gate the pill ('!isAtTop' in the JSX)
+  //   2. As a ref — passed to useNews so its polling closure can read the
+  //      latest scroll position WITHOUT recreating the interval. State alone
+  //      isn't enough because closures over state get stale.
   const [isAtTop, setIsAtTop] = useState(true);
+  const isAtTopRef = useRef(true);
   const handleScroll = useCallback(() => {
     const el = contentRef.current;
     if (!el) return;
@@ -101,7 +103,9 @@ export default function Sada() {
     const delta = y - lastScrollY.current;
     if (delta > 8) setBarsHidden(true);       // scrolling down → hide
     else if (delta < -8) setBarsHidden(false); // scrolling up → show
-    setIsAtTop(y < 120);
+    const atTop = y < 120;
+    setIsAtTop(atTop);
+    isAtTopRef.current = atTop;
     lastScrollY.current = y;
   }, []);
 
@@ -176,7 +180,7 @@ export default function Sada() {
   // flow only through the `news` vertical response, since fetchAdminLayer
   // in functions/api/feeds.js only runs for kind=news. It's global state,
   // not per-vertical, so the news feed is a fine carrier.
-  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, newCount, ackNewItems, lastFetchAt } = useNews([], 'news', 6000);
+  const { feed:liveFeed, loading, isLive, refresh, radarOverrides, pendingCount, flushPending, ackNewItems, lastFetchAt } = useNews([], 'news', 6000, isAtTopRef);
   const { feed:mapFeed } = useNews([], 'map', 30000);
   const { feed:radarFeed, refresh:radarRefresh } = useNews([], 'radar', 30000);
   // X-style buffered feed: useNews owns the new-items detector. It
@@ -198,61 +202,49 @@ export default function Sada() {
     return () => clearInterval(id);
   }, []);
 
-  // Auto-ack new items whenever the user is at the top of the feed. They're
-  // already looking at the freshest content; there's no reason to accumulate
-  // a count that will never produce a useful pill. Without this, scrolling
-  // away after sitting at top would suddenly pop a stale-count pill.
+  // When the user scrolls back to the top of the feed, flush the hidden
+  // buffer into the displayed feed so they immediately see whatever piled up
+  // while they were scrolled. They went to the top because they want the
+  // latest — give it to them without making them tap the pill. The polling
+  // closure inside useNews will also auto-merge on subsequent silent polls
+  // because isAtTopRef.current is now true; this just covers the gap between
+  // 'reached top' and 'next poll fires.'
   useEffect(() => {
-    if (isAtTop && newCount > 0) ackNewItems();
-  }, [isAtTop, newCount, ackNewItems]);
+    if (isAtTop && pendingCount > 0) flushPending();
+  }, [isAtTop, pendingCount, flushPending]);
 
-  // Element-level scroll anchoring — the X / Twitter pattern.
+  // Scroll anchoring — used only when the displayed feed mutates while the
+  // user is scrolled. With the X-style buffered architecture, this only
+  // happens on explicit flush (pill tap, refresh). The pill scrolls to top
+  // anyway so anchor isn't critical there; we keep the effect as a safety
+  // net for the rare paths that DO mutate while scrolled (e.g. items added
+  // by tab-visibility refresh while user happens to be scrolled).
   //
-  // Naive scrollHeight-delta compensation is fragile: it breaks when items
-  // are removed below the viewport, when images load and reflow, or when
-  // the cap-at-500 trims items off the bottom. The robust approach is to
-  // pin to a SPECIFIC visible element by id:
-  //
-  //   1. After every render, scan for the first item whose top is >= 0
-  //      (first one fully or partially in viewport from the top edge),
-  //      remember its id and its viewport-relative top offset.
-  //   2. On the NEXT render (after the feed mutated), find that same
-  //      element by data-id. If it shifted by N pixels (because items
-  //      were prepended above it), add N to scrollTop. The user's view
-  //      snaps back to exactly the item they were reading, regardless of
-  //      what happened above or below.
-  //
-  // Skip compensation entirely when the user is at the top — they want
-  // new items to appear naturally there.
+  // Pattern: pin to the first visible post element by data-id. After the
+  // mutation, find it again and compensate scrollTop by the offset delta.
+  // Robust against items added above, removed below, or images loading
+  // late. CSS overflow-anchor:auto handles the modern Chrome/Firefox path;
+  // this JS layer covers Safari + edge cases.
   const anchorRef = useRef(null);
   useLayoutEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-
-    // Phase 1 — restore: if we have a saved anchor from the last render,
-    // find that element in the new DOM and compensate scrollTop.
     const saved = anchorRef.current;
     if (saved && el.scrollTop > 120) {
       const node = el.querySelector(`[data-id="${CSS.escape(saved.id)}"]`);
       if (node) {
-        const newTop = node.getBoundingClientRect().top;
         const containerTop = el.getBoundingClientRect().top;
-        const newRelTop = newTop - containerTop;
+        const newRelTop = node.getBoundingClientRect().top - containerTop;
         const delta = newRelTop - saved.top;
         if (Math.abs(delta) > 1) el.scrollTop = el.scrollTop + delta;
       }
     }
-
-    // Phase 2 — capture: pick the new first-visible item for next time.
     const containerTop = el.getBoundingClientRect().top;
     const items = el.querySelectorAll('[data-id]');
     let next = null;
     for (const item of items) {
       const relTop = item.getBoundingClientRect().top - containerTop;
-      if (relTop >= 0) {
-        next = { id: item.dataset.id, top: relTop };
-        break;
-      }
+      if (relTop >= 0) { next = { id: item.dataset.id, top: relTop }; break; }
     }
     anchorRef.current = next;
   }, [liveFeed]);
@@ -592,12 +584,12 @@ export default function Sada() {
               since they last looked at the top, and on tap scrolls them up.
               Threshold: >=5 so trickle updates don't pop a banner. Subtle
               frosted-glass chip matching the app's dark palette. */}
-          {newCount>=5 && !isAtTop && (
+          {pendingCount>=5 && !isAtTop && (
             <div style={{ position:'sticky', top:8, zIndex:50, display:'flex', justifyContent:'center', pointerEvents:'none' }}>
               <button
                 onClick={() => {
                   Sound.tap();
-                  ackNewItems();
+                  flushPending();
                   contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 style={{
@@ -627,8 +619,8 @@ export default function Sada() {
               <div className="live-dot"/>
               <span>أخبار مباشرة</span>
               {freshnessLabel && <span style={{ opacity:.7 }}>· تحديث {freshnessLabel}</span>}
-              {newCount>0 && newCount<5 && (
-                <span style={{ opacity:.7 }}>· {newCount} جديد</span>
+              {pendingCount>0 && pendingCount<5 && (
+                <span style={{ opacity:.7 }}>· {pendingCount} جديد</span>
               )}
             </div>
           )}

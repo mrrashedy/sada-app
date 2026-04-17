@@ -19,7 +19,6 @@ const SOURCES = {
   // Both are fetched in parallel and deduplicated by title downstream.
   aljazeera:       { name: "الجزيرة", initial: "ج", tier: 1, feeds: [
     "https://rss.app/feeds/wEloTC9ifcfo3wu5.xml",
-    "https://news.google.com/rss/search?q=site%3Aaljazeera.net&hl=ar&gl=SA&ceid=SA%3Aar",
   ] },
   // @AJABreaking — Al Jazeera Arabic Breaking News alerts (عاجل).
   // X/Twitter RSS bridges are unreliable; we use a targeted Google News
@@ -29,7 +28,6 @@ const SOURCES = {
   // updates. GN proxy kept as fallback so the source survives if rss.app errors.
   aja_breaking:    { name: "الجزيرة عاجل", initial: "عاجل", tier: 1, feeds: [
     "https://rss.app/feeds/1e7195HOC6i8FptT.xml",
-    "https://news.google.com/rss/search?q=عاجل+site%3Aaljazeera.net&hl=ar&gl=SA&ceid=SA%3Aar",
   ] },
   // aljazeera.com direct RSS times out from CF Workers. Google News proxy.
   aljazeera_en:    { name: "الجزيرة EN", initial: "ج", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aaljazeera.com&hl=en&gl=US&ceid=US:en"] },
@@ -46,7 +44,7 @@ const SOURCES = {
   mc_doualiya:     { name: "مونت كارلو", initial: "MC", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Amc-doualiya.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // independent_ar direct feed intermittent. Google News proxy is reliable.
   independent_ar:  { name: "إندبندنت عربية", initial: "إ", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Aindependentarabia.com&hl=ar&gl=SA&ceid=SA:ar"] },
-  aawsat:          { name: "الشرق الأوسط", initial: "ش", tier: 1, feeds: ["https://aawsat.com/feed","https://news.google.com/rss/search?q=site%3Aaawsat.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  aawsat:          { name: "الشرق الأوسط", initial: "ش", tier: 1, feeds: ["https://aawsat.com/feed"] },
   // alhurra.com direct feed returns 200 but empty from CF Workers. Add GN fallback.
   alhurra:         { name: "الحرة", initial: "ح", tier: 1, feeds: ["https://alhurra.com/feed","https://news.google.com/rss/search?q=site%3Aalhurra.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Tier 1 additions
@@ -95,7 +93,7 @@ const SOURCES = {
   // Cloudflare Workers despite working from regular browsers. Both section
   // feeds (97 = main, 203 = politics) kept as primary; Google News added as
   // fallback so this Tier 1 source actually surfaces in the feed.
-  youm7:     { name: "اليوم السابع", initial: "٧", tier: 1, feeds: ["https://www.youm7.com/RSS/SectionRss?SectionID=97","https://www.youm7.com/RSS/SectionRss?SectionID=203","https://news.google.com/rss/search?q=site%3Ayoum7.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  youm7:     { name: "اليوم السابع", initial: "٧", tier: 1, feeds: ["https://www.youm7.com/RSS/SectionRss?SectionID=97","https://www.youm7.com/RSS/SectionRss?SectionID=203"] },
   // egyptindependent.com returns 200 but 0 items from CF Workers. Add GN fallback.
   egypt_ind: { name: "Egypt Independent", initial: "EI", tier: 2, lang: "en", feeds: ["https://www.egyptindependent.com/feed/","https://news.google.com/rss/search?q=site%3Aegyptindependent.com&hl=en&gl=US&ceid=US:en"] },
   okaz:      { name: "عكاظ", initial: "ك", tier: 2, feeds: ["https://www.okaz.com.sa/rssFeed/0"] },
@@ -104,7 +102,7 @@ const SOURCES = {
   uae24:     { name: "24 الإمارات", initial: "٢", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3A24.ae&hl=ar&gl=SA&ceid=SA:ar"] },
   alsharq:   { name: "الشرق القطرية", initial: "ق", tier: 2, feeds: ["https://al-sharq.com/rss/latestNews"] },
   // alyaum.com returns 200 but 0 items from CF Workers. Add GN fallback.
-  alyaum:    { name: "اليوم", initial: "ل", tier: 2, feeds: ["https://www.alyaum.com/rssFeed/1005","https://news.google.com/rss/search?q=site%3Aalyaum.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  alyaum:    { name: "اليوم", initial: "ل", tier: 2, feeds: ["https://www.alyaum.com/rssFeed/1005"] },
   // alquds.co.uk direct feed socket-closes. Google News proxy works.
   alquds:    { name: "القدس العربي", initial: "ق", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalquds.co.uk&hl=ar&gl=SA&ceid=SA:ar"] },
   // (noonpost removed — outlet dormant, Google News index newest item is Jan 2019)
@@ -139,10 +137,10 @@ const SOURCES = {
   // الأهرام — Egypt's flagship daily (founded 1875, most-circulated). Upgraded
   // from Google News proxy to direct rss.app feed (~1min lag instead of 5-15min)
   // and promoted to Tier 1. GN proxy kept as fallback in case rss.app feed dies.
-  ahram:       { name: "الأهرام", initial: "هر", tier: 1, feeds: ["https://rss.app/feeds/gXGjA0WaERLJ5Sot.xml","https://news.google.com/rss/search?q=site%3Agate.ahram.org.eg&hl=ar&gl=SA&ceid=SA:ar"] },
+  ahram:       { name: "الأهرام", initial: "هر", tier: 1, feeds: ["https://rss.app/feeds/gXGjA0WaERLJ5Sot.xml"] },
   // مدى مصر — direct rss.app feed (~1min lag) replaces the Google News proxy
   // (5-15min lag). Independent Egyptian investigative outlet, distinctive voice.
-  mada_masr:   { name: "مدى مصر", initial: "مد", tier: 2, feeds: ["https://rss.app/feeds/vxVIdRoKKQKFk1hj.xml","https://news.google.com/rss/search?q=site%3Amadamasr.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  mada_masr:   { name: "مدى مصر", initial: "مد", tier: 2, feeds: ["https://rss.app/feeds/vxVIdRoKKQKFk1hj.xml"] },
   alain_ar:    { name: "العين الإخبارية", initial: "عن", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aal-ain.com&hl=ar&gl=SA&ceid=SA:ar"] },
 
   // Tier 2: North Africa (Maghreb) — Morocco, Algeria, Tunisia
@@ -161,18 +159,18 @@ const SOURCES = {
   // sudantribune.net returns 200 but 0 items from CF Workers. Add GN fallback.
   sudan_tribune: { name: "سودان تريبيون", initial: "ST", tier: 2, feeds: ["https://sudantribune.net/feed/","https://news.google.com/rss/search?q=site%3Asudantribune.net&hl=ar&gl=SA&ceid=SA:ar"] },
   // alsudaninews.com returns 200 but 0 items from CF Workers. Add GN fallback.
-  alsudani:     { name: "السوداني", initial: "سد", tier: 2, feeds: ["https://alsudaninews.com/?feed=rss2","https://news.google.com/rss/search?q=site%3Aalsudaninews.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  alsudani:     { name: "السوداني", initial: "سد", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalsudaninews.com&hl=ar&gl=SA&ceid=SA:ar"] },
 
   // Reuters Arabic — direct rss.app scraper of reuters.com (25 fresh items,
   // updates continuously) + Google News fallback for breadth.
-  reuters_ar:  { name: "رويترز", initial: "R", tier: 1, feeds: ["https://rss.app/feeds/QMxooeXFymYyJeYS.xml","https://news.google.com/rss/search?q=site%3Areuters.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  reuters_ar:  { name: "رويترز", initial: "R", tier: 1, feeds: ["https://rss.app/feeds/QMxooeXFymYyJeYS.xml"] },
 
   // Tier 3: English sources (served as-is — no translation)
   bbc_en:   { name: "BBC عالمي", initial: "BB", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/world/rss.xml"] },
   nyt:      { name: "نيويورك تايمز", initial: "NY", tier: 3, lang: "en", feeds: ["https://rss.nytimes.com/services/xml/rss/nyt/World.xml"] },
   fox:      { name: "فوكس نيوز", initial: "FX", tier: 3, lang: "en", feeds: ["https://moxie.foxnews.com/google-publisher/latest.xml"] },
   // bbci.co.uk tech feed returns 200 but 0 items from CF Workers. Add GN fallback.
-  bbc_tech: { name: "BBC تقنية", initial: "BT", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/technology/rss.xml","https://news.google.com/rss/search?q=site%3Abbc.com+technology&hl=en&gl=US&ceid=US:en"] },
+  bbc_tech: { name: "BBC تقنية", initial: "BT", tier: 3, lang: "en", feeds: ["https://feeds.bbci.co.uk/news/technology/rss.xml"] },
   nbc:      { name: "NBC نيوز", initial: "NB", tier: 3, lang: "en", feeds: ["https://feeds.nbcnews.com/feeds/topstories"] },
   // NPR feed returns 200 but 0 items from CF Workers. Add GN fallback.
   npr:      { name: "NPR عالمي", initial: "NP", tier: 3, lang: "en", feeds: ["https://feeds.npr.org/1004/rss.xml","https://news.google.com/rss/search?q=site%3Anpr.org+world&hl=en&gl=US&ceid=US:en"] },
@@ -204,19 +202,13 @@ const SOURCES = {
   // Iraq — beyond Alsumaria
   shafaq:      { name: "شفق نيوز", initial: "شف", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Ashafaq.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Turkey (Arabic) — first Turkey-Arabic outlets
-  trt_arabi:   { name: "TRT عربي", initial: "TR", tier: 2, feeds: ["https://www.trtarabi.com/feed/rss.xml","https://news.google.com/rss/search?q=site%3Atrtarabi.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  trt_arabi:   { name: "TRT عربي", initial: "TR", tier: 2, feeds: ["https://www.trtarabi.com/feed/rss.xml"] },
   // الأناضول — Turkey's official wire (Anadolu Agency) Arabic service.
-  // Direct RSS endpoint pattern is /ar/rss/default?cat=<category>; we hit
-  // four sections in parallel (current/politics/world/economy) and keep
-  // the Google News proxy as a fallback in case CF Workers can't reach
-  // aa.com.tr from datacenter IPs.
-  anadolu_ar:  { name: "الأناضول", initial: "أن", tier: 2, feeds: [
-    "https://www.aa.com.tr/ar/rss/default?cat=guncel",
-    "https://www.aa.com.tr/ar/rss/default?cat=politika",
-    "https://www.aa.com.tr/ar/rss/default?cat=dunya",
-    "https://www.aa.com.tr/ar/rss/default?cat=ekonomi",
-    "https://news.google.com/rss/search?q=site%3Aaa.com.tr%2Far&hl=ar&gl=SA&ceid=SA:ar",
-  ] },
+  // Apr 18 audit: all 4 aa.com.tr direct URLs timed out (30s+) from this
+  // network and were almost certainly doing the same from CF Workers.
+  // Reverted to GN-only — it's the only path that consistently returns
+  // items. If a usable direct feed surfaces later, add it back here.
+  anadolu_ar:  { name: "الأناضول", initial: "أن", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aaa.com.tr%2Far&hl=ar&gl=SA&ceid=SA:ar"] },
   // Saudi/UAE — deeper national press beyond Okaz / Alyaum / 24.ae / Alain
   alriyadh:    { name: "الرياض", initial: "ري", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalriyadh.com&hl=ar&gl=SA&ceid=SA:ar"] },
   albayan_ae:  { name: "البيان", initial: "بي", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalbayan.ae&hl=ar&gl=SA&ceid=SA:ar"] },

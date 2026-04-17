@@ -193,6 +193,31 @@ const SOURCES = {
   hespress_fr:   { name: "هسبريس FR", initial: "HF", tier: 3, lang: "fr", feeds: ["https://fr.hespress.com/feed"] },
   le360_fr:      { name: "لو 360 FR", initial: "36F", tier: 3, lang: "fr", feeds: ["https://fr.le360.ma/arc/outboundfeeds/rss/?outputType=xml"] },
 
+  // ── Gap-fill batch (Apr 2026): Palestine, Yemen, Iraq, Iran-AR, Turkey-AR,
+  // deeper Gulf, investigative long-form. All via Google News proxy — the
+  // proven-reliable path from CF Workers (direct feeds frequently 403 or
+  // return 0 items from datacenter IPs).
+
+  // Palestine — primary outlets in Arabic
+  wafa_ps:     { name: "وفا", initial: "وف", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Awafa.ps&hl=ar&gl=SA&ceid=SA:ar"] },
+  maan_news:   { name: "معا الإخبارية", initial: "مع", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amaannews.net&hl=ar&gl=SA&ceid=SA:ar"] },
+  qudspress:   { name: "قدس برس", initial: "قب", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aqudspress.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Yemen — first dedicated source in the registry
+  almasdar_ye: { name: "المصدر اليمني", initial: "مص", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalmasdaronline.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Iraq — beyond Alsumaria
+  shafaq:      { name: "شفق نيوز", initial: "شف", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Ashafaq.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  rudaw_ar:    { name: "رووداو", initial: "رو", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Arudaw.net+%22%2Farabic%22&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Iran (Arabic) — official-line balance for the registry
+  alalam:      { name: "العالم", initial: "عل", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalalam.ir&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Turkey (Arabic) — first Turkey-Arabic outlets
+  trt_arabi:   { name: "TRT عربي", initial: "TR", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Atrtarabi.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  anadolu_ar:  { name: "الأناضول", initial: "أن", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aaa.com.tr%2Far&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Saudi/UAE — deeper national press beyond Okaz / Alyaum / 24.ae / Alain
+  alriyadh:    { name: "الرياض", initial: "ري", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalriyadh.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  albayan_ae:  { name: "البيان", initial: "بي", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalbayan.ae&hl=ar&gl=SA&ceid=SA:ar"] },
+  // Investigative / long-form — pan-Arab independent outlet
+  raseef22:    { name: "رصيف22", initial: "ر22", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Araseef22.net&hl=ar&gl=SA&ceid=SA:ar"] },
+
   // Tier 4: Additional real-time firehose sources — major Western broadcasters
   guardian_w:   { name: "الغارديان", initial: "G", tier: 3, lang: "en", feeds: ["https://www.theguardian.com/world/rss"] },
   // Reuters English wire — international breaking news. Served as-is in

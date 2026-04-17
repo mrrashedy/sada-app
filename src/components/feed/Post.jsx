@@ -16,8 +16,8 @@ import { countryName } from '../../lib/countryFlags';
 //   ✱ : three crossed lines (6-point)     (save — asterisk-star, marked)
 //   ↗ : diagonal + L-shaped arrowhead     (share — outward direction)
 const ICON_PROPS = {
-  width: 16, height: 16, viewBox: '0 0 24 24',
-  fill: 'none', stroke: 'currentColor', strokeWidth: 1.2,
+  width: 18, height: 18, viewBox: '0 0 24 24',
+  fill: 'none', stroke: 'currentColor', strokeWidth: 1.6,
   strokeLinecap: 'round', strokeLinejoin: 'round',
 };
 const Plus  = () => <svg {...ICON_PROPS}><path d="M12 5v14M5 12h14"/></svg>;

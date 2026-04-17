@@ -641,7 +641,7 @@ export default function Sada() {
 
           {/* Source stories */}
           <div className={`stories${activeSource?' stories-filtering':''}`}>{(() => {
-            const allSources = SOURCES.filter(s => !s.photoOnly && !s.id?.startsWith('gnews_'));
+            const allSources = SOURCES.filter(s => !s.photoOnly && !s.id?.startsWith('gnews_') && !s.hideFromStrip);
             // Always show the source the user has actively filtered to,
             // even if it's beyond the 20-pill cutoff — otherwise tapping
             // a source from the expanded view would seemingly disappear

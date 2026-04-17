@@ -1,4 +1,8 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* Custom display typeface for the brand mark — heavy angular Kufic-style
+   Arabic. Used only by .logo-svg in the header, NOT by body text. The
+   font ships at public/fonts/ so it's served as a static asset. */
+@font-face{font-family:"Madinet Al Bat";src:url("/fonts/madinet-al-bat.ttf") format("truetype");font-display:swap;font-weight:400 900}
 :root{--bg:#F8F6F1;--f1:#EEECE7;--g1:#E0DED8;--g2:#D0CEC8;--t1:#1A1A1A;--t2:#3D3D3D;--t3:#757575;--t4:#A8A8A8;--bk:#1A1A1A;--rd:#D32F2F;--bl:#1565C0;--gn:#2E7D32;--or:#FF6D00;--ft:-apple-system,"SF Arabic","SF Pro Arabic",system-ui,sans-serif}
 [data-theme="dark"]{--bg:#0E0E0E;--f1:#161616;--g1:rgba(255,255,255,.08);--g2:rgba(255,255,255,.13);--t1:#ECEAE5;--t2:#A8A6A0;--t3:#686664;--t4:#3A3A38;--bk:#ECEAE5;--rd:#EF5350;--bl:#42A5F5;--gn:#66BB6A;--or:#FFA040}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -28,12 +32,12 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .hdr-top{display:flex;justify-content:space-between;align-items:center;padding:max(12px, env(safe-area-inset-top, 12px)) 28px 10px}
 .hdr-hide{transform:translateY(-100%)}
 .logo{display:flex;align-items:center}
-/* Custom logo image — wide arc design with Arabic text, height-bound
-   so it scales on the header. Aspect ratio preserved by width:auto.
-   Bumped from 28→34px so the curved baseline reads. Color inverts on
-   dark theme via filter. */
-.logo-img{height:34px;width:auto;display:block;max-width:180px}
-[data-theme="dark"] .logo-img{filter:invert(1)}
+/* Inline SVG logo using the custom Kufic typeface. Inline (not an
+   <img>) so the @font-face from this file applies to the SVG <text>.
+   Height-bound; intrinsic width auto from viewBox. Color inherits the
+   header text color so dark theme just works (no filter needed). */
+.logo-svg{height:38px;width:auto;display:block;color:var(--bk)}
+.logo-svg text{font-family:"Madinet Al Bat","Reem Kufi","Noto Kufi Arabic","SF Arabic",sans-serif}
 .hdr-r{display:flex;gap:16px;align-items:center}
 .ib{background:none;border:none;cursor:pointer;color:var(--t1);padding:2px;display:flex;align-items:center}
 .ib:active{opacity:.35}

@@ -579,7 +579,19 @@ export default function Sada() {
       {/* Header */}
       {nav!=='radar'&&nav!=='admin'&&nav!=='map'&&<div className={`hdr${barsHidden?' hdr-hide':''}`}>
         <div className="hdr-top">
-          <div className="logo"><img src="/logo.svg" alt="غرفة الأخبار" className="logo-img" onError={e=>{e.currentTarget.src='/logo.png';}}/></div>
+          <div className="logo">
+            {/* Inline SVG so the @font-face declaration in global.css
+                actually applies to the <text> element. The <img>-loaded
+                version of /logo.svg can't access page fonts. */}
+            <svg className="logo-svg" viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg" aria-label="غرفة الأخبار">
+              <defs>
+                <path id="logo-arc" d="M 60,200 Q 400,100 740,200"/>
+              </defs>
+              <text fontSize="180" fontWeight="900" fill="currentColor" letterSpacing="-2">
+                <textPath href="#logo-arc" startOffset="50%" textAnchor="middle">غرفة الأخبار</textPath>
+              </text>
+            </svg>
+          </div>
           <div className="hdr-r">
             <button className="ib" onClick={()=>{Sound.tap();setSrch(true);}}>{I.search()}</button>
             <button className="ib" onClick={handleHeaderRefresh}>{I.globe()}</button>

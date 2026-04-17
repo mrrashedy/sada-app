@@ -64,15 +64,22 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .content{
   flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
   padding-top:95px;padding-bottom:70px;overflow-anchor:auto;
-  /* Geopolitical texture — dotted half-tone, evoking newsprint or
-     atlas stipple. Tiny dots (~1px) on a 14px grid at 3.5% opacity.
-     Reads as 'printed paper' rather than 'designed pattern.' */
+  /* Newspaper texture — fine halftone dots in warm ink tone.
+     Two layers at different scales (8px and 13px) overlap to break
+     the perfect grid into something that reads as "printed on paper"
+     rather than "designed pattern." Warm sepia-ish ink instead of
+     pure black so it reads as ink-on-cream, not pixel-on-screen. */
   background-color:var(--bg);
-  background-image:radial-gradient(circle at center, rgba(0,0,0,.035) 0.7px, transparent 1.2px);
-  background-size:14px 14px;
+  background-image:
+    radial-gradient(circle at center, rgba(80,55,30,.045) 0.5px, transparent 1px),
+    radial-gradient(circle at center, rgba(80,55,30,.030) 0.4px, transparent 1px);
+  background-size:8px 8px, 13px 13px;
+  background-position:0 0, 4px 6px;
 }
 [data-theme="dark"] .content{
-  background-image:radial-gradient(circle at center, rgba(255,255,255,.04) 0.7px, transparent 1.2px);
+  background-image:
+    radial-gradient(circle at center, rgba(255,245,225,.05) 0.5px, transparent 1px),
+    radial-gradient(circle at center, rgba(255,245,225,.035) 0.4px, transparent 1px);
 }
 .post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}

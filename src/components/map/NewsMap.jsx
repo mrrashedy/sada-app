@@ -340,8 +340,6 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             if (d < minDist && d < maxDist) { minDist = d; nearest = spot; }
           });
           if (nearest) {
-            playBlip();
-            try { navigator.vibrate && navigator.vibrate(12); } catch {}
             try { map._idleStop && map._idleStop(); } catch {}
             setSel(nearest);
             map.flyTo({
@@ -382,23 +380,19 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
     spots.forEach((spot) => {
       const n = spot.stories.length;
-      // Size scale: 1 story = 7px, many stories = up to 18px
-      const size = Math.max(7, Math.min(18, 6 + n * 1.4));
-      // Editorial accent — single desaturated orange across all spots
-      const accent = '#FF9500';
-      const accentGlow = 'rgba(255,149,0,.38)';
-
-      // Tight finger-sized hit target. The wrapper is pointer-events:
-      // none so pans/pinches pass through empty space, and only the
-      // hit circle absorbs taps. We keep it small so even at zoom 3
-      // with 30+ spots visible, most of the map stays pannable.
-      const hitSize = 20;
+      // Holographic ring footprint — radius scales with event count
+      // (sqrt curve so 1 story is small, but 20 stories doesn't dwarf the map)
+      const ringSize = Math.round(Math.max(44, Math.min(140, 36 + Math.sqrt(n) * 24)));
+      const coreSize = Math.max(6, Math.min(12, 5 + Math.sqrt(n) * 1.6));
+      const hue = 190; // cyan hologram
+      const accent = `hsl(${hue}, 100%, 65%)`;
+      const accentSoft = `hsla(${hue}, 100%, 65%, .55)`;
+      const accentFaint = `hsla(${hue}, 100%, 65%, .18)`;
+      const hitSize = Math.max(28, ringSize * 0.55);
 
       const el = document.createElement('div');
       el.className = 'nm-marker';
-      // Wrapper is a bit wider than the hit circle just so the label
-      // has breathing room — but the wrapper itself is non-hittable.
-      const wrap = 40;
+      const wrap = ringSize + 20;
       el.style.cssText = `
         width:${wrap}px;height:${wrap}px;
         pointer-events:none;
@@ -407,39 +401,35 @@ export function NewsMap({ onClose, liveFeed=[] }) {
         -webkit-tap-highlight-color:transparent;
       `;
 
+      // Three staggered expanding rings + static footprint ring + rotating tick ring + core beam
       el.innerHTML = `
+        <div class="nm-holo-ring" style="--s:${ringSize}px;--c:${accentSoft};animation-delay:0s"></div>
+        <div class="nm-holo-ring" style="--s:${ringSize}px;--c:${accentSoft};animation-delay:.9s"></div>
+        <div class="nm-holo-ring" style="--s:${ringSize}px;--c:${accentSoft};animation-delay:1.8s"></div>
+        <div class="nm-holo-footprint" style="--s:${ringSize}px;--c:${accentFaint};"></div>
+        <div class="nm-holo-ticks" style="--s:${ringSize}px;--c:${accentSoft};"></div>
+        <div class="nm-holo-crosshair" style="--s:${Math.round(ringSize*.62)}px;--c:${accentSoft};"></div>
         <div class="nm-marker-hit" style="
           position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
           width:${hitSize}px; height:${hitSize}px; border-radius:50%;
           pointer-events:auto; cursor:pointer;
-          display:flex; align-items:center; justify-content:center;
-          -webkit-tap-highlight-color:transparent;
         ">
-          <div class="nm-marker-dot" style="
-            width:${size}px; height:${size}px; border-radius:50%;
-            background:${accent};
-            box-shadow:
-              0 0 0 1px rgba(0,0,0,.55),
-              0 0 ${Math.round(size * 1.4)}px ${accentGlow},
-              0 1px 4px rgba(0,0,0,.6);
-          "></div>
+          <div class="nm-holo-core" style="--s:${coreSize}px;--c:${accent};"></div>
         </div>
         <div class="nm-marker-label" style="
-          position:absolute; left:50%; top:calc(50% + ${Math.round(size/2) + 6}px);
+          position:absolute; left:50%; top:calc(50% + ${Math.round(ringSize/2) + 8}px);
           transform:translateX(-50%);
-          font-size:10px; font-weight:700; color:rgba(255,255,255,.88);
-          font-family:var(--ft); direction:rtl;
-          background:rgba(10,12,16,.86); padding:2px 7px; border-radius:4px;
-          white-space:nowrap; pointer-events:none; letter-spacing:.02em;
-          border:.5px solid rgba(255,255,255,.09);
-        ">${spot.city}</div>
+          font-size:10px; font-weight:700; color:${accent};
+          font-family:var(--ft); direction:rtl; letter-spacing:.04em;
+          background:rgba(6,14,22,.78); padding:2px 8px; border-radius:2px;
+          white-space:nowrap; pointer-events:none;
+          border:.5px solid ${accentSoft};
+          text-shadow:0 0 6px ${accentSoft};
+        ">${spot.city} <span style="opacity:.6;font-weight:500">· ${n}</span></div>
       `;
 
       el.addEventListener('click', (e) => {
         e.stopPropagation();
-        playBlip();
-        // Haptic feedback on supported devices
-        try { navigator.vibrate && navigator.vibrate(12); } catch {}
         // Stop idle drift
         try { map._idleStop && map._idleStop(); } catch {}
         setSel(spot);

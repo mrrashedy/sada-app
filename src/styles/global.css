@@ -85,20 +85,23 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Inline tag variant — flows with the body text so the last line of the body
    can carry tags when there's room, saving vertical space in the card. */
 .ptag-inline{padding:1px 7px;margin-inline-start:6px;font-size:9px;vertical-align:middle;line-height:1.4;letter-spacing:.6px;font-weight:700}
-/* Wire-service dateline — full Arabic country names between source
-   and time, flanked by hairline pipes. Multiple countries each get
-   their own slot separated by another pipe — reads as
-   '│ إيران │ مصر │' rather than two countries crammed together. */
+/* Country dateline — full Arabic country names between source and
+   time, flanked by hairline pipes AND separated from each other by
+   the same hairline pipe. Layout per user spec:
+     [logo] الجزيرة │ إيران │ مصر │ منذ 2 د
+   Three pipes appear when there are two countries: one before, one
+   between, one after.                                                  */
 .pdateline{
   display:inline-flex;align-items:center;
   font-family:var(--ft);
   font-size:11px;font-weight:600;letter-spacing:.1px;
   color:var(--or);
   margin:0 8px;
-  border-left:1px solid var(--g1);border-right:1px solid var(--g1);
+  border-inline-start:1px solid var(--g1);
+  border-inline-end:1px solid var(--g1);
 }
 .pdateline-item{padding:0 8px}
-.pdateline-item + .pdateline-item{border-left:1px solid var(--g1)}
+.pdateline-item + .pdateline-item{border-inline-start:1px solid var(--g1)}
 .pname-brk{margin-right:8px;padding:1px 7px;font-size:9px;vertical-align:middle}
 .ptitle{font-size:14px;font-weight:700;line-height:1.55;color:var(--t1);margin-bottom:3px;word-break:break-word}
 .pbody{font-size:13px;line-height:1.7;color:var(--t2);word-break:break-word}

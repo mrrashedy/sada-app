@@ -95,11 +95,14 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
             onClick={(e) => { e.stopPropagation(); onSelectSource?.(item.s.n); }}
             aria-label={`عرض أخبار ${item.s.n}`}
           >
-            {/* Icon FIRST in DOM order — in RTL this places the favicon
-                at the visual right (read-first) position, name reads
-                left of it. Per user: 'icon should be before the word.' */}
-            {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
+            {/* Name first in DOM order — in RTL this puts the name text at
+                the visual RIGHT edge, aligning its right edge with the
+                title row's right edge below. The favicon trails to its
+                LEFT. Previously the favicon was first, which indented the
+                name text inward from the right and broke alignment with
+                the title. */}
             <span className="pname">{item.s.n}</span>
+            {(item.s.logo||item.s.domain) && <img className="pname-logo" src={item.s.logo||`https://www.google.com/s2/favicons?domain=${item.s.domain}&sz=64`} alt="" loading="lazy" onError={e=>{e.currentTarget.remove();}}/>}
           </button>
           {/* Wire-service dateline — full Arabic country names between the
               source and the time, flanked by hairline pipes. Reads as a
@@ -129,7 +132,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
         )}
       </div>
       {showImg && item.realImg && !isPerson && (
-        <div className="strap strap-grid" style={{ height:120, borderRadius:8 }} onClick={()=>onOpen(item)}>
+        <div className="strap strap-grid" style={{ height:90, borderRadius:10 }} onClick={()=>onOpen(item)}>
           <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 30%',display:'block' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
         </div>
       )}

@@ -88,12 +88,13 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Post card */
 /* Compact card padding — was 10/16/8/16, tightened to 6/16/4 per user.
    Faint warm tint kept for the subtle card-elevation effect. */
-.post{padding:4px 14px 2px 14px;border-bottom:.5px solid var(--g1);overflow:hidden;background:rgba(255,109,0,.012)}
-/* Title + body respect the dots-button gutter so they don't extend
-   wider than the .pinfo row above. Image is NOT constrained — it
-   spans the full card width like a banner. */
-.post .ptitle,.post .pbody{margin-inline-end:28px}
-.ph{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.post{padding:6px 16px 4px 16px;border-bottom:.5px solid var(--g1);overflow:hidden;background:rgba(255,109,0,.012)}
+/* Removed the legacy 10/12 px margin-left on .ptitle/.pbody/.strap/
+   .pactions — in RTL it was indenting them inward from the right
+   edge, creating a shift relative to the source name in .pinfo
+   (which had no such margin). All children of .post now align with
+   the post's own padding on both edges, identical right and left. */
+.ph{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .pav{width:34px;height:34px;border-radius:50%;border:1px solid var(--g1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--t1);background:var(--bg);flex-shrink:0}
 .pinfo{flex:1;min-width:0}
 .pname{font-size:12px;font-weight:600;color:var(--t3);letter-spacing:.2px}
@@ -103,16 +104,15 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .pname-btn{
   background:none;border:none;padding:0;margin:0;cursor:pointer;
   font-family:var(--ft);
-  display:inline-flex;align-items:center;gap:6px;
+  display:inline-flex;align-items:center;gap:0;
   border-radius:6px;
   transition:color .15s,filter .15s;
 }
 .pname-btn:hover .pname{color:var(--or);filter:drop-shadow(0 0 4px rgba(255,109,0,.4))}
 .pname-btn:active .pname{color:var(--or);filter:drop-shadow(0 0 7px rgba(255,109,0,.65))}
-/* Favicon (now icon-before-name): no margin — gap handled by the
-   .pname-btn flex container so the spacing is symmetric and doesn't
-   overlap the source name text. */
-.pname-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;filter:grayscale(.7) contrast(1.15);flex-shrink:0}
+/* Favicon trails the source name. margin-inline-start places the gap
+   on the side closest to the name (the visual LEFT in RTL, RIGHT in LTR). */
+.pname-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;margin-inline-start:6px;margin-left:0;filter:grayscale(.7) contrast(1.15)}
 .pflags{display:inline-flex;align-items:center;gap:2px;margin-right:5px;vertical-align:middle}
 .pflag{width:12px;height:12px;border-radius:50%;object-fit:cover;vertical-align:middle}
 .ptime{font-size:10px;color:var(--t4);margin-right:6px;display:inline-flex;align-items:center;gap:4px;letter-spacing:.2px}
@@ -140,12 +140,12 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .pdateline-item{padding:0 8px}
 .pdateline-item + .pdateline-item{border-inline-start:1px solid var(--g1)}
 .pname-brk{margin-right:8px;padding:1px 7px;font-size:9px;vertical-align:middle}
-.ptitle{font-size:14px;font-weight:700;line-height:1.4;color:var(--t1);margin-bottom:1px;word-break:break-word}
-.pbody{font-size:13px;line-height:1.5;color:var(--t2);word-break:break-word}
+.ptitle{font-size:14px;font-weight:700;line-height:1.55;color:var(--t1);margin-bottom:3px;word-break:break-word}
+.pbody{font-size:13px;line-height:1.7;color:var(--t2);word-break:break-word}
 .pmore-t{color:var(--t4);font-weight:500;cursor:pointer}
 
 /* Image strap */
-.strap{margin-top:4px;border-radius:6px;overflow:hidden;position:relative;height:56px;width:100%;max-width:100%}
+.strap{margin-top:8px;border-radius:6px;overflow:hidden;position:relative;height:56px;width:100%;max-width:100%}
 .strap-grid::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 12px,rgba(0,0,0,.06) 12px,rgba(0,0,0,.06) 13px),repeating-linear-gradient(90deg,transparent,transparent 12px,rgba(0,0,0,.06) 12px,rgba(0,0,0,.06) 13px)}
 .strap-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(255,255,255,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15)}
 .strap-dur{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);color:white;font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px}
@@ -157,7 +157,7 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
    hover/press. Compact padding + lighter ink for less visual weight.
    Touch/hover lights up the icon with a soft orange glow (drop-shadow
    on the SVG stroke) so the user feels the press registered. */
-.pactions-pm{justify-content:center;gap:48px;padding:0;margin-top:0}
+.pactions-pm{justify-content:center;gap:48px;padding:2px 0 0;margin-top:2px}
 .util-btn{background:none;border:none;cursor:pointer;color:var(--t3);padding:3px 0;display:inline-flex;align-items:center;transition:color .15s,transform .12s,filter .15s,opacity .15s;opacity:.75}
 .util-btn:hover{color:var(--or);opacity:1;filter:drop-shadow(0 0 5px rgba(255,109,0,.45))}
 .util-btn:active{transform:scale(.9);color:var(--or);opacity:1;filter:drop-shadow(0 0 8px rgba(255,109,0,.7))}

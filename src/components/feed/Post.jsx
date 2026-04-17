@@ -7,32 +7,18 @@ import { shareArticle } from '../../lib/shareCard';
 import { countryName } from '../../lib/countryFlags';
 
 // All four .act icons inlined locally with identical geometry — same
-// 18×18 viewBox, same 1.7 stroke, same round linecap + linejoin. Filled
-// state for the up-arrow uses a stroke-width bump (no fills), keeping
-// the visual language consistent.
-const STROKE = 1.7;
-const SVG_PROPS = {
-  width: 18, height: 18, viewBox: '0 0 24 24',
-  fill: 'none', stroke: 'currentColor',
-  strokeLinecap: 'round', strokeLinejoin: 'round',
-};
-const ArrowUp = ({ filled }) => (
-  <svg {...SVG_PROPS} strokeWidth={filled ? STROKE + 0.6 : STROKE}>
-    <path d="M12 20V5M6 11l6-6 6 6"/>
-  </svg>
-);
-const ArrowDown = () => (
-  <svg {...SVG_PROPS} strokeWidth={STROKE}>
-    <path d="M12 4v15M18 13l-6 6-6-6"/>
-  </svg>
-);
+// + / − style. Opinion pair is purely typographic — bold plus/minus
+// glyphs inside small circular buttons (Reddit/HN lineage). Save and
+// share stay as light outline icons on the other side, deliberately
+// LIGHTER weight than the +/− so the eye groups them as utility.
+const STROKE = 1.6;
 const Bookmark = ({ filled }) => (
-  <svg {...SVG_PROPS} strokeWidth={filled ? STROKE + 0.6 : STROKE}>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill={filled?'currentColor':'none'} stroke="currentColor" strokeWidth={filled?0:STROKE} strokeLinejoin="round">
     <path d="M6 4a1 1 0 011-1h10a1 1 0 011 1v17l-6-4-6 4V4z"/>
   </svg>
 );
 const Share = () => (
-  <svg {...SVG_PROPS} strokeWidth={STROKE}>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 3v13M7 8l5-5 5 5M5 14v6a1 1 0 001 1h12a1 1 0 001-1v-6"/>
   </svg>
 );
@@ -103,27 +89,24 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
           <img src={item.realImg} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 30%',display:'block' }} onError={e=>{e.target.parentElement.style.display='none';}}/>
         </div>
       )}
-      <div className="pactions">
-        {/* Up = mark as important (toggleInterest). Filled state when active. */}
+      <div className="pactions pactions-pm">
+        {/* Opinion pair: + / − typographic glyphs in small circular buttons.
+            Reddit/HN lineage but rounded — feels like a stepper control.   */}
         <button
-          className={`act ${isInterested?'important':''}`}
+          className={`pm-btn pm-plus ${isInterested?'on':''}`}
           aria-label="مهم"
           onClick={() => { isInterested ? Sound.unsave() : Sound.save(); onInterest?.(item); }}
-        >
-          <ArrowUp filled={isInterested} />
-        </button>
-        {/* Down = remove from feed (toggleHide). Single-shot dismissal. */}
+        >+</button>
         <button
-          className="act"
-          aria-label="غير مهم"
+          className="pm-btn pm-minus"
+          aria-label="تجاهل"
           onClick={() => { Sound.tap(); onHide?.(item); }}
-        >
-          <ArrowDown />
-        </button>
-        <button className={`act ${isSaved?'saved':''}`} aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>
+        >−</button>
+        {/* Utility pair — quieter outline icons, no bordered button. */}
+        <button className={`util-btn ${isSaved?'on':''}`} aria-label="حفظ" onClick={()=>{isSaved?Sound.unsave():Sound.save();onSave(item.id);}}>
           <Bookmark filled={isSaved} />
         </button>
-        <button className="act" aria-label="مشاركة" onClick={()=>{Sound.share();shareArticle(item);}}>
+        <button className="util-btn" aria-label="مشاركة" onClick={()=>{Sound.share();shareArticle(item);}}>
           <Share />
         </button>
       </div>

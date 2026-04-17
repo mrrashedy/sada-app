@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <!-- Slight upward arc to match the original logo's curved baseline. -->
+    <path id="logo-arc" d="M 60,200 Q 400,100 740,200"/>
+  </defs>
+  <text font-family="'Reem Kufi','Noto Kufi Arabic','Tajawal','SF Arabic',sans-serif"
+        font-size="180" font-weight="900" fill="black"
+        letter-spacing="-2">
+    <textPath href="#logo-arc" startOffset="50%" text-anchor="middle">غرفة الأخبار</textPath>
+  </text>
+</svg>

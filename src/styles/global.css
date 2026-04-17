@@ -28,10 +28,11 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .hdr-top{display:flex;justify-content:space-between;align-items:center;padding:max(12px, env(safe-area-inset-top, 12px)) 28px 10px}
 .hdr-hide{transform:translateY(-100%)}
 .logo{display:flex;align-items:center}
-/* Custom logo image — height-bound so it scales on the header. The
-   image's intrinsic aspect ratio is preserved by width:auto. Color
-   inverts on dark theme via filter. */
-.logo-img{height:28px;width:auto;display:block}
+/* Custom logo image — wide arc design with Arabic text, height-bound
+   so it scales on the header. Aspect ratio preserved by width:auto.
+   Bumped from 28→34px so the curved baseline reads. Color inverts on
+   dark theme via filter. */
+.logo-img{height:34px;width:auto;display:block;max-width:180px}
 [data-theme="dark"] .logo-img{filter:invert(1)}
 .hdr-r{display:flex;gap:16px;align-items:center}
 .ib{background:none;border:none;cursor:pointer;color:var(--t1);padding:2px;display:flex;align-items:center}

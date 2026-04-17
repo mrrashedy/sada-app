@@ -1093,7 +1093,7 @@ function buildPayload(data, layer, limit, cacheMeta) {
   // having to scrape the full payload. Returned on every response.
   const _bySource = {};
   for (const it of curatedFeed) {
-    const sid = it.s?.id || it.sourceId || '?';
+    const sid = it.source?.id || it.sourceId || it.s?.id || '?';
     _bySource[sid] = (_bySource[sid] || 0) + 1;
   }
   return {

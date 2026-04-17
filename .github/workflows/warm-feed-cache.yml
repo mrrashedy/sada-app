@@ -13,16 +13,22 @@ jobs:
   warm:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    env:
+      BASE: https://sada-app.pages.dev
+      UA: "Mozilla/5.0 (compatible; SadaCacheWarmer/1.0; +https://101n.app)"
     steps:
       - name: Warm news pool
         run: |
-          curl -sS --max-time 60 -o /dev/null -w 'news:  HTTP=%{http_code} time=%{time_total}s\n' \
-            'https://101n.app/api/feeds?kind=news&refresh=1'
+          curl -sS --max-time 60 -A "$UA" -o /dev/null \
+            -w 'news:  HTTP=%{http_code} time=%{time_total}s\n' \
+            "$BASE/api/feeds?kind=news&refresh=1"
       - name: Warm map pool
         run: |
-          curl -sS --max-time 60 -o /dev/null -w 'map:   HTTP=%{http_code} time=%{time_total}s\n' \
-            'https://101n.app/api/feeds?kind=map&refresh=1'
+          curl -sS --max-time 60 -A "$UA" -o /dev/null \
+            -w 'map:   HTTP=%{http_code} time=%{time_total}s\n' \
+            "$BASE/api/feeds?kind=map&refresh=1"
       - name: Warm radar pool
         run: |
-          curl -sS --max-time 60 -o /dev/null -w 'radar: HTTP=%{http_code} time=%{time_total}s\n' \
-            'https://101n.app/api/feeds?kind=radar&refresh=1'
+          curl -sS --max-time 60 -A "$UA" -o /dev/null \
+            -w 'radar: HTTP=%{http_code} time=%{time_total}s\n' \
+            "$BASE/api/feeds?kind=radar&refresh=1"

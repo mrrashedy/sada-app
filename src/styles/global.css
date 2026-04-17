@@ -61,7 +61,32 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 .s-nm{font-size:10px;color:var(--t3);font-weight:500;max-width:50px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Content area */
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:95px;padding-bottom:70px;overflow-anchor:auto}
+.content{
+  flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  padding-top:95px;padding-bottom:70px;overflow-anchor:auto;
+  /* Geopolitical texture — faint latitude/longitude grid + barely-visible
+     equator and prime-meridian darker accents. Total opacity ~2.5% so it
+     reads as paper texture, not as a map you can navigate. */
+  background-color:var(--bg);
+  background-image:
+    /* equator (horizontal accent at ~50% Y) */
+    linear-gradient(to bottom, transparent calc(50% - .5px), rgba(0,0,0,.04) calc(50% - .5px), rgba(0,0,0,.04) calc(50% + .5px), transparent calc(50% + .5px)),
+    /* longitude grid lines (vertical) */
+    linear-gradient(to right, rgba(0,0,0,.022) 1px, transparent 1px),
+    /* latitude grid lines (horizontal) */
+    linear-gradient(to bottom, rgba(0,0,0,.022) 1px, transparent 1px);
+  background-size:
+    100% 100vh,    /* equator: full width, repeat per viewport height */
+    72px 72px,     /* meridian spacing */
+    72px 72px;     /* parallel spacing */
+  background-attachment:local,local,local;
+}
+[data-theme="dark"] .content{
+  background-image:
+    linear-gradient(to bottom, transparent calc(50% - .5px), rgba(255,255,255,.05) calc(50% - .5px), rgba(255,255,255,.05) calc(50% + .5px), transparent calc(50% + .5px)),
+    linear-gradient(to right, rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.025) 1px, transparent 1px);
+}
 .post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}
 

@@ -52,6 +52,34 @@ function clean(s) {
     .replace(/&[a-z]+;/gi,' ').replace(/<[^>]*>/g,'').trim();
 }
 
+// Decide whether the brief is redundant with the title — many RSS feeds
+// repeat the headline verbatim (or near-verbatim) in the <description>.
+// Hide the brief when one contains the other, or when their normalized
+// word sets overlap >=70%.
+function isBriefRedundant(title, brief) {
+  if (!title || !brief) return false;
+  const norm = s => s
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[.,،؛؟!:"'«»“”\-–—|(){}\[\]…]/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  const t = norm(title);
+  const b = norm(brief);
+  if (!t || !b) return false;
+  if (t === b) return true;
+  if (b.startsWith(t) || t.startsWith(b)) return true;
+  if (b.includes(t) || t.includes(b)) return true;
+  const tw = new Set(t.split(' ').filter(w => w.length >= 3));
+  const bw = new Set(b.split(' ').filter(w => w.length >= 3));
+  if (tw.size === 0 || bw.size === 0) return false;
+  let shared = 0;
+  for (const w of bw) if (tw.has(w)) shared++;
+  const overlap = shared / Math.min(tw.size, bw.size);
+  return overlap >= 0.7;
+}
+
 // Strip trailing source attributions — publishers pad headlines/briefs with
 // " - DW.com", " | Al Jazeera", "الجزيرة نت", domain names, etc. We peel off
 // any occurrences at either end, along with the common separators, so the
@@ -203,7 +231,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
       <div style={isPerson ? { display:'flex',gap:4,alignItems:'center' } : undefined}>
         <div style={isPerson ? { flex:1,minWidth:0 } : undefined}>
           <div ref={titleRef} className="ptitle" dir="auto" onClick={()=>{Sound.open();onOpen(item);}} style={{ cursor:'pointer', ...(longTitle ? { fontSize:15, fontWeight:500, lineHeight:1.5, color:'var(--t2)' } : {}), ...(item.brk ? { textAlign:'center' } : {}) }}>{stripSource(clean(item.title), item.s?.n, item.s?.domain)}</div>
-          {!longTitle && !item.brk && item.brief && (
+          {!longTitle && !item.brk && item.brief && !isBriefRedundant(item.title, item.brief) && (
             <div className="pbody" dir="auto">{stripSource(clean(item.brief), item.s?.n, item.s?.domain)}</div>
           )}
         </div>

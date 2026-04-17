@@ -746,7 +746,7 @@ export default function Sada() {
           return;
         }
         setNav(item.id);
-      }}><span className="bnav-icon">{item.icon(nav===item.id)}</span></button>))}</div>}
+      }}><span className="bnav-icon">{item.icon(false)}</span></button>))}</div>}
 
       {/* Overlays */}
       {article&&<ArticleDetail article={article} onClose={()=>{Sound.close();setArticle(null);}} onSave={toggleSave} isSaved={savedIds.has(article.id)} reactionCounts={reactionCounts[article.id]} userReactions={userReactions[article.id]} onToggleReaction={handleToggleReaction} commentCount={reactionCounts[article.id]?.comment||0} onComment={handleComment} onOpenRelated={(r)=>{setArticle(null);setTimeout(()=>setArticle(r),50);}} relatedArticles={allFeed}/>}

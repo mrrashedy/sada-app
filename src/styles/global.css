@@ -101,17 +101,15 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 
 /* Post actions */
 .pactions{display:flex;align-items:center;justify-content:center;gap:48px;margin-top:3px}
-/* + / − action language. All four buttons sit in a single centered row,
-   evenly spaced. Light strokes / regular weight — not bold. No top border
-   line above the row (cleaner separation from the post body). */
+/* All four post actions sit in a single centered row, all rendered as
+   identical-spec SVGs (1.2 px stroke, 16x16, round caps). Active = orange.
+   Dismiss (−) hint at red on hover/press to telegraph the destructive
+   nature without committing color before the tap. */
 .pactions-pm{justify-content:center;gap:48px;padding:4px 0 2px;margin-top:3px}
-.pm-btn{background:none;border:none;color:var(--t3);font-family:-apple-system,system-ui,sans-serif;font-size:18px;font-weight:300;line-height:1;cursor:pointer;transition:color .15s,transform .12s;padding:4px 0;width:18px;display:inline-flex;align-items:center;justify-content:center}
-.pm-btn:active{transform:scale(.85);opacity:.6}
-.pm-plus.on{color:var(--or)}
-.pm-minus:hover,.pm-minus:active{color:var(--rd)}
 .util-btn{background:none;border:none;cursor:pointer;color:var(--t3);padding:4px 0;display:inline-flex;align-items:center;transition:color .15s,transform .12s}
 .util-btn:active{transform:scale(.85);opacity:.6}
 .util-btn.on{color:var(--or)}
+.util-minus:hover,.util-minus:active{color:var(--rd)}
 .act{display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:11px;background:none;border:none;font-family:var(--ft);transition:color .15s;padding:3px 0}
 .act:active{opacity:.4}
 .act.liked{color:var(--rd)}

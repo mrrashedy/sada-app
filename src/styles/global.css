@@ -89,11 +89,13 @@ html,body{background:#1A1A1A;overflow:hidden;height:100%}
 /* Compact card padding — was 10/16/8/16, tightened to 6/16/4 per user.
    Faint warm tint kept for the subtle card-elevation effect. */
 .post{padding:4px 14px 2px 14px;border-bottom:.5px solid var(--g1);overflow:hidden;background:rgba(255,109,0,.012)}
-/* Removed the legacy 10/12 px margin-left on .ptitle/.pbody/.strap/
-   .pactions — in RTL it was indenting them inward from the right
-   edge, creating a shift relative to the source name in .pinfo
-   (which had no such margin). All children of .post now align with
-   the post's own padding on both edges, identical right and left. */
+/* Title/body/image/actions should respect the space the .ib (more-
+   dots) button reserves on the LEFT side of .ph (in RTL). Without
+   this, title text extends ALL the way to the post's left padding
+   edge — wider than the .pinfo content above. margin-inline-end
+   reserves 28 px (≈ .ib width 20 + .ph gap 8) so each row's left
+   edge matches the .pinfo's left edge. */
+.post .ptitle,.post .pbody,.post .strap{margin-inline-end:28px}
 .ph{display:flex;align-items:center;gap:8px;margin-bottom:2px}
 .pav{width:34px;height:34px;border-radius:50%;border:1px solid var(--g1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--t1);background:var(--bg);flex-shrink:0}
 .pinfo{flex:1;min-width:0}

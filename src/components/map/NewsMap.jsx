@@ -343,9 +343,10 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             source: 'density',
             paint: {
               // Uniform small dots — one per story, like a species-distribution map.
-              'circle-radius': 1.6,
+              'circle-radius': ['interpolate', ['linear'], ['get','n'],
+                1, 3.5, 3, 5, 10, 7.5, 30, 10, 100, 14],
               'circle-color': '#ff8a1a',
-              'circle-opacity': 0.7,
+              'circle-opacity': 0.9,
               'circle-stroke-width': 0,
             },
           });
@@ -436,47 +437,13 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     // Equal step in both axes + no latitude compensation → the dot
     // pattern forms a true circle in lng/lat space (symmetric on
     // screen, not stretched by map projection).
-    // Exactly like the reference species-distribution map:
-    // one small dot per story, jittered around the city within a
-    // radius that scales with the story count. No grid, no Gaussian.
+    // One dot per city, sized by story count.
     const list = spots.filter(s => s.stories && s.stories.length > 0);
-    const features = [];
-
-    // Deterministic PRNG so the scatter is stable across rerenders
-    const rand = (seed) => {
-      let t = seed + 0x6D2B79F5;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-
-    for (const s of list) {
-      const n = s.stories.length;
-      // Scatter radius (degrees) scales gently with n so busy cities
-      // occupy more area but never blanket the map.
-      const R = Math.min(2.4, 0.45 + Math.sqrt(n) * 0.28);
-      // Drop many dots per story so the scatter reads as a cloud,
-      // not a single dot. ~18 dots per story, capped so megacities
-      // don't blanket the map.
-      const dotCount = Math.min(220, Math.max(20, n * 18));
-      for (let i = 0; i < dotCount; i++) {
-        const seed = Math.floor((s.lng + 180) * 1000) * 10000
-                   + Math.floor((s.lat +  90) * 1000) * 10
-                   + i;
-        // Uniform disk sampling: r = R*sqrt(u), θ = 2π*v
-        const u = rand(seed);
-        const v = rand(seed + 1);
-        const r = R * Math.sqrt(u);
-        const th = 2 * Math.PI * v;
-        const lng = s.lng + r * Math.cos(th);
-        const lat = s.lat + r * Math.sin(th);
-        features.push({
-          type: 'Feature',
-          properties: {},
-          geometry: { type: 'Point', coordinates: [lng, lat] },
-        });
-      }
-    }
+    const features = list.map(s => ({
+      type: 'Feature',
+      properties: { n: s.stories.length },
+      geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+    }));
     src.setData({ type: 'FeatureCollection', features });
   }, [mapReady, spots]);
 

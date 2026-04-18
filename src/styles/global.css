@@ -120,19 +120,15 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
 .s-nm{font-size:var(--fs-xxs);color:var(--t3);font-weight:var(--fw-md);max-width:56px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.1px}
 
 /* Content area */
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:108px;padding-bottom:76px;overflow-anchor:auto;position:relative;background:radial-gradient(ellipse 120% 80% at 50% 50%,transparent 40%,rgba(229,57,53,.03) 75%,rgba(229,57,53,.06) 100%)}
-.content::before{content:"";position:fixed;top:108px;bottom:76px;left:0;right:0;background:radial-gradient(ellipse 130% 90% at 50% 50%,transparent 55%,rgba(229,57,53,.035) 100%);pointer-events:none;z-index:1}
-@media (prefers-color-scheme: dark){
-  .content{background:radial-gradient(ellipse 120% 80% at 50% 50%,transparent 40%,rgba(229,57,53,.05) 75%,rgba(229,57,53,.09) 100%)}
-  .content::before{background:radial-gradient(ellipse 130% 90% at 50% 50%,transparent 55%,rgba(229,57,53,.05) 100%)}
-}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:108px;padding-bottom:76px;overflow-anchor:auto;position:relative;background:var(--bg)}
+.content::before{content:none}
 .post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}
 
 /* Post card */
 /* Compact card padding — was 10/16/8/16, tightened to 6/16/4 per user.
    Faint warm tint kept for the subtle card-elevation effect. */
-.post{padding:var(--s3) var(--s5) var(--s1);border-bottom:1px solid var(--g2);overflow:hidden;background:rgba(229,57,53,.012)}
+.post{padding:var(--s3) var(--s5) var(--s1);border-bottom:1px solid var(--g2);overflow:hidden;background:transparent}
 /* Removed the legacy 10/12 px margin-left on .ptitle/.pbody/.strap/
    .pactions — in RTL it was indenting them inward from the right
    edge, creating a shift relative to the source name in .pinfo

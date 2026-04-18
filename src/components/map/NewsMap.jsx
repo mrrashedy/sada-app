@@ -326,58 +326,51 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       map.on('load', () => {
         setMapReady(true);
 
-        // ── Clean dot layer ─────────────────────────────────
-        // Native WebGL circles — pixel-accurate at every zoom, no drift.
-        // Size and color scale with story count. No rings, no labels.
-        if (!map.getSource('spots')) {
-          map.addSource('spots', {
+        // ── Dot-density grid ─────────────────────────────────
+        // Uniform grid of dots across the region. Each dot's size +
+        // opacity is driven by a Gaussian spread of nearby story counts.
+        // Empty cells render as tiny faint dots (the scaffold), hot
+        // areas render as fat orange dots. Same aesthetic as the
+        // species-distribution dot-density maps.
+        if (!map.getSource('density')) {
+          map.addSource('density', {
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] },
           });
-          // Soft halo
           map.addLayer({
-            id: 'spots-halo',
+            id: 'density-dots',
             type: 'circle',
-            source: 'spots',
+            source: 'density',
             paint: {
-              'circle-radius': ['interpolate', ['linear'], ['get','n'],
-                1, 10, 5, 18, 15, 28, 40, 44],
+              'circle-radius': ['interpolate', ['linear'], ['get','w'],
+                0, 1.0, 0.05, 1.6, 0.2, 2.8, 0.5, 4.5, 1, 6.5, 3, 9.5, 8, 13],
               'circle-color': '#ff8a1a',
-              'circle-blur': 0.9,
-              'circle-opacity': ['interpolate', ['linear'], ['get','n'],
-                1, 0.22, 40, 0.55],
+              'circle-opacity': ['interpolate', ['linear'], ['get','w'],
+                0, 0.10, 0.05, 0.22, 0.3, 0.45, 1, 0.75, 3, 0.92, 8, 1],
+              'circle-stroke-width': 0,
             },
           });
-          // Solid dot
-          map.addLayer({
-            id: 'spots-dot',
-            type: 'circle',
-            source: 'spots',
-            paint: {
-              'circle-radius': ['interpolate', ['linear'], ['get','n'],
-                1, 4, 5, 7, 15, 11, 40, 16],
-              'circle-color': ['interpolate', ['linear'], ['get','n'],
-                1, '#ffb56b', 5, '#ff9a3d', 15, '#ff7a14', 40, '#ff5a00'],
-              'circle-stroke-width': 1,
-              'circle-stroke-color': 'rgba(0,0,0,.45)',
-            },
-          });
-          map.on('click', 'spots-dot', (e) => {
-            const f = e.features && e.features[0];
-            if (!f) return;
-            const spotId = f.properties?.id;
-            const spot = spotsRef.current.find(s => s.id === spotId);
-            if (!spot) return;
+
+          // Click anywhere → snap to the nearest real spot
+          map.on('click', (e) => {
+            const { lng:cLng, lat:cLat } = e.lngLat;
+            const list = spotsRef.current;
+            if (!list || !list.length) return;
+            let best=null, bestD=Infinity;
+            for (const s of list) {
+              const dx=(s.lng-cLng), dy=(s.lat-cLat);
+              const d=dx*dx+dy*dy;
+              if (d<bestD) { bestD=d; best=s; }
+            }
+            if (!best || bestD > 25) return; // ~5deg max
             try { map._idleStop && map._idleStop(); } catch {}
-            setSel(spot);
+            setSel(best);
             map.flyTo({
-              center:[spot.lng, spot.lat-1.2], zoom:6, pitch:0, bearing:0,
+              center:[best.lng, best.lat-1.2], zoom:6, pitch:0, bearing:0,
               duration:1600,
               easing: t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2),
             });
           });
-          map.on('mouseenter', 'spots-dot', () => { map.getCanvas().style.cursor = 'pointer'; });
-          map.on('mouseleave', 'spots-dot', () => { map.getCanvas().style.cursor = ''; });
         }
 
 
@@ -429,16 +422,40 @@ export function NewsMap({ onClose, liveFeed=[] }) {
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
-    const src = map.getSource('spots');
+    const src = map.getSource('density');
     if (!src) return;
-    src.setData({
-      type: 'FeatureCollection',
-      features: spots.map(s => ({
-        type: 'Feature',
-        properties: { id: s.id, n: s.stories.length, city: s.city },
-        geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
-      })),
-    });
+
+    // Build a uniform grid across MENA + neighbors. Each grid point's
+    // weight = sum over all real spots of (stories * gaussian falloff
+    // by angular distance). This gives the dot-density "halftone" look
+    // where hot regions bloom with fat dots and quiet areas stay faint.
+    const stepLng = 1.4;
+    const stepLat = 1.1;
+    const sigma   = 3.0;          // degrees — how tightly dots cluster
+    const lngMin = -20, lngMax = 75;
+    const latMin = 5,   latMax = 55;
+
+    const features = [];
+    const list = spots.filter(s => s.stories && s.stories.length > 0);
+    for (let lat = latMin; lat <= latMax; lat += stepLat) {
+      const cos = Math.cos(lat * Math.PI / 180);
+      for (let lng = lngMin; lng <= lngMax; lng += stepLng) {
+        let w = 0;
+        for (const s of list) {
+          const dx = (s.lng - lng) * cos;
+          const dy = (s.lat - lat);
+          const d2 = dx*dx + dy*dy;
+          if (d2 > 25 * sigma * sigma) continue; // skip negligible contributions
+          w += s.stories.length * Math.exp(-d2 / (2*sigma*sigma));
+        }
+        features.push({
+          type: 'Feature',
+          properties: { w },
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+        });
+      }
+    }
+    src.setData({ type: 'FeatureCollection', features });
   }, [mapReady, spots]);
 
   const handleClose = () => {

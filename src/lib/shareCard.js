@@ -34,7 +34,7 @@ export async function generateShareCard(article) {
   // Accent line
   const accent = ctx.createLinearGradient(0, 0, W, 0);
   accent.addColorStop(0, '#E53935');
-  accent.addColorStop(1, '#FF6F00');
+  accent.addColorStop(1, '#B71C1C');
   ctx.fillStyle = accent;
   ctx.fillRect(0, 0, W, 4);
 

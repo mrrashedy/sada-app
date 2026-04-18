@@ -2,7 +2,7 @@
 :root{
   /* Palette */
   --bg:#F5F5F5;--f1:#FFFFFF;--g1:#E0E0E0;--g2:#CFCFCF;
-  --t1:#0A0A0A;--t2:#444444;--t3:#999999;--t4:#BDBDBD;
+  --t1:#0A0A0A;--t2:#444444;--t3:#999999;--t4:#999999;
   --bk:#0A0A0A;--rd:#B71C1C;--bl:#1565C0;--gn:#2E7D32;--or:#E53935;
   --ft:-apple-system,"SF Arabic","SF Pro Arabic",system-ui,sans-serif;
   /* Type scale — 4 pt rhythm tuned for Arabic reading comfort.
@@ -123,8 +123,8 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-top:108px;padding-bottom:76px;overflow-anchor:auto;position:relative;background:radial-gradient(ellipse 120% 80% at 50% 50%,transparent 40%,rgba(229,57,53,.03) 75%,rgba(229,57,53,.06) 100%)}
 .content::before{content:"";position:fixed;top:108px;bottom:76px;left:0;right:0;background:radial-gradient(ellipse 130% 90% at 50% 50%,transparent 55%,rgba(229,57,53,.035) 100%);pointer-events:none;z-index:1}
 @media (prefers-color-scheme: dark){
-  .content{background:radial-gradient(ellipse 120% 80% at 50% 50%,transparent 40%,rgba(255,140,40,.05) 75%,rgba(255,120,20,.09) 100%)}
-  .content::before{background:radial-gradient(ellipse 130% 90% at 50% 50%,transparent 55%,rgba(255,130,30,.05) 100%)}
+  .content{background:radial-gradient(ellipse 120% 80% at 50% 50%,transparent 40%,rgba(229,57,53,.05) 75%,rgba(229,57,53,.09) 100%)}
+  .content::before{background:radial-gradient(ellipse 130% 90% at 50% 50%,transparent 55%,rgba(229,57,53,.05) 100%)}
 }
 .post{overflow-anchor:auto}
 .content.content-full{padding-top:0;padding-bottom:0}
@@ -153,7 +153,7 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
   transition:color .15s,filter .15s;
 }
 .pname-btn:hover .pname{color:var(--or);filter:drop-shadow(0 0 4px rgba(229,57,53,.4))}
-.pname-btn:active .pname{color:var(--or);filter:drop-shadow(0 0 7px rgba(255,109,0,.65))}
+.pname-btn:active .pname{color:var(--or);filter:drop-shadow(0 0 7px rgba(229,57,53,.65))}
 /* Favicon trails the source name. margin-inline-start places the gap
    on the side closest to the name (the visual LEFT in RTL, RIGHT in LTR). */
 .pname-logo{width:14px;height:14px;border-radius:3px;object-fit:contain;background:var(--bg);vertical-align:middle;margin-inline-start:6px;margin-left:0;filter:grayscale(.7) contrast(1.15)}
@@ -161,8 +161,8 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
 .pflag{width:12px;height:12px;border-radius:50%;object-fit:cover;vertical-align:middle}
 .ptime{font-size:var(--fs-xxs);color:var(--t4);margin-right:var(--s1);display:inline-flex;align-items:center;gap:var(--s1);letter-spacing:.1px}
 .ptime-dot{width:6px;height:6px;border-radius:50%;background:var(--rd);flex-shrink:0;animation:hp 1.2s ease infinite}
-.ptag{display:inline-block;font-size:10px;font-weight:600;color:var(--or);border:1px solid rgba(255,109,0,.2);padding:2px 9px;border-radius:6px;letter-spacing:.3px}
-.ptag.brk{color:var(--rd);border-color:rgba(211,47,47,.2)}
+.ptag{display:inline-block;font-size:10px;font-weight:600;color:var(--or);border:1px solid rgba(229,57,53,.2);padding:2px 9px;border-radius:6px;letter-spacing:.3px}
+.ptag.brk{color:var(--rd);border-color:rgba(183,28,28,.2)}
 /* Inline tag variant — flows with the body text so the last line of the body
    can carry tags when there's room, saving vertical space in the card. */
 .ptag-inline{padding:1px 7px;margin-inline-start:6px;font-size:9px;vertical-align:middle;line-height:1.4;letter-spacing:.6px;font-weight:700}
@@ -189,7 +189,7 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
    regardless of the title's own reading direction. That way an English
    NYT headline reads left-to-right but still respects the same column
    boundary as an Arabic headline — the box feels identical. */
-.ptitle{font-size:var(--fs-md);font-weight:var(--fw-bd);line-height:var(--lh-snug);color:#000;margin-bottom:var(--s1);letter-spacing:-.1px;word-break:break-word;padding-right:16px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ptitle{font-size:var(--fs-md);font-weight:var(--fw-bd);line-height:var(--lh-snug);color:var(--t1);margin-bottom:var(--s1);letter-spacing:-.1px;word-break:break-word;padding-right:16px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 [data-theme="dark"] .ptitle{color:#FFF}
 .pbody{font-size:var(--fs-md);line-height:var(--lh-body);color:var(--t2);word-break:break-word;padding-right:16px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .post .strap{margin-right:16px;width:calc(100% - 16px);max-width:calc(100% - 16px)}
@@ -238,10 +238,10 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
    on the SVG stroke) so the user feels the press registered. */
 .pactions-pm{justify-content:center;gap:var(--s10);padding:var(--s1) 0 0;margin-top:var(--s1)}
 .util-btn{background:none;border:none;cursor:pointer;color:var(--t3);padding:3px 0;display:inline-flex;align-items:center;transition:color .15s,transform .12s,filter .15s,opacity .15s;opacity:.45}
-.util-btn:hover{color:var(--or);opacity:1;filter:drop-shadow(0 0 5px rgba(255,109,0,.45))}
-.util-btn:active{transform:scale(.9);color:var(--or);opacity:1;filter:drop-shadow(0 0 8px rgba(255,109,0,.7))}
+.util-btn:hover{color:var(--or);opacity:1;filter:drop-shadow(0 0 5px rgba(229,57,53,.45))}
+.util-btn:active{transform:scale(.9);color:var(--or);opacity:1;filter:drop-shadow(0 0 8px rgba(229,57,53,.7))}
 .util-btn.on{color:var(--or);opacity:1}
-.util-btn.on:active{filter:drop-shadow(0 0 10px rgba(255,109,0,.85))}
+.util-btn.on:active{filter:drop-shadow(0 0 10px rgba(229,57,53,.85))}
 .util-minus:hover{color:var(--rd);filter:drop-shadow(0 0 5px rgba(211,47,47,.45))}
 .util-minus:active{color:var(--rd);filter:drop-shadow(0 0 8px rgba(211,47,47,.7))}
 .act{display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:11px;background:none;border:none;font-family:var(--ft);transition:color .15s;padding:3px 0}
@@ -337,7 +337,7 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
   background:transparent;letter-spacing:.2px;
   transition:color .15s,border-color .15s;
 }
-.det-cat:hover{color:var(--or);border-color:rgba(255,109,0,.35)}
+.det-cat:hover{color:var(--or);border-color:rgba(229,57,53,.35)}
 .det-meta{display:flex;gap:var(--s2);font-size:var(--fs-xs);color:var(--t4);margin-bottom:var(--s3);align-items:center;letter-spacing:.2px;flex-wrap:wrap}
 .det-meta-dot{color:var(--t4);opacity:.6}
 .det-author{font-size:var(--fs-sm);color:var(--t3);margin-bottom:var(--s5);font-weight:var(--fw-md);letter-spacing:.1px}
@@ -351,7 +351,7 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
   font-size:var(--fs-xs);font-weight:var(--fw-sb);color:var(--rd);
   letter-spacing:.2px;transition:background .15s,border-color .15s;
 }
-.det-radar-chip:hover{background:rgba(211,47,47,.1);border-color:rgba(211,47,47,.35)}
+.det-radar-chip:hover{background:rgba(183,28,28,.1);border-color:rgba(183,28,28,.35)}
 .det-radar-chip:active{opacity:.7}
 .det-radar-dot{
   width:7px;height:7px;border-radius:50%;background:var(--rd);
@@ -370,7 +370,7 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
   border-bottom:.5px solid var(--g1);
   border-right:2px solid var(--or);
   font-weight:var(--fw-rg);
-  background:linear-gradient(to left,rgba(255,109,0,.035),transparent 80%);
+  background:linear-gradient(to left,rgba(229,57,53,.035),transparent 80%);
 }
 .det-p{font-size:var(--fs-md);line-height:var(--lh-loose);color:var(--t2);margin-bottom:var(--s4);font-weight:var(--fw-rg);padding-right:16px}
 /* CTA — "read full article at source". Hollow button with orange
@@ -388,7 +388,7 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
   content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
   background:var(--or);flex-shrink:0;
 }
-.det-cta:active,.det-cta:hover{background:rgba(255,109,0,.06);border-color:var(--or);color:var(--bk)}
+.det-cta:active,.det-cta:hover{background:rgba(229,57,53,.06);border-color:var(--or);color:var(--bk)}
 
 /* Reading-progress bar — thin orange fill across the top that tracks
    vertical scroll of the article pane. Uses scroll-driven animations
@@ -408,7 +408,7 @@ html,body{background:#F5F5F5;overflow:hidden;height:100%}
 .det-p mark.hl,.det-sub mark.hl{background:none;color:inherit;text-decoration:underline;text-decoration-color:var(--or);text-decoration-thickness:2px;text-underline-offset:4px;font-weight:inherit;padding:0;border-radius:0}
 [data-theme="dark"] .det-p mark.hl,[data-theme="dark"] .det-sub mark.hl{text-decoration-color:var(--or)}
 /* Dark theme — soften the lead-paragraph orange wash so it doesn't glow. */
-[data-theme="dark"] .det-sub{background:linear-gradient(to left,rgba(255,109,0,.06),transparent 80%)}
+[data-theme="dark"] .det-sub{background:linear-gradient(to left,rgba(229,57,53,.06),transparent 80%)}
 [data-theme="dark"] .det-src-logo{background:var(--f1);border-color:var(--g1);filter:grayscale(.2) contrast(1.05)}
 
 /* Search */
@@ -623,7 +623,7 @@ textarea.auth-input{line-height:1.6}
 .depth-tier-2{border-color:rgba(21,101,192,.25);color:#1565C0}
 .depth-tier-3{border-color:var(--g1);color:var(--t4)}
 .depth-doctype{background:var(--f1);color:var(--t3)}
-.depth-pending{border-color:rgba(255,109,0,.3);color:var(--or);background:rgba(255,109,0,.06)}
+.depth-pending{border-color:rgba(229,57,53,.3);color:var(--or);background:rgba(229,57,53,.06)}
 .depth-pubdate{margin-inline-start:auto;font-size:11px;font-weight:600;color:var(--t4);letter-spacing:.2px;white-space:nowrap;font-variant-numeric:tabular-nums}
 
 /* ---------- Title ---------- */

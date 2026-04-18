@@ -65,7 +65,7 @@ const fmtDate = ts => {
 function Pill({ status }) {
   const ok = status === 'ok' || status === 'bound' || status === true;
   const cold = status === 'cold' || status === 'unknown';
-  const bg = ok ? 'rgba(46,125,50,.15)' : cold ? 'rgba(255,109,0,.15)' : 'rgba(211,47,47,.15)';
+  const bg = ok ? 'rgba(46,125,50,.15)' : cold ? 'rgba(229,57,53,.15)' : 'rgba(211,47,47,.15)';
   const fg = ok ? 'var(--gn)' : cold ? 'var(--or)' : 'var(--rd)';
   const label = ok ? (status === 'bound' ? 'BOUND' : 'OK')
     : cold ? String(status).toUpperCase()

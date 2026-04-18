@@ -37,6 +37,7 @@ import { SettingsView } from './components/settings/SettingsView';
 import { NewsMap } from './components/map/NewsMap';
 import { NotificationPanel } from './components/notifications/NotificationPanel';
 import { TrendingRadar, RadarView } from './components/trending/TrendingRadar';
+import { RadarDay } from './components/trending/RadarDay';
 import { BreakingTicker } from './components/feed/BreakingTicker';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { DepthFeed } from './components/depth/DepthFeed';
@@ -650,7 +651,7 @@ export default function Sada() {
 
           {/* Source stories */}
           <div className={`stories${activeSource?' stories-filtering':''}`}>{(() => {
-            const allSources = SOURCES.filter(s => !s.photoOnly && !s.id?.startsWith('gnews_') && !s.hideFromStrip);
+            const allSources = SOURCES.filter(s => !s.photoOnly && !s.hideFromStrip);
             // Always show the source the user has actively filtered to,
             // even if it's beyond the 20-pill cutoff — otherwise tapping
             // a source from the expanded view would seemingly disappear
@@ -711,7 +712,9 @@ export default function Sada() {
           <div style={{ height:20 }}/>
         </>)}
 
-        {nav==='radar'   && <RadarView trending={trending} allFeed={radarItems.length ? radarItems : allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}} onRefresh={radarRefresh || refresh} refreshing={loading}/>}
+        {nav==='radar'   && (theme!=='dark'
+          ? <RadarDay trending={trending} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}}/>
+          : <RadarView trending={trending} allFeed={radarItems.length ? radarItems : allFeed} onOpenArticle={setArticle} onClose={()=>{Sound.close();setNav('home');}} onRefresh={radarRefresh || refresh} refreshing={loading}/>)}
         {nav==='depth'   && <DepthFeed onOpen={setDepthDoc}/>}
         {nav==='map'     && <NewsMap onClose={()=>setNav('home')} liveFeed={allFeed}/>}
         {nav==='saved'   && <BookmarksView savedIds={savedIds} onOpen={setArticle} allFeed={allFeed}/>}

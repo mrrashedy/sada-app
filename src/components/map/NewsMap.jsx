@@ -438,7 +438,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     // Equal step in both axes + no latitude compensation → the dot
     // pattern forms a true circle in lng/lat space (symmetric on
     // screen, not stretched by map projection).
-    const step = 0.5;             // degrees, same on both axes
+    const step = 1.0;             // degrees — wide enough that dots stay separated
     const list = spots.filter(s => s.stories && s.stories.length > 0);
 
     const cellKey = (lng, lat) => `${Math.round(lng/step)}_${Math.round(lat/step)}`;

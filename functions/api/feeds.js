@@ -1130,19 +1130,26 @@ function applyAdminLayer(feed, layer) {
   return [...pinnedManual, ...pinnedArticles, ...regularArticles];
 }
 
-function buildPayload(data, layer, limit, cacheMeta) {
-  const curatedFeed = applyAdminLayer(data.feed, layer);
-  // Recompute breaking from curated feed so manual is_breaking items + override hides are reflected
+function buildPayload(data, layer, limit, cacheMeta, includeDiagnostics = false) {
+  // CRITICAL PERF: the cached feed can hold up to 5000 items. Running
+  // applyAdminLayer (O(N) override merges) + breaking filter + _bySource
+  // tally over all 5000 on every request was making cached responses
+  // take 5-25 seconds — wall-time scaled linearly with cache size even
+  // though only `limit` items ship to the client.
+  //
+  // Fix: slice to a small buffer (limit × 1.5 + manual-item count) BEFORE
+  // applying admin overrides. Editors who hide an item past position ~600
+  // won't have that hide apply until the next cache refresh; in practice
+  // that's fine — overrides target recent items, and admins are not
+  // reaching for items buried 600+ deep.
+  const manualCount = layer?.manualItems?.length || 0;
+  const sliceN = Math.max(limit * 2, limit + manualCount + 50);
+  const working = data.feed.slice(0, sliceN);
+  const curatedFeed = applyAdminLayer(working, layer);
   const breaking = curatedFeed.filter(f => f.isBreaking).slice(0, 20);
-  // Diagnostic: per-source item counts. Lets us see at a glance which
-  // sources are silently dropping (timeouts, empty feeds, etc.) without
-  // having to scrape the full payload. Returned on every response.
-  const _bySource = {};
-  for (const it of curatedFeed) {
-    const sid = it.source?.id || it.sourceId || it.s?.id || '?';
-    _bySource[sid] = (_bySource[sid] || 0) + 1;
-  }
-  return {
+  // _bySource is debugging overhead. Only compute when explicitly asked
+  // (?debug=1). Used to cost ~100ms on 5000 items, on every request.
+  const payload = {
     ok: true,
     count: Math.min(curatedFeed.length, limit),
     sources: data.sources || SOURCE_LIST,
@@ -1150,8 +1157,16 @@ function buildPayload(data, layer, limit, cacheMeta) {
     breaking,
     radarOverrides: layer?.radarOverrides || [],
     _cache: cacheMeta,
-    _bySource,
   };
+  if (includeDiagnostics) {
+    const _bySource = {};
+    for (const it of curatedFeed) {
+      const sid = it.source?.id || it.sourceId || it.s?.id || '?';
+      _bySource[sid] = (_bySource[sid] || 0) + 1;
+    }
+    payload._bySource = _bySource;
+  }
+  return payload;
 }
 
 // ─── Main Handler: KV-backed stale-while-revalidate ───
@@ -1174,6 +1189,7 @@ export async function onRequest(context) {
     // pool ceiling (LIMIT). Caller can still pass ?limit=N to truncate.
     const limit = parseInt(url.searchParams.get('limit')) || 5000;
     const forceRefresh = url.searchParams.has('refresh');
+    const includeDiagnostics = url.searchParams.has('debug');
 
     // Resolve kind. The photo grid is an independent feature, so it uses its
     // own disjoint source pool and its own KV cache keys.
@@ -1204,10 +1220,14 @@ export async function onRequest(context) {
 
         // Apply translation index at read time — any item cached in the index
         // gets its Arabic title, untranslated items pass through.
-        const translatedData = { ...cachedFeed, sources: sourceList, feed: applyTranslationIndex(cachedFeed.feed, index) };
+        // PERF: slice to the working window BEFORE applyTranslationIndex so we
+        // don't iterate 5000 items when the client asked for 400. buildPayload
+        // applies a similar slice for its own work; we mirror it here.
+        const preSlice = Math.max(limit * 2, limit + 50);
+        const translatedData = { ...cachedFeed, sources: sourceList, feed: applyTranslationIndex(cachedFeed.feed.slice(0, preSlice), index) };
         const payload = buildPayload(translatedData, layer, limit, {
           age, fresh: isFresh, aggregatedAt: cachedMeta.ts,
-        });
+        }, includeDiagnostics);
         const response = new Response(JSON.stringify(payload), {
           headers: { ...CORS, 'Cache-Control': isFresh ? 'public, s-maxage=10' : 'public, s-maxage=3, stale-while-revalidate=60' },
         });
@@ -1244,7 +1264,7 @@ export async function onRequest(context) {
 
     const [layer, index] = await Promise.all([layerPromise, indexPromise]);
     const translatedData = { ...data, feed: applyTranslationIndex(data.feed, index) };
-    const payload = buildPayload(translatedData, layer, limit, { age: 0, fresh: true, aggregatedAt: Date.now() });
+    const payload = buildPayload(translatedData, layer, limit, { age: 0, fresh: true, aggregatedAt: Date.now() }, includeDiagnostics);
     return new Response(JSON.stringify(payload), {
       headers: { ...CORS, 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=60' },
     });

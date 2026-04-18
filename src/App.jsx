@@ -574,10 +574,10 @@ export default function Sada() {
   // The 'depth' slot is where the photos feature used to live. It now opens
   // the Basira vertical — long-form analytical studies for deep readers.
   const navItems = [
-    { id:'home', label:'الرئيسية', icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.home(f)}<span className="home-dot" style={{position:'absolute',top:-1,right:-2,width:9,height:9,borderRadius:'50%',background:'#FF8C00',border:'2px solid var(--bg)'}}/></span> },
+    { id:'home', label:'الرئيسية', icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.home(f)}<span className="home-dot" style={{position:'absolute',top:-1,right:-2,width:9,height:9,borderRadius:'50%',background:'var(--or)',border:'2px solid var(--bg)'}}/></span> },
     { id:'map',  label:'خريطة',    icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.map(f)}<span className="map-dot" style={{position:'absolute',top:0,right:-1,width:9,height:9,borderRadius:'50%',background:'var(--bl)',border:'2px solid var(--bg)'}}/></span> },
-    { id:'radar',label:'رادار',    center:true, icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.radar(f)}<span className="radar-dot" style={{position:'absolute',top:-1,right:-2,width:10,height:10,borderRadius:'50%',background:'#E53935',border:'2px solid var(--bg)'}}/></span> },
-    { id:'depth',label:'دراسات',   icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.depth(f)}<span className="depth-dot" style={{position:'absolute',top:-1,right:-2,width:9,height:9,borderRadius:'50%',background:'#7E57C2',border:'2px solid var(--bg)'}}/></span> },
+    { id:'radar',label:'رادار',    center:true, icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.radar(f)}<span className="radar-dot" style={{position:'absolute',top:-1,right:-2,width:10,height:10,borderRadius:'50%',background:'var(--or)',border:'2px solid var(--bg)'}}/></span> },
+    { id:'depth',label:'دراسات',   icon:f=><span style={{position:'relative',display:'inline-flex'}}>{I.depth(f)}<span className="depth-dot" style={{position:'absolute',top:-1,right:-2,width:9,height:9,borderRadius:'50%',background:'var(--t3)',border:'2px solid var(--bg)'}}/></span> },
     { id:'settings',label:'الإعدادات',icon:()=>auth.isLoggedIn?<div style={{width:22,height:22,borderRadius:'50%',background:'var(--rd)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:'#fff'}}>{(auth.profile?.display_name||'?')[0]}</div>:I.user()},
   ];
 

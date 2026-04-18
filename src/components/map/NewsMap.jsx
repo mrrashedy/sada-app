@@ -438,17 +438,26 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
     const features = [];
     const list = spots.filter(s => s.stories && s.stories.length > 0);
+    // Only emit a dot if SOME real spot is within this radius of the cell.
+    // This clips the halftone to the footprint of actual news activity —
+    // empty regions stay dark, matching the reference style exactly.
+    const coverageRadius = 5.5;      // degrees
+    const covR2 = coverageRadius * coverageRadius;
+    const minWeight = 0.02;          // drop visually-invisible dots
     for (let lat = latMin; lat <= latMax; lat += stepLat) {
       const cos = Math.cos(lat * Math.PI / 180);
       for (let lng = lngMin; lng <= lngMax; lng += stepLng) {
         let w = 0;
+        let inRange = false;
         for (const s of list) {
           const dx = (s.lng - lng) * cos;
           const dy = (s.lat - lat);
           const d2 = dx*dx + dy*dy;
-          if (d2 > 25 * sigma * sigma) continue; // skip negligible contributions
+          if (d2 < covR2) inRange = true;
+          if (d2 > 25 * sigma * sigma) continue;
           w += s.stories.length * Math.exp(-d2 / (2*sigma*sigma));
         }
+        if (!inRange || w < minWeight) continue;
         features.push({
           type: 'Feature',
           properties: { w },

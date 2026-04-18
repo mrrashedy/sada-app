@@ -307,12 +307,6 @@ const KV_KEYS = {
   radar:  { feed: 'radar:latest',  meta: 'radar:meta'  },
 };
 
-function hash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0; }
-  return (h >>> 0).toString(36);
-}
-
 function timeAgo(date) {
   const diff = Date.now() - new Date(date).getTime();
   const secs = Math.floor(diff / 1000);
@@ -584,127 +578,6 @@ async function fetchNewsDataForKind(env, feedCache, kind = 'news') {
   } catch { return []; }
 }
 
-// ─── Translation (KV-indexed, single-blob for subrequest efficiency) ───
-// M2M-100 2-letter code → full name (the model expects full names like 'french')
-const M2M_LANG = {
-  en: 'english', fr: 'french', de: 'german', es: 'spanish',
-  pt: 'portuguese', it: 'italian', ru: 'russian', zh: 'chinese',
-  ja: 'japanese', tr: 'turkish', ko: 'korean', hi: 'hindi', nl: 'dutch',
-};
-
-// We store ALL translations in a single KV key as a JSON map: { hash: {t, d} }.
-// This keeps the hot-path subrequest count at 1 regardless of feed size.
-// Cloudflare Pages Bundled plan caps at 50 subrequests per invocation, so
-// individual per-item KV gets (previously ~100/request) would blow the budget
-// and silently fail the tail of the loop. One blob read dodges that entirely.
-const TRANSLATIONS_INDEX_KEY = 'translations:index';
-
-function translationFields(item) {
-  return {
-    sourceId: item.sourceId || item.source?.id || '?',
-    title: item.title || '',
-    description: item.description ?? item.body ?? '',
-    lang: item.lang || 'en',
-    translated: !!item.translated,
-  };
-}
-
-function translationHash(item) {
-  const f = translationFields(item);
-  return `${f.sourceId}:${hash(f.title)}`;
-}
-
-async function loadTranslationIndex(kv) {
-  if (!kv) return {};
-  try {
-    return (await kv.get(TRANSLATIONS_INDEX_KEY, 'json')) || {};
-  } catch { return {}; }
-}
-
-async function saveTranslationIndex(kv, index) {
-  if (!kv) return;
-  try {
-    await kv.put(TRANSLATIONS_INDEX_KEY, JSON.stringify(index), { expirationTtl: 604800 }); // 7 days
-  } catch {}
-}
-
-// In-memory apply: given an index, translate matching items with zero
-// subrequests. Translation target is English — Arabic and English items
-// are passed through unchanged. Everything else (French, German, etc.)
-// gets replaced with the English version from the index.
-// Quality check: reject translations that are still dominated by non-Latin
-// script, i.e. the translator passed through the source unchanged.
-function isCleanEnglish(text) {
-  if (!text) return false;
-  const latin = (text.match(/[a-zA-Z]/g) || []).length;
-  const foreign = (text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0400-\u04FF]/g) || []).length;
-  return latin > 0 && (foreign / (latin + foreign)) < 0.15;
-}
-
-function applyTranslationIndex(items, index) {
-  if (!index) return items;
-  return items.map(item => {
-    if (item.translated) return item;
-    if (item.lang === 'ar' || item.lang === 'en') return item;
-    const h = translationHash(item);
-    const hit = index[h];
-    if (!hit) return item;
-    if (!isCleanEnglish(hit.t)) return item;
-    // The item's effective language becomes English after translation.
-    return { ...item, title: hit.t || item.title, description: hit.d || item.description, body: hit.t ? (hit.d || item.body) : item.body, lang: 'en', translated: true };
-  });
-}
-
-// AI call. No KV write — caller updates the in-memory index and writes once.
-// Target is always English. English items never reach here.
-async function fetchTranslation(item, ai) {
-  if (!ai) return null;
-  const f = translationFields(item);
-  if (f.lang === 'en') return null;
-  const sourceLang = M2M_LANG[f.lang] || 'english';
-  try {
-    const titleRes = await ai.run('@cf/meta/m2m100-1.2b', { text: f.title, source_lang: sourceLang, target_lang: 'english' });
-    const t = titleRes?.translated_text || f.title;
-    let d = f.description || '';
-    if (d) {
-      try {
-        const descRes = await ai.run('@cf/meta/m2m100-1.2b', { text: d, source_lang: sourceLang, target_lang: 'english' });
-        d = descRes?.translated_text || d;
-      } catch {}
-    }
-    return { t, d };
-  } catch { return null; }
-}
-
-// Background pass: translate non-Arabic, non-English items not yet in the
-// index. Reads index once, writes once → 2 KV subrequests regardless of count.
-async function warmTranslations(items, ai, kv, limit = 40) {
-  if (!ai || !kv) return;
-  const index = await loadTranslationIndex(kv);
-  const pending = [];
-  for (const item of items) {
-    const f = translationFields(item);
-    if (f.lang === 'ar' || f.lang === 'en') continue;
-    if (f.translated) continue;
-    const h = translationHash(item);
-    if (index[h]) continue;
-    pending.push({ item, h });
-    if (pending.length >= limit) break;
-  }
-  if (pending.length === 0) return;
-  // Batch in 8-wide chunks
-  for (let b = 0; b < pending.length; b += 8) {
-    const chunk = pending.slice(b, b + 8);
-    const results = await Promise.allSettled(chunk.map(({ item }) => fetchTranslation(item, ai)));
-    results.forEach((r, j) => {
-      if (r.status === 'fulfilled' && r.value) {
-        index[chunk[j].h] = r.value;
-      }
-    });
-  }
-  await saveTranslationIndex(kv, index);
-}
-
 // ─── GDELT + HTML Homepage Scrapers (creative fallback for RSS-lagged flagships) ───
 // Two independent paths run in parallel, each strong in different failure modes:
 //
@@ -777,7 +650,7 @@ async function fetchGdelt(domain) {
 // ─── Core Aggregation Pipeline ───
 // This is the expensive operation — fetches all RSS, translates, deduplicates, interleaves
 
-async function aggregateFeeds(ai, translationKV, kind = 'news', env = null, feedCache = null) {
+async function aggregateFeeds(kind = 'news', env = null, feedCache = null) {
   const allItems = [];
 
   // Fetch sources for the requested kind — news feed and photo grid use
@@ -1180,8 +1053,6 @@ export async function onRequest(context) {
 
   const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
   const feedCache = env?.FEED_CACHE || null;
-  const ai = env?.AI || null;
-  const translationKV = env?.TRANSLATIONS || null;
 
   try {
     const url = new URL(request.url);
@@ -1199,7 +1070,6 @@ export async function onRequest(context) {
 
     // Admin curation layer only applies to the news feed, not the photo grid.
     const layerPromise = kind === 'news' ? fetchAdminLayer(env) : Promise.resolve(null);
-    const indexPromise = loadTranslationIndex(translationKV);
 
     // Per-kind source list — the client uses this to render the stories strip
     // for the news feed, or to show "source" attribution on photos.
@@ -1207,25 +1077,21 @@ export async function onRequest(context) {
 
     // 1. Try KV cache first
     if (feedCache && !forceRefresh) {
-      const [cachedFeed, cachedMeta, layer, index] = await Promise.all([
+      const [cachedFeed, cachedMeta, layer] = await Promise.all([
         feedCache.get(kvKeys.feed, 'json'),
         feedCache.get(kvKeys.meta, 'json'),
         layerPromise,
-        indexPromise,
       ]);
 
       if (cachedFeed && cachedMeta) {
         const age = Math.floor((Date.now() - cachedMeta.ts) / 1000);
         const isFresh = age < CACHE_TTL;
 
-        // Apply translation index at read time — any item cached in the index
-        // gets its Arabic title, untranslated items pass through.
-        // PERF: slice to the working window BEFORE applyTranslationIndex so we
-        // don't iterate 5000 items when the client asked for 400. buildPayload
-        // applies a similar slice for its own work; we mirror it here.
+        // Slice the cached feed to a working window (limit × 2 + buffer) so
+        // buildPayload's admin-layer pass is bounded, then pass it through.
         const preSlice = Math.max(limit * 2, limit + 50);
-        const translatedData = { ...cachedFeed, sources: sourceList, feed: applyTranslationIndex(cachedFeed.feed.slice(0, preSlice), index) };
-        const payload = buildPayload(translatedData, layer, limit, {
+        const slicedData = { ...cachedFeed, sources: sourceList, feed: cachedFeed.feed.slice(0, preSlice) };
+        const payload = buildPayload(slicedData, layer, limit, {
           age, fresh: isFresh, aggregatedAt: cachedMeta.ts,
         }, includeDiagnostics);
         const response = new Response(JSON.stringify(payload), {
@@ -1234,7 +1100,7 @@ export async function onRequest(context) {
 
         // If stale, trigger background re-aggregation (non-blocking)
         if (!isFresh) {
-          context.waitUntil(refreshCache(ai, translationKV, feedCache, kind, env));
+          context.waitUntil(refreshCache(feedCache, kind, env));
         }
 
         return response;
@@ -1242,7 +1108,7 @@ export async function onRequest(context) {
     }
 
     // 2. No cache — aggregate fresh (first request or KV not configured)
-    const data = await aggregateFeeds(ai, translationKV, kind, env, feedCache);
+    const data = await aggregateFeeds(kind, env, feedCache);
     data.sources = sourceList;
 
     // Store in KV (no warming here — /api/warm handles it separately with
@@ -1262,9 +1128,8 @@ export async function onRequest(context) {
       ]));
     }
 
-    const [layer, index] = await Promise.all([layerPromise, indexPromise]);
-    const translatedData = { ...data, feed: applyTranslationIndex(data.feed, index) };
-    const payload = buildPayload(translatedData, layer, limit, { age: 0, fresh: true, aggregatedAt: Date.now() }, includeDiagnostics);
+    const layer = await layerPromise;
+    const payload = buildPayload(data, layer, limit, { age: 0, fresh: true, aggregatedAt: Date.now() }, includeDiagnostics);
     return new Response(JSON.stringify(payload), {
       headers: { ...CORS, 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=60' },
     });
@@ -1275,11 +1140,9 @@ export async function onRequest(context) {
 }
 
 // Background re-aggregation (runs via waitUntil, doesn't block response).
-// Translation warming is handled by the separate /api/warm endpoint, so
-// this path only does aggregation + KV write.
-async function refreshCache(ai, translationKV, feedCache, kind = 'news', env = null) {
+async function refreshCache(feedCache, kind = 'news', env = null) {
   try {
-    const data = await aggregateFeeds(ai, translationKV, kind, env, feedCache);
+    const data = await aggregateFeeds(kind, env, feedCache);
     const kvKeys = KV_KEYS[kind];
     // Cache hardening — same MIN_ITEMS floor as the foreground path. A failed
     // background refresh leaves the previous (good) cached snapshot in place

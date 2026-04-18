@@ -125,7 +125,7 @@ function stripSource(s, sourceName, domain) {
   return out || s;
 }
 
-export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, onSelectSource, showImg, emg }) {
+export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, onSelectSource, showImg, emg, emgLabel }) {
   useTick(1000);
   // 'hiding' transient state — true between the user's تجاهل tap and the
   // moment we call onHide() to actually remove the item from the feed.
@@ -194,6 +194,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
           <button type="button" className="post-undo-btn" onClick={handleUndo}>تراجع</button>
         </div>
       ) : (<>
+      {emgLabel && <div className="emg-label">{emgLabel}</div>}
       <div className="ph">
         <div className="pinfo">
           {/* Source logo + name as a single clickable target — tapping it

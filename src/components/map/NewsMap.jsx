@@ -230,29 +230,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
       const map = new ML.Map({
         container: mapContainerRef.current,
-        style: {
-          version: 8,
-          sources: {
-            'esri-dark': {
-              type: 'raster',
-              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256,
-              maxzoom: 16,
-              attribution: '© Esri',
-            },
-            'esri-ref': {
-              type: 'raster',
-              tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256,
-              maxzoom: 16,
-            },
-          },
-          layers: [
-            { id: 'esri-dark', type: 'raster', source: 'esri-dark' },
-            { id: 'esri-ref',  type: 'raster', source: 'esri-ref' },
-          ],
-          glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
-        },
+        style: 'https://api.maptiler.com/maps/basic-v2-dark/style.json?key=4N5DoFylw84fAtpCt9kl',
         center: [38, 28], zoom: 3.2, pitch: 0, bearing: 0,
         minZoom: 1.8, maxZoom: 10,
         attributionControl: false, maxPitch: 0,
@@ -347,6 +325,38 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
       map.on('load', () => {
         setMapReady(true);
+
+        // ── Geopolitical emphasis ────────────────────────────
+        // Beef up country borders + country-name labels so the map
+        // reads as a political/geopolitical map, not a generic basemap.
+        try {
+          const layers = map.getStyle().layers || [];
+          for (const lyr of layers) {
+            const id = (lyr.id || '').toLowerCase();
+            const sl = (lyr['source-layer'] || '').toLowerCase();
+            // Country/admin-level-0 borders
+            if (lyr.type === 'line' && (sl.includes('boundary') || sl.includes('admin') || id.includes('boundary') || id.includes('admin'))) {
+              const isCountry = (lyr.filter && JSON.stringify(lyr.filter).includes('"admin_level"') && JSON.stringify(lyr.filter).includes('2'))
+                              || id.includes('country') || id.includes('0');
+              try {
+                map.setPaintProperty(lyr.id, 'line-color', isCountry ? '#9aa6b8' : '#5a6577');
+                map.setPaintProperty(lyr.id, 'line-width', isCountry
+                  ? ['interpolate', ['linear'], ['zoom'], 1, 0.8, 4, 1.6, 8, 2.4]
+                  : ['interpolate', ['linear'], ['zoom'], 3, 0.4, 8, 1.0]);
+                map.setPaintProperty(lyr.id, 'line-opacity', isCountry ? 0.95 : 0.55);
+              } catch {}
+            }
+            // Country name labels
+            if (lyr.type === 'symbol' && (sl.includes('place') || id.includes('country') || id.includes('place'))) {
+              try {
+                map.setPaintProperty(lyr.id, 'text-color', '#e8edf5');
+                map.setPaintProperty(lyr.id, 'text-halo-color', '#0a0d12');
+                map.setPaintProperty(lyr.id, 'text-halo-width', 1.4);
+                map.setPaintProperty(lyr.id, 'text-halo-blur', 0.3);
+              } catch {}
+            }
+          }
+        } catch {}
 
         // ── Dot-density grid ─────────────────────────────────
         // Uniform grid of dots across the region. Each dot's size +

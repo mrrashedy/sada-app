@@ -491,8 +491,8 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
   const RED_BRIGHT = '#ff6659';
   const RED_DIM    = isWF ? 'rgba(229,57,53,.32)'  : 'rgba(229,57,53,.3)';
   const RED_FAINT  = isWF ? 'rgba(229,57,53,.10)'  : 'rgba(229,57,53,.12)';
-  const RING       = isWF ? 'rgba(220,224,230,.22)' : 'rgba(229,57,53,.35)';
-  const RING_BRIGHT = isWF ? 'rgba(240,244,250,.38)' : 'rgba(255,102,89,.50)';
+  const RING       = isWF ? 'rgba(220,224,230,.12)' : 'rgba(229,57,53,.35)';
+  const RING_BRIGHT = isWF ? 'rgba(240,244,250,.20)' : 'rgba(255,102,89,.50)';
   const MONO       = isWF
     ? '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", system-ui, sans-serif'
     : 'ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace';
@@ -1464,7 +1464,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
                     cx={discSize/2} cy={discSize/2}
                     r={discSize/2 - 18}
                     fill="none"
-                    stroke="rgba(220,224,230,.18)"
+                    stroke="rgba(220,224,230,.10)"
                     strokeWidth={1}
                   />
                   {/* Bezel ticks */}
@@ -1483,7 +1483,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
                       <line
                         key={i}
                         x1={x1} y1={y1} x2={x2} y2={y2}
-                        stroke={isMajor ? 'rgba(235,238,243,.72)' : 'rgba(180,184,190,.38)'}
+                        stroke={isMajor ? 'rgba(235,238,243,.42)' : 'rgba(180,184,190,.22)'}
                         strokeWidth={isMajor ? 1.6 : 0.9}
                         strokeLinecap="round"
                       />
@@ -1507,7 +1507,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
                         x={x} y={y}
                         textAnchor="middle"
                         dominantBaseline="central"
-                        fill={label === 'N' ? RED : 'rgba(235,238,243,.88)'}
+                        fill={label === 'N' ? RED : 'rgba(235,238,243,.55)'}
                         fontSize={13}
                         fontWeight={700}
                         fontFamily='-apple-system, "SF Pro Display", system-ui, sans-serif'

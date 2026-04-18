@@ -31,7 +31,11 @@ const SOURCES = {
   ] },
   // aljazeera.com direct RSS times out from CF Workers. Google News proxy.
   aljazeera_en:    { name: "الجزيرة EN", initial: "ج", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aaljazeera.com&hl=en&gl=US&ceid=US:en"] },
-  bbc:             { name: "BBC عربي", initial: "B", tier: 1, feeds: ["https://feeds.bbci.co.uk/arabic/rss.xml","https://feeds.bbci.co.uk/arabic/middleeast/rss.xml","https://feeds.bbci.co.uk/arabic/worldnews/rss.xml"] },
+  // BBC عربي — primary now is rss.app scraper of bbc.com/arabic (50 items,
+  // updates continuously, much fresher than the direct feeds which lag ~30min).
+  // Direct section feeds kept as fallbacks so the source survives an rss.app
+  // outage and stays broad (homepage + ME + world).
+  bbc:             { name: "BBC عربي", initial: "B", tier: 1, feeds: ["https://rss.app/feeds/1LCpnKgJhPnmapzz.xml","https://feeds.bbci.co.uk/arabic/rss.xml","https://feeds.bbci.co.uk/arabic/middleeast/rss.xml","https://feeds.bbci.co.uk/arabic/worldnews/rss.xml"] },
   skynews:         { name: "سكاي نيوز", initial: "S", tier: 1, feeds: ["https://www.skynewsarabia.com/rss.xml","https://www.skynewsarabia.com/rss/middle-east.xml","https://www.skynewsarabia.com/rss/world.xml"] },
   // france24 direct RSS (/ar/rss) now returns 403. Google News site-search
   // (50 fresh items) is the working alternative.
@@ -227,6 +231,14 @@ const SOURCES = {
   // Axios — US politics/business/tech. Direct site has no public RSS;
   // rss.app scraper yields ~30 fresh items, updates continuously.
   axios:        { name: "أكسيوس", initial: "AX", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/LAUKMnlukwyJudVw.xml"] },
+
+  // ── New rss.app feeds (Apr 18) — major US/UK English wires + long-form ──
+  // All scraped via rss.app: 50 items each, continuous refresh, much faster
+  // than direct feeds (most of these are paywalled or have unreliable RSS).
+  ap_news:      { name: "أسوشيتد برس", initial: "AP", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/6qSMHdYD6L4hjpUS.xml"] },
+  wsj_world:    { name: "وول ستريت جورنال", initial: "WSJ", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/Geu5SnxoN4hNo8lT.xml"] },
+  independent_uk:{ name: "ذي إندبندنت", initial: "IND", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/TkaTyywFYrOf0Mwc.xml"] },
+  vox:          { name: "ڤوكس", initial: "VX", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/NOxFXxO9hmdAMFJG.xml"] },
 
   // ── PHOTO-GRID-ONLY SOURCES ──────────────────────────────────────
   // Tagged `photoOnly: true` so they're excluded from the main /api/feeds

@@ -98,6 +98,11 @@ export const SOURCES = [
   { n:"بلومبرغ",       i:"BL", id:"bloomberg",     domain:"bloomberg.com"         },
   { n:"CNN عالمي",     i:"CN", id:"cnn_en",        domain:"cnn.com"               },
   { n:"أكسيوس",        i:"AX", id:"axios",         domain:"axios.com"             },
+  // ── Apr 18 batch (rss.app feeds) ──
+  { n:"أسوشيتد برس",   i:"AP", id:"ap_news",       domain:"apnews.com"            },
+  { n:"وول ستريت جورنال",i:"WSJ",id:"wsj_world",     domain:"wsj.com"               },
+  { n:"ذي إندبندنت",    i:"IND",id:"independent_uk",domain:"independent.co.uk"     },
+  { n:"ڤوكس",           i:"VX", id:"vox",            domain:"vox.com"               },
 
   // ── PHOTO-GRID-ONLY SOURCES (photoOnly: true) ──────────────────
   // These appear only in the photo grid, not the main news feed or stories strip.

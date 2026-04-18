@@ -430,41 +430,53 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     // weight = sum over all real spots of (stories * gaussian falloff
     // by angular distance). This gives the dot-density "halftone" look
     // where hot regions bloom with fat dots and quiet areas stay faint.
-    const stepLng = 1.4;
-    const stepLat = 1.1;
-    const sigma   = 1.8;          // degrees — tighter so blooms stay localized
-    const lngMin = -20, lngMax = 75;
-    const latMin = 5,   latMax = 55;
-
-    const features = [];
+    // Each city gets its OWN cluster of halftone dots filling an area
+    // around it. Cluster radius scales with news intensity (bigger story
+    // count = bigger dot footprint). Within a cluster, dot size varies
+    // by distance to center (fat at the city, thin at the rim).
+    // Each city gets a symmetric circular halftone cluster.
+    // Equal step in both axes + no latitude compensation → the dot
+    // pattern forms a true circle in lng/lat space (symmetric on
+    // screen, not stretched by map projection).
+    const step = 0.5;             // degrees, same on both axes
     const list = spots.filter(s => s.stories && s.stories.length > 0);
-    // Only emit a dot if SOME real spot is within this radius of the cell.
-    // This clips the halftone to the footprint of actual news activity —
-    // empty regions stay dark, matching the reference style exactly.
-    const coverageRadius = 5.5;      // degrees
-    const covR2 = coverageRadius * coverageRadius;
-    const minWeight = 0.02;          // drop visually-invisible dots
-    for (let lat = latMin; lat <= latMax; lat += stepLat) {
-      const cos = Math.cos(lat * Math.PI / 180);
-      for (let lng = lngMin; lng <= lngMax; lng += stepLng) {
-        let w = 0;
-        let inRange = false;
-        for (const s of list) {
-          const dx = (s.lng - lng) * cos;
+
+    const cellKey = (lng, lat) => `${Math.round(lng/step)}_${Math.round(lat/step)}`;
+    const cellMap = new Map();
+
+    for (const s of list) {
+      const n = s.stories.length;
+      // Cluster radius scales with news intensity
+      const radius = Math.min(5.5, 1.4 + Math.sqrt(n) * 0.55);
+      const r2 = radius * radius;
+      const lngStart = Math.floor((s.lng - radius) / step) * step;
+      const lngEnd   = Math.ceil ((s.lng + radius) / step) * step;
+      const latStart = Math.floor((s.lat - radius) / step) * step;
+      const latEnd   = Math.ceil ((s.lat + radius) / step) * step;
+
+      for (let lat = latStart; lat <= latEnd; lat += step) {
+        for (let lng = lngStart; lng <= lngEnd; lng += step) {
+          const dx = (s.lng - lng);
           const dy = (s.lat - lat);
           const d2 = dx*dx + dy*dy;
-          if (d2 < covR2) inRange = true;
-          if (d2 > 25 * sigma * sigma) continue;
-          w += s.stories.length * Math.exp(-d2 / (2*sigma*sigma));
+          if (d2 > r2) continue;
+          // Gaussian weight toward center, scaled by story count
+          const wLocal = n * Math.exp(-d2 / (2 * (radius/2) * (radius/2)));
+          const k = cellKey(lng, lat);
+          const existing = cellMap.get(k);
+          if (existing) {
+            existing.properties.w += wLocal;
+          } else {
+            cellMap.set(k, {
+              type: 'Feature',
+              properties: { w: wLocal },
+              geometry: { type: 'Point', coordinates: [lng, lat] },
+            });
+          }
         }
-        if (!inRange || w < minWeight) continue;
-        features.push({
-          type: 'Feature',
-          properties: { w },
-          geometry: { type: 'Point', coordinates: [lng, lat] },
-        });
       }
     }
+    const features = Array.from(cellMap.values());
     src.setData({ type: 'FeatureCollection', features });
   }, [mapReady, spots]);
 

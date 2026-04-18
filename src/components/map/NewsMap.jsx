@@ -342,12 +342,10 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             type: 'circle',
             source: 'density',
             paint: {
-              // Hard cap on radius so dots never merge — halftone stays crisp.
-              'circle-radius': ['interpolate', ['linear'], ['get','w'],
-                0, 0.8, 0.05, 1.4, 0.2, 2.2, 0.6, 3.2, 1.5, 4.0, 4, 4.8, 10, 5.2],
+              // Uniform small dots — one per story, like a species-distribution map.
+              'circle-radius': 2.2,
               'circle-color': '#ff8a1a',
-              'circle-opacity': ['interpolate', ['linear'], ['get','w'],
-                0, 0.10, 0.05, 0.22, 0.3, 0.42, 1, 0.62, 3, 0.78, 10, 0.85],
+              'circle-opacity': 0.85,
               'circle-stroke-width': 0,
             },
           });
@@ -438,45 +436,43 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     // Equal step in both axes + no latitude compensation → the dot
     // pattern forms a true circle in lng/lat space (symmetric on
     // screen, not stretched by map projection).
-    const step = 1.0;             // degrees — wide enough that dots stay separated
+    // Exactly like the reference species-distribution map:
+    // one small dot per story, jittered around the city within a
+    // radius that scales with the story count. No grid, no Gaussian.
     const list = spots.filter(s => s.stories && s.stories.length > 0);
+    const features = [];
 
-    const cellKey = (lng, lat) => `${Math.round(lng/step)}_${Math.round(lat/step)}`;
-    const cellMap = new Map();
+    // Deterministic PRNG so the scatter is stable across rerenders
+    const rand = (seed) => {
+      let t = seed + 0x6D2B79F5;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
 
     for (const s of list) {
       const n = s.stories.length;
-      // Cluster radius scales with news intensity
-      const radius = Math.min(5.5, 1.4 + Math.sqrt(n) * 0.55);
-      const r2 = radius * radius;
-      const lngStart = Math.floor((s.lng - radius) / step) * step;
-      const lngEnd   = Math.ceil ((s.lng + radius) / step) * step;
-      const latStart = Math.floor((s.lat - radius) / step) * step;
-      const latEnd   = Math.ceil ((s.lat + radius) / step) * step;
-
-      for (let lat = latStart; lat <= latEnd; lat += step) {
-        for (let lng = lngStart; lng <= lngEnd; lng += step) {
-          const dx = (s.lng - lng);
-          const dy = (s.lat - lat);
-          const d2 = dx*dx + dy*dy;
-          if (d2 > r2) continue;
-          // Gaussian weight toward center, scaled by story count
-          const wLocal = n * Math.exp(-d2 / (2 * (radius/2) * (radius/2)));
-          const k = cellKey(lng, lat);
-          const existing = cellMap.get(k);
-          if (existing) {
-            existing.properties.w += wLocal;
-          } else {
-            cellMap.set(k, {
-              type: 'Feature',
-              properties: { w: wLocal },
-              geometry: { type: 'Point', coordinates: [lng, lat] },
-            });
-          }
-        }
+      // Scatter radius (degrees) scales gently with n so busy cities
+      // occupy more area but never blanket the map.
+      const R = Math.min(2.4, 0.35 + Math.sqrt(n) * 0.22);
+      for (let i = 0; i < n; i++) {
+        const seed = Math.floor((s.lng + 180) * 1000) * 10000
+                   + Math.floor((s.lat +  90) * 1000) * 10
+                   + i;
+        // Uniform disk sampling: r = R*sqrt(u), θ = 2π*v
+        const u = rand(seed);
+        const v = rand(seed + 1);
+        const r = R * Math.sqrt(u);
+        const th = 2 * Math.PI * v;
+        const lng = s.lng + r * Math.cos(th);
+        const lat = s.lat + r * Math.sin(th);
+        features.push({
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+        });
       }
     }
-    const features = Array.from(cellMap.values());
     src.setData({ type: 'FeatureCollection', features });
   }, [mapReady, spots]);
 

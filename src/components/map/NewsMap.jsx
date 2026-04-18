@@ -413,7 +413,6 @@ export function NewsMap({ onClose, liveFeed=[] }) {
               'circle-opacity': 0.95,
               'circle-stroke-color': '#B71C1C',
               'circle-stroke-width': 0.5,
-              'circle-stroke-width': 0,
             },
           });
 

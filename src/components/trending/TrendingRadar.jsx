@@ -478,17 +478,17 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
   const isWF = theme === 'wayfinder';
 
   // Palette — swaps based on theme. In Wayfinder mode the accent is
-  // Apple system orange (#FF9500) — the exact compass-needle colour of
+  // Brand red (#E53935) — main accent, compass-needle colour of
   // the Apple Watch Ultra Wayfinder face — used sparingly as the sole
   // accent. Ring colors shift from the red tint to near-white titanium
   // so the concentric rings read like machined metal, not phosphor.
   // The background is tinted toward the same graphite so the whole
   // page feels like one material. The variable is still named `RED`
   // internally to keep the code shape stable across theme swaps.
-  const RED        = isWF ? '#FF9500' : '#E53935';
-  const RED_BRIGHT = isWF ? '#ffb049' : '#ff6659';
-  const RED_DIM    = isWF ? 'rgba(255,149,0,.32)'  : 'rgba(229,57,53,.3)';
-  const RED_FAINT  = isWF ? 'rgba(255,149,0,.10)'  : 'rgba(229,57,53,.12)';
+  const RED        = '#E53935';
+  const RED_BRIGHT = '#ff6659';
+  const RED_DIM    = isWF ? 'rgba(229,57,53,.32)'  : 'rgba(229,57,53,.3)';
+  const RED_FAINT  = isWF ? 'rgba(229,57,53,.10)'  : 'rgba(229,57,53,.12)';
   const RING       = isWF ? 'rgba(220,224,230,.22)' : 'rgba(229,57,53,.35)';
   const RING_BRIGHT = isWF ? 'rgba(240,244,250,.38)' : 'rgba(255,102,89,.50)';
   const MONO       = isWF
@@ -1160,7 +1160,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
               inset 0 -1px 1px rgba(255,255,255,.05),
               inset 0 0 70px rgba(0,0,0,.55),
               0 0 35px rgba(0,0,0,.45),
-              0 0 ${knobDragging ? 44 : 26}px rgba(255,149,0,.32)
+              0 0 ${knobDragging ? 44 : 26}px rgba(229,57,53,.32)
             `
             : `
               inset 0 1px 0 rgba(255,255,255,.7),
@@ -1191,7 +1191,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
             const valAt = KNOB_MIN + Math.round(t * KNOB_RANGE);
             const active = valAt <= topicCount;
             const stroke = active
-              ? (isWF ? 'rgba(255,149,0,.85)' : 'rgba(229,57,53,.85)')
+              ? (isWF ? 'rgba(229,57,53,.85)' : 'rgba(229,57,53,.85)')
               : (isWF ? 'rgba(220,224,230,.42)' : 'rgba(235,238,243,.45)');
             return (
               <line
@@ -1261,12 +1261,12 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
             marginLeft: -6,
             width: 12, height: 12,
             borderRadius:'50%',
-            background:'radial-gradient(circle at 36% 28%, #ffcb66 0%, #ff9500 45%, #c46900 100%)',
+            background:'radial-gradient(circle at 36% 28%, #FFB3B0 0%, #E53935 45%, #B71C1C 100%)',
             boxShadow:`
               inset 0 1px 1px rgba(255,255,255,.55),
               inset 0 -1px 2px rgba(0,0,0,.55),
               0 0 0 1px rgba(0,0,0,.8),
-              0 0 ${knobDragging ? 14 : 7}px rgba(255,149,0,1)
+              0 0 ${knobDragging ? 14 : 7}px rgba(229,57,53,1)
             `,
           }}/>
         </div>

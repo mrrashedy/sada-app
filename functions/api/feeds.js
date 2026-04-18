@@ -811,9 +811,11 @@ async function aggregateFeeds(kind = 'news', env = null, feedCache = null) {
 
   const sortByTime = (a, b) => b.timestamp - a.timestamp;
   const allDeduped = [...preFiltered].sort(sortByTime);
-  // Server-side mixed-pool ceiling. 5000 so the curated stream can hold
-  // the full output of ~100 active sources × 20 items each.
-  const LIMIT = 5000;
+  // Server-side mixed-pool ceiling. Lowered 5000 → 1500 — the client never
+  // requests more than 400 items per call, and even that's well above any
+  // useful read window. The previous 5000 just bloated KV storage and
+  // slowed down every parse/serialize on the hot path.
+  const LIMIT = 1500;
   const mixed = [];
   // Identical-title dedup only — no normalization.
   const normTitle = (t) => t || '';
@@ -955,6 +957,8 @@ function formatManualItem(m) {
 function applyAdminLayer(feed, layer) {
   if (!layer) return feed;
   const { overrides = [], manualItems = [] } = layer;
+  // Fast path: no editor activity at all → return feed as-is.
+  if (overrides.length === 0 && manualItems.length === 0) return feed;
 
   // Index overrides for O(1) lookup by article id (primary) or link (fallback).
   const byId = new Map();
@@ -1058,7 +1062,7 @@ export async function onRequest(context) {
     const url = new URL(request.url);
     // Default response limit raised to 5000 to match the new server-side
     // pool ceiling (LIMIT). Caller can still pass ?limit=N to truncate.
-    const limit = parseInt(url.searchParams.get('limit')) || 5000;
+    const limit = parseInt(url.searchParams.get('limit')) || 1500;
     const forceRefresh = url.searchParams.has('refresh');
     const includeDiagnostics = url.searchParams.has('debug');
 
@@ -1068,37 +1072,48 @@ export async function onRequest(context) {
     const kind = VALID_KINDS.includes(url.searchParams.get('kind')) ? url.searchParams.get('kind') : 'news';
     const kvKeys = KV_KEYS[kind];
 
-    // Admin curation layer only applies to the news feed, not the photo grid.
-    const layerPromise = kind === 'news' ? fetchAdminLayer(env) : Promise.resolve(null);
-
     // Per-kind source list — the client uses this to render the stories strip
     // for the news feed, or to show "source" attribution on photos.
     const sourceList = sourceListForKind(kind);
 
-    // 1. Try KV cache first
+    // 1. Try KV cache first.
+    // The cached blob is ALREADY admin-curated (overrides applied, manual
+    // items spliced, radarOverrides attached) — see bakeAdminLayer. So the
+    // hot path is a pure KV read + slice + stringify. No Supabase, no
+    // per-item override merge.
     if (feedCache && !forceRefresh) {
-      const [cachedFeed, cachedMeta, layer] = await Promise.all([
+      const [cachedFeed, cachedMeta] = await Promise.all([
         feedCache.get(kvKeys.feed, 'json'),
         feedCache.get(kvKeys.meta, 'json'),
-        layerPromise,
       ]);
 
       if (cachedFeed && cachedMeta) {
         const age = Math.floor((Date.now() - cachedMeta.ts) / 1000);
         const isFresh = age < CACHE_TTL;
 
-        // Slice the cached feed to a working window (limit × 2 + buffer) so
-        // buildPayload's admin-layer pass is bounded, then pass it through.
-        const preSlice = Math.max(limit * 2, limit + 50);
-        const slicedData = { ...cachedFeed, sources: sourceList, feed: cachedFeed.feed.slice(0, preSlice) };
-        const payload = buildPayload(slicedData, layer, limit, {
-          age, fresh: isFresh, aggregatedAt: cachedMeta.ts,
-        }, includeDiagnostics);
+        const slicedFeed = cachedFeed.feed.slice(0, limit);
+        const payload = {
+          ok: true,
+          count: slicedFeed.length,
+          sources: sourceList,
+          feed: slicedFeed,
+          breaking: cachedFeed.breaking || [],
+          radarOverrides: cachedFeed.radarOverrides || [],
+          _cache: { age, fresh: isFresh, aggregatedAt: cachedMeta.ts },
+        };
+        if (includeDiagnostics) {
+          const _bySource = {};
+          for (const it of slicedFeed) {
+            const sid = it.source?.id || it.sourceId || '?';
+            _bySource[sid] = (_bySource[sid] || 0) + 1;
+          }
+          payload._bySource = _bySource;
+        }
         const response = new Response(JSON.stringify(payload), {
           headers: { ...CORS, 'Cache-Control': isFresh ? 'public, s-maxage=10' : 'public, s-maxage=3, stale-while-revalidate=60' },
         });
 
-        // If stale, trigger background re-aggregation (non-blocking)
+        // If stale, trigger background re-aggregation + re-bake (non-blocking)
         if (!isFresh) {
           context.waitUntil(refreshCache(feedCache, kind, env));
         }
@@ -1107,8 +1122,11 @@ export async function onRequest(context) {
       }
     }
 
-    // 2. No cache — aggregate fresh (first request or KV not configured)
-    const data = await aggregateFeeds(kind, env, feedCache);
+    // 2. No cache — aggregate fresh (first request or KV not configured),
+    // then bake the admin layer so the response (and the cache write below)
+    // are already curated.
+    const raw = await aggregateFeeds(kind, env, feedCache);
+    const data = await bakeAdminLayer(raw, kind, env);
     data.sources = sourceList;
 
     // Store in KV (no warming here — /api/warm handles it separately with
@@ -1128,8 +1146,25 @@ export async function onRequest(context) {
       ]));
     }
 
-    const layer = await layerPromise;
-    const payload = buildPayload(data, layer, limit, { age: 0, fresh: true, aggregatedAt: Date.now() }, includeDiagnostics);
+    // data is already admin-curated (bakeAdminLayer was called above).
+    const slicedFeed = data.feed.slice(0, limit);
+    const payload = {
+      ok: true,
+      count: slicedFeed.length,
+      sources: sourceList,
+      feed: slicedFeed,
+      breaking: data.breaking || [],
+      radarOverrides: data.radarOverrides || [],
+      _cache: { age: 0, fresh: true, aggregatedAt: Date.now() },
+    };
+    if (includeDiagnostics) {
+      const _bySource = {};
+      for (const it of slicedFeed) {
+        const sid = it.source?.id || it.sourceId || '?';
+        _bySource[sid] = (_bySource[sid] || 0) + 1;
+      }
+      payload._bySource = _bySource;
+    }
     return new Response(JSON.stringify(payload), {
       headers: { ...CORS, 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=60' },
     });
@@ -1140,19 +1175,43 @@ export async function onRequest(context) {
 }
 
 // Background re-aggregation (runs via waitUntil, doesn't block response).
+// Bake the admin curation layer (overrides, manual items, radar overrides)
+// directly into the cached data at WRITE time. The hot path then has zero
+// Supabase calls and zero per-item override merges — the cached feed is
+// already curated and ready to ship.
+//
+// Trade: editor changes (pin / hide / manual item) take up to ~15 seconds
+// (one CACHE_TTL cycle) to propagate instead of being applied per-request.
+async function bakeAdminLayer(data, kind, env) {
+  if (kind !== 'news' || !env) return data;
+  const layer = await fetchAdminLayer(env);
+  if (!layer) return data;
+  const bakedFeed = applyAdminLayer(data.feed, layer);
+  // Recompute breaking from the curated feed so manual is_breaking items +
+  // override-hides are reflected correctly.
+  const breaking = bakedFeed.filter(f => f.isBreaking).slice(0, 20);
+  return {
+    ...data,
+    feed: bakedFeed,
+    breaking,
+    radarOverrides: layer.radarOverrides || [],
+  };
+}
+
 async function refreshCache(feedCache, kind = 'news', env = null) {
   try {
-    const data = await aggregateFeeds(kind, env, feedCache);
-    const kvKeys = KV_KEYS[kind];
+    const raw = await aggregateFeeds(kind, env, feedCache);
     // Cache hardening — same MIN_ITEMS floor as the foreground path. A failed
     // background refresh leaves the previous (good) cached snapshot in place
     // until the next refresh succeeds, instead of overwriting it with thin
     // partial data.
     const MIN_ITEMS = kind === 'photos' ? 100 : 600;
-    if ((data.feed?.length || 0) < MIN_ITEMS) return;
+    if ((raw.feed?.length || 0) < MIN_ITEMS) return;
+    const baked = await bakeAdminLayer(raw, kind, env);
+    const kvKeys = KV_KEYS[kind];
     await Promise.all([
-      feedCache.put(kvKeys.feed, JSON.stringify(data), { expirationTtl: 600 }),
-      feedCache.put(kvKeys.meta, JSON.stringify({ ts: Date.now(), count: data.feed.length }), { expirationTtl: 600 }),
+      feedCache.put(kvKeys.feed, JSON.stringify(baked), { expirationTtl: 600 }),
+      feedCache.put(kvKeys.meta, JSON.stringify({ ts: Date.now(), count: baked.feed.length }), { expirationTtl: 600 }),
     ]);
   } catch {}
 }

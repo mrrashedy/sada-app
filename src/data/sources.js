@@ -18,6 +18,7 @@ export const SOURCES = [
   { n:"دويتشه فيله",  i:"D",  id:"dw",            domain:"dw.com"                },
   { n:"CNN عربية",     i:"C",  id:"cnn_ar",        domain:"arabic.cnn.com"        },
   { n:"CNN اقتصاد",    i:"C$", id:"cnn_biz_ar",    domain:"cnnbusinessarabic.com",hideFromStrip:true },
+  { n:"CNBC عربية",    i:"CB", id:"cnbc_arabia",   domain:"cnbcarabia.com"        },
   { n:"مونت كارلو",    i:"MC", id:"mc_doualiya",   domain:"mc-doualiya.com"       },
   { n:"رويترز",        i:"R",  id:"reuters_ar",    domain:"reuters.com"           },
   { n:"إندبندنت عربية",i:"إ",  id:"independent_ar",domain:"independentarabia.com" },

@@ -44,6 +44,10 @@ const SOURCES = {
   dw:              { name: "دويتشه فيله", initial: "D", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Adw.com%2Far&hl=ar&gl=SA&ceid=SA:ar"] },
   cnn_ar:          { name: "CNN عربية", initial: "C", tier: 1, feeds: ["https://arabic.cnn.com/api/v1/rss/rss.xml"] },
   cnn_biz_ar:      { name: "CNN اقتصاد", initial: "C$", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Acnnbusinessarabic.com&hl=ar&gl=SA&ceid=SA:ar"] },
+  // CNBC عربية — Arabic business/finance wire from CNBC Arabia (Dubai-based).
+  // Distinctive coverage: GCC markets, energy, sovereign wealth, Aramco/ADNOC/
+  // PIF news. Fills a gap — we previously had only CNN اقتصاد in this lane.
+  cnbc_arabia:     { name: "CNBC عربية", initial: "CB", tier: 1, feeds: ["https://rss.app/feeds/jbVWg4bV0vggbmct.xml"] },
   // Monte Carlo Doualiya — direct feed is podcast-only. Google News proxy for articles.
   mc_doualiya:     { name: "مونت كارلو", initial: "MC", tier: 1, feeds: ["https://news.google.com/rss/search?q=site%3Amc-doualiya.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // independent_ar direct feed intermittent. Google News proxy is reliable.

@@ -326,6 +326,38 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       map.on('load', () => {
         setMapReady(true);
 
+        // ── High-contrast pass ───────────────────────────────
+        // Crank land/water contrast and brighten borders + labels
+        // so the basemap reads stronger under the orange dots.
+        try {
+          const layers = map.getStyle().layers || [];
+          for (const lyr of layers) {
+            const id = (lyr.id || '').toLowerCase();
+            const sl = (lyr['source-layer'] || '').toLowerCase();
+            try {
+              if (lyr.type === 'background') {
+                map.setPaintProperty(lyr.id, 'background-color', '#0a0d12');
+              } else if (lyr.type === 'fill' && (id.includes('water') || sl === 'water' || id.includes('ocean'))) {
+                map.setPaintProperty(lyr.id, 'fill-color', '#05070a');
+              } else if (lyr.type === 'fill' && (id.includes('land') || sl === 'landcover' || sl === 'landuse' || id.includes('earth'))) {
+                map.setPaintProperty(lyr.id, 'fill-color', '#1c2230');
+              } else if (lyr.type === 'line' && (sl.includes('boundary') || sl.includes('admin') || id.includes('boundary') || id.includes('admin') || id.includes('border'))) {
+                const isCountry = id.includes('country') || (lyr.filter && JSON.stringify(lyr.filter).includes('"admin_level"') && JSON.stringify(lyr.filter).includes('2'));
+                map.setPaintProperty(lyr.id, 'line-color', isCountry ? '#aab4c4' : '#4d5666');
+                map.setPaintProperty(lyr.id, 'line-width', isCountry
+                  ? ['interpolate', ['linear'], ['zoom'], 1, 0.7, 4, 1.4, 8, 2.2]
+                  : ['interpolate', ['linear'], ['zoom'], 3, 0.3, 8, 0.9]);
+                map.setPaintProperty(lyr.id, 'line-opacity', isCountry ? 1 : 0.45);
+              } else if (lyr.type === 'symbol') {
+                map.setPaintProperty(lyr.id, 'text-color', '#e6ecf5');
+                map.setPaintProperty(lyr.id, 'text-halo-color', '#000');
+                map.setPaintProperty(lyr.id, 'text-halo-width', 1.4);
+                map.setPaintProperty(lyr.id, 'text-halo-blur', 0.2);
+              }
+            } catch {}
+          }
+        } catch {}
+
         // ── Dot-density grid ─────────────────────────────────
         // Uniform grid of dots across the region. Each dot's size +
         // opacity is driven by a Gaussian spread of nearby story counts.

@@ -342,11 +342,12 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             type: 'circle',
             source: 'density',
             paint: {
+              // Hard cap on radius so dots never merge — halftone stays crisp.
               'circle-radius': ['interpolate', ['linear'], ['get','w'],
-                0, 1.0, 0.05, 1.6, 0.2, 2.8, 0.5, 4.5, 1, 6.5, 3, 9.5, 8, 13],
+                0, 0.8, 0.05, 1.4, 0.2, 2.2, 0.6, 3.2, 1.5, 4.0, 4, 4.8, 10, 5.2],
               'circle-color': '#ff8a1a',
               'circle-opacity': ['interpolate', ['linear'], ['get','w'],
-                0, 0.10, 0.05, 0.22, 0.3, 0.45, 1, 0.75, 3, 0.92, 8, 1],
+                0, 0.10, 0.05, 0.22, 0.3, 0.42, 1, 0.62, 3, 0.78, 10, 0.85],
               'circle-stroke-width': 0,
             },
           });
@@ -431,7 +432,7 @@ export function NewsMap({ onClose, liveFeed=[] }) {
     // where hot regions bloom with fat dots and quiet areas stay faint.
     const stepLng = 1.4;
     const stepLat = 1.1;
-    const sigma   = 3.0;          // degrees — how tightly dots cluster
+    const sigma   = 1.8;          // degrees — tighter so blooms stay localized
     const lngMin = -20, lngMax = 75;
     const latMin = 5,   latMax = 55;
 

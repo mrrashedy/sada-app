@@ -1,9 +1,9 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   /* Palette */
-  --bg:#F8F6F1;--f1:#EEECE7;--g1:#E0DED8;--g2:#D0CEC8;
-  --t1:#1A1A1A;--t2:#3D3D3D;--t3:#757575;--t4:#A8A8A8;
-  --bk:#1A1A1A;--rd:#D32F2F;--bl:#1565C0;--gn:#2E7D32;--or:#FF6D00;
+  --bg:#F5F5F5;--f1:#FFFFFF;--g1:#E0E0E0;--g2:#CFCFCF;
+  --t1:#0A0A0A;--t2:#444444;--t3:#999999;--t4:#BDBDBD;
+  --bk:#0A0A0A;--rd:#B71C1C;--bl:#1565C0;--gn:#2E7D32;--or:#E53935;
   --ft:-apple-system,"SF Arabic","SF Pro Arabic",system-ui,sans-serif;
   /* Type scale — 4 pt rhythm tuned for Arabic reading comfort.
      Steps: 11 → 12 → 13 → 15 → 17 → 20 → 24. Body 15/1.75, title 17/1.45. */
@@ -72,7 +72,7 @@
 @keyframes cu{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes logoPulse{0%,100%{text-shadow:0 0 30px rgba(255,255,255,.2)}50%{text-shadow:0 0 60px rgba(255,255,255,.5)}}
-html,body{background:#1A1A1A;overflow:hidden;height:100%}
+html,body{background:#F5F5F5;overflow:hidden;height:100%}
 
 /* App shell */
 .app{max-width:430px;margin:0 auto;height:100vh;background:var(--bg);font-family:var(--ft);direction:rtl;display:flex;flex-direction:column;overflow:hidden;position:relative}

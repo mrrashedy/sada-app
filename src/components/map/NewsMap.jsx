@@ -613,37 +613,38 @@ export function NewsMap({ onClose, liveFeed=[] }) {
 
           <div onClick={e=>e.stopPropagation()} style={{
             position:'absolute', bottom:0, left:0, right:0,
-            background:'rgba(10,12,16,0.94)', backdropFilter:'blur(30px) saturate(1.8)',
-            WebkitBackdropFilter:'blur(30px) saturate(1.8)',
+            background:'rgba(255,255,255,0.96)', backdropFilter:'blur(30px) saturate(1.6)',
+            WebkitBackdropFilter:'blur(30px) saturate(1.6)',
             borderRadius:'24px 24px 0 0',
             maxHeight:'58%', display:'flex', flexDirection:'column',
-            boxShadow:'0 -4px 60px rgba(0,0,0,.6)',
+            boxShadow:'0 -8px 40px rgba(10,10,10,.10)',
             animation:'nm-slide .35s cubic-bezier(.32,.72,.24,1) forwards',
             direction:'rtl', fontFamily:'var(--ft)',
-            borderTop:'1px solid rgba(255,255,255,0.08)',
+            borderTop:'1px solid #E0E0E0',
           }}>
             {/* Handle */}
-            <div style={{ width:36, height:4, background:'rgba(255,255,255,0.12)', borderRadius:2, margin:'10px auto 0', flexShrink:0 }}/>
+            <div style={{ width:36, height:4, background:'#E0E0E0', borderRadius:2, margin:'10px auto 0', flexShrink:0 }}/>
 
             {/* Header */}
             <div style={{ padding:'14px 20px 12px', flexShrink:0 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <span style={{ fontSize:20, fontWeight:900, color:'#fff' }}>{sel.city}</span>
-                  <span style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>{sel.country}</span>
+                  <span style={{ fontSize:20, fontWeight:900, color:'#0A0A0A' }}>{sel.city}</span>
+                  <span style={{ fontSize:13, color:'#999999' }}>{sel.country}</span>
                 </div>
                 {/* Story count badge */}
                 <div style={{
-                  background:'linear-gradient(135deg, #E53935 0%, #FF6F00 100%)',
+                  background:'#E53935',
                   borderRadius:10, padding:'3px 10px', minWidth:28, textAlign:'center',
                 }}>
-                  <span style={{ fontSize:12, fontWeight:800, color:'#fff' }}>{sel.stories.length}</span>
+                  <span style={{ fontSize:12, fontWeight:800, color:'#FFFFFF' }}>{sel.stories.length}</span>
                 </div>
               </div>
               {/* Accent line */}
               <div style={{
                 height:1, marginTop:12,
-                background:'linear-gradient(90deg, rgba(229,57,53,0.4) 0%, rgba(255,140,0,0.2) 50%, transparent 100%)',
+                background:'linear-gradient(90deg, #E53935 0%, #B71C1C 60%, transparent 100%)',
+                opacity:.55,
               }}/>
             </div>
 
@@ -653,23 +654,23 @@ export function NewsMap({ onClose, liveFeed=[] }) {
                 <div key={i} onClick={()=>s.link&&s.link!=='#'&&window.open(s.link,'_blank')}
                   style={{
                     padding:'14px 20px', cursor:s.link?'pointer':'default',
-                    borderBottom:i<sel.stories.length-1?'1px solid rgba(255,255,255,0.04)':'none',
+                    borderBottom:i<sel.stories.length-1?'1px solid #E0E0E0':'none',
                     transition:'background .15s',
                   }}
-                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}
+                  onMouseEnter={e=>e.currentTarget.style.background='#F5F5F5'}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}
                 >
                   {s.tag && (
                     <div style={{
                       display:'inline-block', fontSize:10, fontWeight:700, marginBottom:6,
-                      color: s.brk||s.tag==='عاجل' ? '#E53935' : 'rgba(255,255,255,0.4)',
-                      background: s.brk||s.tag==='عاجل' ? 'rgba(229,57,53,0.1)' : 'rgba(255,255,255,0.04)',
-                      border:`1px solid ${s.brk||s.tag==='عاجل'?'rgba(229,57,53,.2)':'rgba(255,255,255,0.06)'}`,
+                      color: s.brk||s.tag==='عاجل' ? '#FFFFFF' : '#444444',
+                      background: s.brk||s.tag==='عاجل' ? '#E53935' : '#F5F5F5',
+                      border:`1px solid ${s.brk||s.tag==='عاجل'?'#E53935':'#E0E0E0'}`,
                       padding:'2px 8px', borderRadius:4,
                     }}>{s.tag}</div>
                   )}
-                  <div style={{ fontSize:15, fontWeight:700, lineHeight:1.75, color:'rgba(255,255,255,0.9)', marginBottom:4 }}>{s.title}</div>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)' }}>{s.src} · {s.t}</div>
+                  <div style={{ fontSize:15, fontWeight:700, lineHeight:1.75, color:'#0A0A0A', marginBottom:4 }}>{s.title}</div>
+                  <div style={{ fontSize:11, color:'#999999' }}>{s.src} · {s.t}</div>
                 </div>
               ))}
             </div>

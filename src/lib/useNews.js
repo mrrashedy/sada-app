@@ -52,8 +52,33 @@ function checkSourceDrift(apiSources) {
 // Backend awareness: ZERO. The /api/feeds endpoint just returns the latest
 // items by recency. All buffering, scroll-position decisions, threshold logic,
 // pill behavior, and ack semantics live entirely in this hook + App.jsx.
+// Hydrate from localStorage cache on first render so the app shows real
+// content INSTANTLY instead of an empty list while waiting for /api/feeds.
+// Cache is keyed by `kind` (news/map/radar/photos) so each pool has its own.
+// Capped at 200 items per kind to keep localStorage payloads reasonable
+// (200 items ≈ 200KB JSON; localStorage soft-limits at ~5MB).
+const CACHE_KEY = (kind) => `sada-feed-cache-v1-${kind}`;
+const CACHE_HYDRATE_LIMIT = 200;
+function readCache(kind) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY(kind));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch { return []; }
+}
+function writeCache(kind, feed) {
+  try {
+    const slice = feed.slice(0, CACHE_HYDRATE_LIMIT);
+    localStorage.setItem(CACHE_KEY(kind), JSON.stringify(slice));
+  } catch {} // QuotaExceeded etc. — silently skip
+}
+
 export function useNews(sources = [], kind = 'news', pollInterval = 6000, isAtTopRef = null) {
-  const [feed, setFeed] = useState([]);
+  // Hydrate from cache on mount so the app opens with content, not empty.
+  // The next network fetch will replace this with fresh items.
+  const [feed, setFeed] = useState(() => readCache(kind));
   const [hiddenBuffer, setHiddenBuffer] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -70,6 +95,18 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000, isAtTo
   const hiddenRef = useRef([]);
   feedRef.current = feed;
   hiddenRef.current = hiddenBuffer;
+
+  // Persist feed to localStorage so the next app open is instant.
+  // Debounced via a ref + 2s timer so we don't write on every poll merge —
+  // localStorage writes block the main thread, and the feed shape changes
+  // many times per minute. Writing once every 2s is plenty for "open fast".
+  const cacheWriteTimer = useRef(null);
+  useEffect(() => {
+    if (!feed.length) return;
+    if (cacheWriteTimer.current) clearTimeout(cacheWriteTimer.current);
+    cacheWriteTimer.current = setTimeout(() => writeCache(kind, feed), 2000);
+    return () => { if (cacheWriteTimer.current) clearTimeout(cacheWriteTimer.current); };
+  }, [feed, kind]);
 
   // Constants
   // FEED_CAP lowered 3000 → 800 on 2026-04-18 to fix general app slowness.

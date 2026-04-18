@@ -228,6 +228,14 @@ const SOURCES = {
   independent_uk:{ name: "ذي إندبندنت", initial: "IND", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/TkaTyywFYrOf0Mwc.xml"] },
   vox:          { name: "ڤوكس", initial: "VX", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/NOxFXxO9hmdAMFJG.xml"] },
 
+  // ── Apr 18 batch 3 — premium international long-form ──
+  // Japan Times: first Asia-Pacific source in the registry.
+  // Der Spiegel International: German weekly's English edition, analytical.
+  // Le Monde (EN): French paper of record's English edition.
+  japan_times:  { name: "جابان تايمز", initial: "JT", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/Lj5Txpbrl1Xt43NC.xml"] },
+  spiegel:      { name: "دير شبيغل", initial: "DS", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/8nTkecYepmalWlBM.xml"] },
+  lemonde_en:   { name: "لوموند", initial: "LM", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/8FWHXnbxiywZchkB.xml"] },
+
   // ── PHOTO-GRID-ONLY SOURCES ──────────────────────────────────────
   // Tagged `photoOnly: true` so they're excluded from the main /api/feeds
   // (news) aggregation and only appear in /api/feeds?kind=photos.

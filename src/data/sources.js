@@ -95,6 +95,9 @@ export const SOURCES = [
   { n:"وول ستريت جورنال",i:"WSJ",id:"wsj_world",     domain:"wsj.com"               },
   { n:"ذي إندبندنت",    i:"IND",id:"independent_uk",domain:"independent.co.uk"     },
   { n:"ڤوكس",           i:"VX", id:"vox",            domain:"vox.com"               },
+  { n:"جابان تايمز",    i:"JT", id:"japan_times",    domain:"japantimes.co.jp"      },
+  { n:"دير شبيغل",      i:"DS", id:"spiegel",        domain:"spiegel.de"            },
+  { n:"لوموند",         i:"LM", id:"lemonde_en",     domain:"lemonde.fr"            },
 
   // ── PHOTO-GRID-ONLY SOURCES (photoOnly: true) ──────────────────
   // These appear only in the photo grid, not the main news feed or stories strip.

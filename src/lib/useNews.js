@@ -54,11 +54,21 @@ function checkSourceDrift(apiSources) {
 // pill behavior, and ack semantics live entirely in this hook + App.jsx.
 // Hydrate from localStorage cache on first render so the app shows real
 // content INSTANTLY instead of an empty list while waiting for /api/feeds.
-// Cache is keyed by `kind` (news/map/radar/photos) so each pool has its own.
-// Capped at 200 items per kind to keep localStorage payloads reasonable
-// (200 items ≈ 200KB JSON; localStorage soft-limits at ~5MB).
+//
+// Two non-obvious choices:
+//  1. Cap at 40 items, not 200. Anything past the first ~20-30 will be
+//     displaced by fresh data within seconds — caching more is wasted
+//     bandwidth (browser tries to download images for items that won't
+//     stay on screen).
+//  2. STRIP image URLs from the cache (image: null). Cached URLs are
+//     often stale by minutes-to-hours; the browser would fire 30+ image
+//     downloads on open, racing with the fresh-fetch downloads for
+//     bandwidth. Result: photos took noticeably longer to appear than
+//     before hydration. By stripping image URLs, hydrated cards render
+//     as text-only placeholders for ~1s until fresh data arrives with
+//     valid URLs — and then images load cleanly with no bandwidth fight.
 const CACHE_KEY = (kind) => `sada-feed-cache-v1-${kind}`;
-const CACHE_HYDRATE_LIMIT = 200;
+const CACHE_HYDRATE_LIMIT = 40;
 function readCache(kind) {
   try {
     const raw = localStorage.getItem(CACHE_KEY(kind));
@@ -70,7 +80,10 @@ function readCache(kind) {
 }
 function writeCache(kind, feed) {
   try {
-    const slice = feed.slice(0, CACHE_HYDRATE_LIMIT);
+    // Strip image URLs — they're stale by the time we hydrate, and
+    // letting the browser chase them wastes bandwidth that fresh data
+    // needs. Photos will appear once the live fetch returns.
+    const slice = feed.slice(0, CACHE_HYDRATE_LIMIT).map(it => ({ ...it, image: null }));
     localStorage.setItem(CACHE_KEY(kind), JSON.stringify(slice));
   } catch {} // QuotaExceeded etc. — silently skip
 }

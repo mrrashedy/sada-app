@@ -1394,7 +1394,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
               // so both elements share one material. Dimmed one more
               // notch so the disc surface recedes and the content
               // (rings, blips, labels) reads as the hero.
-              ? 'radial-gradient(circle at 42% 36%, #050608 0%, #030406 40%, #010102 72%, #000000 100%)'
+              ? 'radial-gradient(circle at 50% 90%, #0a0c10 0%, #060709 38%, #030406 70%, #010103 100%)'
               : 'radial-gradient(circle at 50% 45%, #34383f 0%, #262930 35%, #171a1f 70%, #0c0e12 95%, #0a0c10 100%)',
             boxShadow: isWF
               // Inset rim treatment: a dark groove around the perimeter
@@ -1403,13 +1403,12 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
               // the plate" feel. The knob uses the same recipe so
               // both elements share one edge treatment.
               ? `
-                0 0 0 1px rgba(0,0,0,.70),
-                0 0 0 2px rgba(72,76,84,.38),
-                0 0 0 3px rgba(0,0,0,.50),
-                inset 0 3px 5px rgba(0,0,0,.65),
-                inset 0 -1px 1px rgba(255,255,255,.05),
-                inset 0 0 70px rgba(0,0,0,.55),
-                0 0 40px rgba(0,0,0,.45)
+                0 0 0 1px rgba(0,0,0,.85),
+                0 0 0 2px rgba(60,64,72,.22),
+                inset 0 8px 14px rgba(0,0,0,.85),
+                inset 0 2px 4px rgba(0,0,0,.95),
+                inset 0 -2px 3px rgba(255,255,255,.04),
+                inset 0 0 90px rgba(0,0,0,.7)
               `
               : `
                 0 0 0 2px rgba(229,57,53,.38),
@@ -1433,10 +1432,10 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
                 <div style={{
                   position:'absolute', inset:0, borderRadius:'50%',
                   background:`
-                    radial-gradient(ellipse 65% 50% at 32% 22%,
-                      rgba(255,255,255,.16) 0%,
-                      rgba(255,255,255,.06) 28%,
-                      rgba(255,255,255,0) 60%
+                    radial-gradient(ellipse 60% 48% at 32% 22%,
+                      rgba(255,255,255,.025) 0%,
+                      rgba(255,255,255,.012) 32%,
+                      rgba(255,255,255,0) 65%
                     )
                   `,
                   mixBlendMode:'screen',

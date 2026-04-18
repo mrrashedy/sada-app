@@ -50,24 +50,13 @@ function SourceChip({ source, on, onToggle }) {
             onError={e => { e.currentTarget.style.display = 'none'; }}
             style={{
               width: '100%', height: '100%', objectFit: 'cover',
-              filter: on ? 'none' : 'grayscale(1)',
+              // Active: muted color (still colored, less aggressive saturation).
+              // Inactive: full grayscale.
+              filter: on ? 'saturate(0.65)' : 'grayscale(1)',
             }}
           />
         ) : (
           <span style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>{source.i}</span>
-        )}
-        {on && (
-          <div
-            style={{
-              position: 'absolute', bottom: -2, right: -2,
-              width: 20, height: 20, borderRadius: '50%',
-              background: 'var(--rd)', border: '2.5px solid var(--bg)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontSize: 11, fontWeight: 900, lineHeight: 1,
-            }}
-          >
-            ✓
-          </div>
         )}
       </div>
       <div

@@ -30,10 +30,6 @@ export const SOURCES = [
   { n:"العربي عاجل",   i:"عت", id:"alaraby_tv_brk",domain:"t.me",                 hideFromStrip:true },
   { n:"الشرق الإخبارية",i:"شر", id:"asharq_news",   domain:"asharq.com"            },
   { n:"تميم بن حمد",   i:"تم", id:"tamim_qatar",   domain:"x.com",                hideFromStrip:true },
-  { n:"أخبار Google عالمي", i:"GN", id:"gnews_world", domain:"news.google.com"      },
-  { n:"أخبار Google تقنية", i:"GT", id:"gnews_tech",  domain:"news.google.com"      },
-  { n:"أخبار Google صحة",   i:"GH", id:"gnews_health",domain:"news.google.com"      },
-  { n:"أخبار Google علوم",  i:"GS", id:"gnews_science",domain:"news.google.com"     },
   { n:"العربي الجديد", i:"ع",  id:"alaraby",       domain:"newarab.com"           },
   { n:"المصري اليوم",  i:"م",  id:"almasry",       domain:"almasryalyoum.com"     },
   { n:"بوابة الشروق",  i:"شو", id:"shorouk_eg",    domain:"shorouknews.com"       },
@@ -50,10 +46,6 @@ export const SOURCES = [
   // مشرق عربي — لبنان، سوريا، الأردن، فلسطين
   { n:"النهار",        i:"نه", id:"annahar",       domain:"annahar.com",          hideFromStrip:true },
   { n:"إل بي سي آي",   i:"LB", id:"lbci",          domain:"lbcgroup.tv",          hideFromStrip:true },
-  { n:"رؤيا",          i:"ر",  id:"roya",          domain:"royanews.tv",          hideFromStrip:true },
-  { n:"المملكة",       i:"مم", id:"almamlaka",     domain:"almamlakatv.com",      hideFromStrip:true },
-  { n:"سانا",          i:"س",  id:"sana",          domain:"sana.sy",              hideFromStrip:true },
-  { n:"الغد",          i:"غ",  id:"alghad",        domain:"alghad.com"            },
   { n:"الميادين",      i:"مي", id:"almayadeen",    domain:"almayadeen.net",       hideFromStrip:true },
   { n:"الأخبار اللبنانية",i:"أخ",id:"alakhbar_lb", domain:"al-akhbar.com",        hideFromStrip:true },
   { n:"ترجمات عبرية",  i:"عب", id:"qudsn_heb",     domain:"t.me"                  },
@@ -85,7 +77,6 @@ export const SOURCES = [
   { n:"ABC نيوز",      i:"AB", id:"abc_en",        domain:"abcnews.go.com"        },
   { n:"سكاي نيوز EN",  i:"SK", id:"sky_en",        domain:"news.sky.com"          },
   // الصحافة الخليجية الإنجليزية (مترجمة)
-  { n:"ذا ناشيونال",   i:"TN", id:"thenational",   domain:"thenationalnews.com",  hideFromStrip:true },
   { n:"غلف نيوز",      i:"GU", id:"gulfnews",      domain:"gulfnews.com",         hideFromStrip:true },
   { n:"عرب نيوز",      i:"AN", id:"arabnews",      domain:"arabnews.com",         hideFromStrip:true },
   { n:"العربية EN",    i:"عE", id:"alarabiya_en",  domain:"english.alarabiya.net",hideFromStrip:true },
@@ -118,9 +109,6 @@ export const SOURCES = [
   // مجلات الفنون والتصوير الفرنسية
   { n:"Beaux Arts",           i:"BA",  id:"beauxarts",     domain:"beauxarts.com",           photoOnly: true },
   // ── Gap-fill batch (Apr 2026) — mirrors functions/api/feeds.js
-  { n:"معا الإخبارية",  i:"مع", id:"maan_news",    domain:"maannews.net"       },
-  { n:"المصدر اليمني",  i:"مص", id:"almasdar_ye",  domain:"almasdaronline.com" },
-  { n:"شفق نيوز",       i:"شف", id:"shafaq",       domain:"shafaq.com"         },
   { n:"TRT عربي",       i:"TR", id:"trt_arabi",    domain:"trtarabi.com"       },
   { n:"الأناضول",       i:"أن", id:"anadolu_ar",   domain:"aa.com.tr"          },
   { n:"الرياض",         i:"ري", id:"alriyadh",     domain:"alriyadh.com"       },

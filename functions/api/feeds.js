@@ -72,12 +72,6 @@ const SOURCES = {
   // statements appear here before they hit any wire service. Tier 1 official.
   tamim_qatar:     { name: "تميم بن حمد", initial: "تم", tier: 1, feeds: ["https://rss.app/feeds/F7A4BGt96lZBHqdJ.xml"] },
 
-  // Wire services + aggregators (Arabic Google News topics give broad coverage)
-  gnews_world:     { name: "أخبار Google عالمي", initial: "GN", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/WORLD?hl=ar&gl=SA&ceid=SA:ar"] },
-  gnews_tech:      { name: "أخبار Google تقنية", initial: "GT", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=ar&gl=SA&ceid=SA:ar"] },
-  gnews_health:    { name: "أخبار Google صحة", initial: "GH", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/HEALTH?hl=ar&gl=SA&ceid=SA:ar"] },
-  gnews_science:   { name: "أخبار Google علوم", initial: "GS", tier: 2, feeds: ["https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=ar&gl=SA&ceid=SA:ar"] },
-
   // Tier 2: Regional newspapers
   // Al Araby Al Jadeed: direct RSS is dead but Google News still indexes the
   // alaraby.co.uk domain with 50 fresh Arabic items.
@@ -119,12 +113,6 @@ const SOURCES = {
   annahar:    { name: "النهار", initial: "نه", tier: 2, feeds: ["https://www.annahar.com/arabic/rss-feed"] },
   // lbcgroup.tv direct feed 403s from CF Workers. Google News proxy.
   lbci:       { name: "إل بي سي آي", initial: "LB", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Albcgroup.tv&hl=ar&gl=SA&ceid=SA:ar"] },
-  roya:       { name: "رؤيا", initial: "ر", tier: 2, feeds: ["https://royanews.tv/rss"] },
-  // almamlakatv.com direct feed 403s. Google News proxy works.
-  almamlaka:  { name: "المملكة", initial: "مم", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalmamlakatv.com&hl=ar&gl=SA&ceid=SA:ar"] },
-  sana:       { name: "سانا", initial: "س", tier: 2, feeds: ["https://sana.sy/feed/"] },
-  // alghad.com direct feed 403s. Google News proxy works.
-  alghad:     { name: "الغد", initial: "غ", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalghad.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Tier 2: additional Levant — high-priority Arabic outlets
   almayadeen:  { name: "الميادين", initial: "مي", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aalmayadeen.net&hl=ar&gl=SA&ceid=SA:ar"] },
   alakhbar_lb: { name: "الأخبار اللبنانية", initial: "أخ", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Aal-akhbar.com&hl=ar&gl=SA&ceid=SA:ar"] },
@@ -187,7 +175,6 @@ const SOURCES = {
   sky_en:   { name: "سكاي نيوز EN", initial: "SK", tier: 3, lang: "en", feeds: ["https://feeds.skynews.com/feeds/rss/world.xml","https://news.google.com/rss/search?q=site%3Anews.sky.com&hl=en&gl=US&ceid=US:en"] },
 
   // Tier 3: Gulf English-language press (served as-is — no translation)
-  thenational:   { name: "ذا ناشيونال", initial: "TN", tier: 3, lang: "en", feeds: ["https://www.thenationalnews.com/arc/outboundfeeds/rss/?outputType=xml"] },
   gulfnews:      { name: "غلف نيوز", initial: "GU", tier: 3, lang: "en", feeds: ["https://gulfnews.com/api/v1/collections/latest-news.rss"] },
   // arabnews.com direct feed 403s from CF Workers. Google News proxy.
   arabnews:      { name: "عرب نيوز", initial: "AN", tier: 3, lang: "en", feeds: ["https://news.google.com/rss/search?q=site%3Aarabnews.com&hl=en&gl=US&ceid=US:en"] },
@@ -204,11 +191,8 @@ const SOURCES = {
   // return 0 items from datacenter IPs).
 
   // Palestine — primary outlets in Arabic
-  maan_news:   { name: "معا الإخبارية", initial: "مع", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Amaannews.net&hl=ar&gl=SA&ceid=SA:ar"] },
   // Yemen — first dedicated source in the registry
-  almasdar_ye: { name: "المصدر اليمني", initial: "مص", tier: 2, feeds: ["https://almasdaronline.com/rss","https://news.google.com/rss/search?q=site%3Aalmasdaronline.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Iraq — beyond Alsumaria
-  shafaq:      { name: "شفق نيوز", initial: "شف", tier: 2, feeds: ["https://news.google.com/rss/search?q=site%3Ashafaq.com&hl=ar&gl=SA&ceid=SA:ar"] },
   // Turkey (Arabic) — first Turkey-Arabic outlets
   trt_arabi:   { name: "TRT عربي", initial: "TR", tier: 2, feeds: ["https://www.trtarabi.com/feed/rss.xml"] },
   // الأناضول — Turkey's official wire (Anadolu Agency) Arabic service.

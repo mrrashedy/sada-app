@@ -29,6 +29,14 @@
 }
 .post-brk{position:relative}
 .post-brk::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--or);transform-origin:left center;animation:brkStrip 1.2s cubic-bezier(.4,0,.2,1) .1s both;pointer-events:none;z-index:2}
+/* State of emergency: 3+ consecutive breaking items build a red cluster.
+   A red banner introduces the cluster, a pulsing red spine runs down the
+   right edge of each card in the run, and a faint red wash tints the
+   card body. Calm feed gets loud only when the world is actually loud. */
+.post-emg{background:rgba(229,57,53,0.055)}
+.post-emg::after{content:"";position:absolute;top:0;bottom:0;right:0;width:3px;background:linear-gradient(180deg,#B71C1C 0%,#E53935 50%,#B71C1C 100%);animation:emgPulse 1.6s ease-in-out infinite;pointer-events:none;z-index:3}
+.post-emg-end{border-bottom:2px solid #B71C1C}
+@keyframes emgPulse{0%,100%{opacity:.9}50%{opacity:.35}}
 @keyframes brkStrip{0%{transform:scaleX(1);opacity:1}100%{transform:scaleX(0);opacity:.6}}
 .util-ripple{position:relative}
 .util-ripple::after{content:"";position:absolute;top:50%;left:50%;width:6px;height:6px;border-radius:50%;border:2px solid var(--or);transform:translate(-50%,-50%) scale(1);opacity:.8;animation:utilRipple .55s cubic-bezier(.2,.7,.2,1) forwards;pointer-events:none}
@@ -619,7 +627,7 @@ textarea.auth-input{line-height:1.6}
 .depth-tier-2{border-color:rgba(21,101,192,.25);color:#1565C0}
 .depth-tier-3{border-color:var(--g1);color:var(--t4)}
 .depth-doctype{background:var(--f1);color:var(--t3)}
-.depth-pending{border-color:rgba(229,57,53,.3);color:var(--or);background:rgba(229,57,53,.06)}
+.depth-pending{border-color:rgba(255,109,0,.3);color:#FF6D00;background:rgba(255,109,0,.06)}
 .depth-pubdate{margin-inline-start:auto;font-size:11px;font-weight:600;color:var(--t4);letter-spacing:.2px;white-space:nowrap;font-variant-numeric:tabular-nums}
 
 /* ---------- Title ---------- */

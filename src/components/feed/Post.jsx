@@ -125,7 +125,7 @@ function stripSource(s, sourceName, domain) {
   return out || s;
 }
 
-export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, onSelectSource, showImg }) {
+export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInterested, onHide, onSelectSource, showImg, emg }) {
   useTick(1000);
   // 'hiding' transient state — true between the user's تجاهل tap and the
   // moment we call onHide() to actually remove the item from the feed.
@@ -187,7 +187,7 @@ export function Post({ item, delay, onOpen, onSave, isSaved, onInterest, isInter
   }, [item.title]);
 
   return (
-    <div className={`post${item._new ? ' post-new' : ''}${hiding ? ' post-hiding' : ''}${item.brk ? ' post-brk' : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
+    <div className={`post${item._new ? ' post-new' : ''}${hiding ? ' post-hiding' : ''}${item.brk ? ' post-brk' : ''}${emg ? ` post-emg post-emg-${emg}` : ''}`} data-id={item.id} style={{ animationDelay:`${delay}s` }}>
       {undoing ? (
         <div className="post-undo">
           <span className="post-undo-text">تم الإخفاء</span>

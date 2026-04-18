@@ -172,14 +172,14 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000, isAtTo
         // highest-volume sources (RT, breaking-news Twitter feeds, big
         // Egyptian dailies). The other ~50 sources (Reuters, Mada Masr,
         // Al-Akhbar, Sana, Al-Mayadeen, BBC EN, etc.) get sliced off
-        // because their freshest items are older than the 1200th most
-        // recent. Source-strip filter taps for those sources returned
-        // empty pools — what the user reported as 'these news agency
-        // were pulling content when I press them' (yesterday) being
-        // broken now. Pulling 5000 covers all 80 active sources in one
-        // request (~600KB instead of ~200KB; perfectly fine for cached
-        // CF edge response).
-        limit: '5000',
+        // limit=5000 was a mistake from yesterday. Production payloads were
+        // 3MB (not the "~600KB" the old comment claimed) and took up to 60s
+        // to serialize server-side, killing the app every poll.
+        // 400 is well above FEED_CAP-equivalent coverage — every active
+        // source gets at least 3-4 items in the top 400. Niche/low-volume
+        // sources may miss this window but they appear in the next cache
+        // refresh cycle. Payload drops 3MB → ~200KB.
+        limit: '400',
         t: silent ? Math.floor(Date.now() / 15000) : Date.now(),
       });
       if (forceRefresh) params.set('refresh', '1');

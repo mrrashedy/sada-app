@@ -1006,13 +1006,15 @@ async function fetchAdminLayer(env) {
   const headers = { apikey: key, authorization: `Bearer ${key}` };
 
   // Per-query try/catch so one flaky table doesn't kill the whole layer.
-  // 3s edge cache gives newly-created editor items a near-immediate feed
-  // appearance without hammering Supabase on every request.
+  // 30s edge cache (was 3s — too aggressive, forced a cold Supabase fetch
+  // on every other request, adding 1-2s latency to cache hits). Editor
+  // items now take up to 30s to appear instead of 3s — perfectly fine
+  // trade for the latency win.
   const fetchTable = async (path) => {
     try {
       const r = await fetch(`${url}/rest/v1/${path}`, {
         headers,
-        cf: { cacheTtl: 3, cacheEverything: true },
+        cf: { cacheTtl: 30, cacheEverything: true },
       });
       if (!r.ok) return [];
       return await r.json();

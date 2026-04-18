@@ -235,6 +235,9 @@ const SOURCES = {
   japan_times:  { name: "جابان تايمز", initial: "JT", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/Lj5Txpbrl1Xt43NC.xml"] },
   spiegel:      { name: "دير شبيغل", initial: "DS", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/8nTkecYepmalWlBM.xml"] },
   lemonde_en:   { name: "لوموند", initial: "LM", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/8FWHXnbxiywZchkB.xml"] },
+  // EL PAÍS English — Spain's paper of record. Strong on LATAM coverage,
+  // first Iberian/Hispano-American perspective in the registry.
+  elpais_en:    { name: "إل باييس", initial: "EP", tier: 3, lang: "en", feeds: ["https://rss.app/feeds/uNMW91tdJIc4UE0r.xml"] },
 
   // ── PHOTO-GRID-ONLY SOURCES ──────────────────────────────────────
   // Tagged `photoOnly: true` so they're excluded from the main /api/feeds

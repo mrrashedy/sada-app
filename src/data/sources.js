@@ -98,6 +98,7 @@ export const SOURCES = [
   { n:"جابان تايمز",    i:"JT", id:"japan_times",    domain:"japantimes.co.jp"      },
   { n:"دير شبيغل",      i:"DS", id:"spiegel",        domain:"spiegel.de"            },
   { n:"لوموند",         i:"LM", id:"lemonde_en",     domain:"lemonde.fr"            },
+  { n:"إل باييس",        i:"EP", id:"elpais_en",      domain:"english.elpais.com"    },
 
   // ── PHOTO-GRID-ONLY SOURCES (photoOnly: true) ──────────────────
   // These appear only in the photo grid, not the main news feed or stories strip.

@@ -132,25 +132,57 @@ function buildMapSpots(feed) {
 // ────────────────────────────────────────────────────────────
 // Minimal digital clock — HH:MM with city name below.
 function DigitalClock({ tz, city, time }) {
-  let display = '--:--';
+  let timeStr = '--:--';
+  let period = '';
   try {
-    display = new Intl.DateTimeFormat('en-u-nu-latn', {
-      timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
-    }).format(time);
+    const parts = new Intl.DateTimeFormat('en-u-nu-latn', {
+      timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true,
+    }).formatToParts(time);
+    const h = parts.find(p => p.type === 'hour')?.value || '--';
+    const m = parts.find(p => p.type === 'minute')?.value || '--';
+    period = parts.find(p => p.type === 'dayPeriod')?.value || '';
+    timeStr = `${h}:${m}`;
   } catch {}
 
+  // iOS-style: large semibold time + smaller subtle AM/PM next to it,
+  // SF-rounded look via system font stack with tnum.
+  const sf = '"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif';
+
   return (
-    <div style={{ textAlign:'center', pointerEvents:'none', minWidth:52 }}>
+    <div style={{ textAlign:'center', pointerEvents:'none', minWidth:74 }}>
       <div style={{
-        fontSize:18, color:'rgba(255,255,255,.92)', fontWeight:700,
-        fontVariantNumeric:'tabular-nums', fontFeatureSettings:'"tnum"',
-        fontFamily:'var(--ft)', letterSpacing:'.04em', lineHeight:1,
-      }}>{display}</div>
+        display:'inline-flex', alignItems:'baseline', gap:3,
+        fontFamily: sf,
+        fontVariantNumeric:'tabular-nums', fontFeatureSettings:'"tnum","cv11"',
+        lineHeight:1,
+      }}>
+        <span style={{
+          fontSize:19, fontWeight:600, color:'#0A0A0A', letterSpacing:'-.01em',
+        }}>{timeStr}</span>
+        {period && (
+          <span style={{
+            fontSize:10, fontWeight:700, color:'#E53935', letterSpacing:'.04em',
+            textTransform:'uppercase',
+          }}>{period}</span>
+        )}
+      </div>
       <div style={{
-        fontSize:9, color:'rgba(255,255,255,.48)', marginTop:4,
-        letterSpacing:'.02em', fontWeight:600,
-        fontFamily:'var(--ft)', direction:'rtl',
-      }}>{city}</div>
+        display:'inline-flex', alignItems:'center', gap:4,
+        marginTop:4, direction:'rtl',
+      }}>
+        <span style={{
+          width:5, height:5, borderRadius:'50%',
+          background:'#E53935',
+          boxShadow:'0 0 6px rgba(229,57,53,.55)',
+          flexShrink:0,
+          animation:'nm-pulse 2s ease-in-out infinite',
+        }}/>
+        <span style={{
+          fontSize:10, color:'#444444',
+          letterSpacing:'.01em', fontWeight:500,
+          fontFamily:'var(--ft)',
+        }}>{city}</span>
+      </div>
     </div>
   );
 }
@@ -326,9 +358,9 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       map.on('load', () => {
         setMapReady(true);
 
-        // ── High-contrast pass ───────────────────────────────
-        // Crank land/water contrast and brighten borders + labels
-        // so the basemap reads stronger under the orange dots.
+        // ── Brand palette pass ───────────────────────────────
+        // Light editorial theme matching the brand colors:
+        // F5F5F5 bg, E0E0E0 water, white land, 444 borders, 0A0A0A text.
         try {
           const layers = map.getStyle().layers || [];
           for (const lyr of layers) {
@@ -336,21 +368,21 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             const sl = (lyr['source-layer'] || '').toLowerCase();
             try {
               if (lyr.type === 'background') {
-                map.setPaintProperty(lyr.id, 'background-color', '#000');
+                map.setPaintProperty(lyr.id, 'background-color', '#F5F5F5');
               } else if (lyr.type === 'fill' && (id.includes('water') || sl === 'water' || id.includes('ocean'))) {
-                map.setPaintProperty(lyr.id, 'fill-color', '#000');
+                map.setPaintProperty(lyr.id, 'fill-color', '#E0E0E0');
               } else if (lyr.type === 'fill' && (id.includes('land') || sl === 'landcover' || sl === 'landuse' || id.includes('earth') || sl === 'land')) {
-                map.setPaintProperty(lyr.id, 'fill-color', '#f2efe9');
+                map.setPaintProperty(lyr.id, 'fill-color', '#FFFFFF');
               } else if (lyr.type === 'line' && (sl.includes('boundary') || sl.includes('admin') || id.includes('boundary') || id.includes('admin') || id.includes('border'))) {
                 const isCountry = id.includes('country') || (lyr.filter && JSON.stringify(lyr.filter).includes('"admin_level"') && JSON.stringify(lyr.filter).includes('2'));
-                map.setPaintProperty(lyr.id, 'line-color', isCountry ? '#000' : '#7a7a7a');
+                map.setPaintProperty(lyr.id, 'line-color', isCountry ? '#444444' : '#999999');
                 map.setPaintProperty(lyr.id, 'line-width', isCountry
-                  ? ['interpolate', ['linear'], ['zoom'], 1, 0.7, 4, 1.4, 8, 2.4]
+                  ? ['interpolate', ['linear'], ['zoom'], 1, 0.7, 4, 1.4, 8, 2.2]
                   : ['interpolate', ['linear'], ['zoom'], 3, 0.3, 8, 0.8]);
-                map.setPaintProperty(lyr.id, 'line-opacity', isCountry ? 1 : 0.5);
+                map.setPaintProperty(lyr.id, 'line-opacity', isCountry ? 1 : 0.45);
               } else if (lyr.type === 'symbol') {
-                map.setPaintProperty(lyr.id, 'text-color', '#111');
-                map.setPaintProperty(lyr.id, 'text-halo-color', '#f2efe9');
+                map.setPaintProperty(lyr.id, 'text-color', '#0A0A0A');
+                map.setPaintProperty(lyr.id, 'text-halo-color', '#FFFFFF');
                 map.setPaintProperty(lyr.id, 'text-halo-width', 1.4);
                 map.setPaintProperty(lyr.id, 'text-halo-blur', 0.2);
               }
@@ -377,8 +409,10 @@ export function NewsMap({ onClose, liveFeed=[] }) {
               // Uniform small dots — one per story, like a species-distribution map.
               'circle-radius': ['interpolate', ['linear'], ['get','n'],
                 1, 3.5, 3, 5, 10, 7.5, 30, 10, 100, 14],
-              'circle-color': '#ff8a1a',
-              'circle-opacity': 0.9,
+              'circle-color': '#E53935',
+              'circle-opacity': 0.95,
+              'circle-stroke-color': '#B71C1C',
+              'circle-stroke-width': 0.5,
               'circle-stroke-width': 0,
             },
           });
@@ -513,18 +547,18 @@ export function NewsMap({ onClose, liveFeed=[] }) {
         pointerEvents:'none',
       }}>
         <div style={{
-          display:'flex', gap:6,
-          background:'rgba(10,12,16,.72)',
-          backdropFilter:'blur(14px) saturate(1.4)',
-          WebkitBackdropFilter:'blur(14px) saturate(1.4)',
-          border:'1px solid rgba(255,255,255,.10)',
-          borderRadius:16, padding:'10px 16px',
-          boxShadow:'0 4px 24px rgba(0,0,0,.45)',
+          display:'flex', gap:8,
+          background:'rgba(255,255,255,.72)',
+          backdropFilter:'blur(22px) saturate(1.6)',
+          WebkitBackdropFilter:'blur(22px) saturate(1.6)',
+          border:'1px solid rgba(255,255,255,.6)',
+          borderRadius:24, padding:'10px 18px',
+          boxShadow:'0 6px 22px rgba(10,10,10,.08), 0 1px 0 rgba(255,255,255,.5) inset',
         }}>
           {activeClock.map((c, i) => (
             <div key={c.tz} style={{ display:'flex', alignItems:'center', gap:6 }}>
               {i > 0 && (
-                <div style={{ width:1, height:24, background:'rgba(255,255,255,.10)', flexShrink:0 }}/>
+                <div style={{ width:1, height:24, background:'#E0E0E0', flexShrink:0 }}/>
               )}
               <DigitalClock tz={c.tz} city={c.city} time={time}/>
             </div>

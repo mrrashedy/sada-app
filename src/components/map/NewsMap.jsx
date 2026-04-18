@@ -343,9 +343,9 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             source: 'density',
             paint: {
               // Uniform small dots — one per story, like a species-distribution map.
-              'circle-radius': 2.2,
+              'circle-radius': 1.6,
               'circle-color': '#ff8a1a',
-              'circle-opacity': 0.85,
+              'circle-opacity': 0.7,
               'circle-stroke-width': 0,
             },
           });
@@ -454,8 +454,12 @@ export function NewsMap({ onClose, liveFeed=[] }) {
       const n = s.stories.length;
       // Scatter radius (degrees) scales gently with n so busy cities
       // occupy more area but never blanket the map.
-      const R = Math.min(2.4, 0.35 + Math.sqrt(n) * 0.22);
-      for (let i = 0; i < n; i++) {
+      const R = Math.min(2.4, 0.45 + Math.sqrt(n) * 0.28);
+      // Drop many dots per story so the scatter reads as a cloud,
+      // not a single dot. ~18 dots per story, capped so megacities
+      // don't blanket the map.
+      const dotCount = Math.min(220, Math.max(20, n * 18));
+      for (let i = 0; i < dotCount; i++) {
         const seed = Math.floor((s.lng + 180) * 1000) * 10000
                    + Math.floor((s.lat +  90) * 1000) * 10
                    + i;

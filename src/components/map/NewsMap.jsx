@@ -336,21 +336,21 @@ export function NewsMap({ onClose, liveFeed=[] }) {
             const sl = (lyr['source-layer'] || '').toLowerCase();
             try {
               if (lyr.type === 'background') {
-                map.setPaintProperty(lyr.id, 'background-color', '#0a0d12');
+                map.setPaintProperty(lyr.id, 'background-color', '#000');
               } else if (lyr.type === 'fill' && (id.includes('water') || sl === 'water' || id.includes('ocean'))) {
-                map.setPaintProperty(lyr.id, 'fill-color', '#05070a');
-              } else if (lyr.type === 'fill' && (id.includes('land') || sl === 'landcover' || sl === 'landuse' || id.includes('earth'))) {
-                map.setPaintProperty(lyr.id, 'fill-color', '#1c2230');
+                map.setPaintProperty(lyr.id, 'fill-color', '#000');
+              } else if (lyr.type === 'fill' && (id.includes('land') || sl === 'landcover' || sl === 'landuse' || id.includes('earth') || sl === 'land')) {
+                map.setPaintProperty(lyr.id, 'fill-color', '#f2efe9');
               } else if (lyr.type === 'line' && (sl.includes('boundary') || sl.includes('admin') || id.includes('boundary') || id.includes('admin') || id.includes('border'))) {
                 const isCountry = id.includes('country') || (lyr.filter && JSON.stringify(lyr.filter).includes('"admin_level"') && JSON.stringify(lyr.filter).includes('2'));
-                map.setPaintProperty(lyr.id, 'line-color', isCountry ? '#aab4c4' : '#4d5666');
+                map.setPaintProperty(lyr.id, 'line-color', isCountry ? '#000' : '#7a7a7a');
                 map.setPaintProperty(lyr.id, 'line-width', isCountry
-                  ? ['interpolate', ['linear'], ['zoom'], 1, 0.7, 4, 1.4, 8, 2.2]
-                  : ['interpolate', ['linear'], ['zoom'], 3, 0.3, 8, 0.9]);
-                map.setPaintProperty(lyr.id, 'line-opacity', isCountry ? 1 : 0.45);
+                  ? ['interpolate', ['linear'], ['zoom'], 1, 0.7, 4, 1.4, 8, 2.4]
+                  : ['interpolate', ['linear'], ['zoom'], 3, 0.3, 8, 0.8]);
+                map.setPaintProperty(lyr.id, 'line-opacity', isCountry ? 1 : 0.5);
               } else if (lyr.type === 'symbol') {
-                map.setPaintProperty(lyr.id, 'text-color', '#e6ecf5');
-                map.setPaintProperty(lyr.id, 'text-halo-color', '#000');
+                map.setPaintProperty(lyr.id, 'text-color', '#111');
+                map.setPaintProperty(lyr.id, 'text-halo-color', '#f2efe9');
                 map.setPaintProperty(lyr.id, 'text-halo-width', 1.4);
                 map.setPaintProperty(lyr.id, 'text-halo-blur', 0.2);
               }

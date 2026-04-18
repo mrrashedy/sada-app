@@ -179,22 +179,11 @@ export function useNews(sources = [], kind = 'news', pollInterval = 6000, isAtTo
     };
 
     try {
-      const params = new URLSearchParams({
-        // Request the full server pool (5000) instead of the previous 1200.
-        // Reason: at 1200, the response only contains items from the ~30
-        // highest-volume sources (RT, breaking-news Twitter feeds, big
-        // Egyptian dailies). The other ~50 sources (Reuters, Mada Masr,
-        // Al-Akhbar, Sana, Al-Mayadeen, BBC EN, etc.) get sliced off
-        // limit=5000 was a mistake from yesterday. Production payloads were
-        // 3MB (not the "~600KB" the old comment claimed) and took up to 60s
-        // to serialize server-side, killing the app every poll.
-        // 400 is well above FEED_CAP-equivalent coverage — every active
-        // source gets at least 3-4 items in the top 400. Niche/low-volume
-        // sources may miss this window but they appear in the next cache
-        // refresh cycle. Payload drops 3MB → ~200KB.
-        limit: '400',
-        t: silent ? Math.floor(Date.now() / 15000) : Date.now(),
-      });
+      // limit=400 covers all 90+ sources (~3-4 items each) at ~200KB.
+      // No `?t=` cache-buster — that was making every URL unique to CF's
+      // edge cache, defeating the entire point of edge caching. Browser
+      // cache busting is handled by `cache: 'no-store'` below.
+      const params = new URLSearchParams({ limit: '400' });
       if (forceRefresh) params.set('refresh', '1');
       if (kind && kind !== 'news') params.set('kind', kind);
       if (sources.length > 0) params.set('sources', sources.join(','));

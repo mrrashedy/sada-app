@@ -471,11 +471,13 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
   // at any time without a redeploy.
   const theme = useMemo(() => {
     if (typeof window === 'undefined') return 'wayfinder';
-    return new URLSearchParams(window.location.search).get('classic') === '1'
-      ? 'default'
-      : 'wayfinder';
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('day') === '1') return 'day';
+    if (p.get('classic') === '1') return 'default';
+    return 'wayfinder';
   }, []);
-  const isWF = theme === 'wayfinder';
+  const isWF = theme === 'wayfinder' || theme === 'day';
+  const isDay = theme === 'day';
 
   // Palette — swaps based on theme. In Wayfinder mode the accent is
   // Brand red (#E53935) — main accent, compass-needle colour of
@@ -663,7 +665,9 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
       // disc + knob feel like they're in one continuous material with
       // no visible floor or ceiling. The tiny amount of gradient that
       // remains matches the sapphire specular direction.
-      background: isWF
+      background: isDay
+        ? 'radial-gradient(ellipse 140% 120% at 50% 38%, #FFFFFF 0%, #F5F5F5 40%, #EDEDED 75%, #E0E0E0 100%)'
+        : isWF
         ? 'radial-gradient(ellipse 140% 120% at 50% 38%, #0f1014 0%, #0a0b0e 40%, #07080a 75%, #050608 100%)'
         : 'radial-gradient(ellipse at 50% 35%, #1a1c20 0%, #111316 55%, #07080a 100%)',
       minHeight:'100%',
@@ -872,7 +876,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
           entire viewport. This is what makes the whole screen read
           as ONE environment instead of "disc + knob + background"
           as three separate blocks. */}
-      {isWF && geomVW > 0 && geomVH > 0 && (
+      {isWF && !isDay && geomVW > 0 && geomVH > 0 && (
         <svg
           width={geomVW}
           height={geomVH}
@@ -1135,7 +1139,13 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
           // above so the two elements read as one material, not two
           // floating objects. The knob's only distinguishing treatment
           // is a faint orange drag glow when active.
-          background: isWF
+          background: isDay
+            ? `radial-gradient(circle at 34% 24%,
+                #FFFFFF 0%,
+                #F5F5F5 30%,
+                #E0E0E0 65%,
+                #CFCFCF 100%)`
+            : isWF
             ? `radial-gradient(circle at 34% 24%,
                 #050608 0%,
                 #030406 40%,
@@ -1147,7 +1157,18 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
                 #7a7c81 48%,
                 #2b2c30 82%,
                 #0e0f12 100%)`,
-          boxShadow: isWF
+          boxShadow: isDay
+            ? `
+              0 0 0 1px rgba(10,10,10,.10),
+              0 0 0 2px rgba(207,207,207,.45),
+              0 0 0 3px rgba(10,10,10,.06),
+              inset 0 3px 5px rgba(10,10,10,.06),
+              inset 0 -1px 1px rgba(255,255,255,.85),
+              inset 0 0 70px rgba(10,10,10,.04),
+              0 18px 40px rgba(10,10,10,.10),
+              0 0 ${knobDragging ? 44 : 26}px rgba(229,57,53,.42)
+            `
+            : isWF
             // Same inset rim recipe as the disc — dark groove +
             // titanium highlight + inner shadow for a "sunk into
             // the plate" feel. Plus the orange drag-glow layered
@@ -1210,7 +1231,11 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
           position:'absolute',
           inset: '16%',
           borderRadius:'50%',
-          background: isWF
+          background: isDay
+            ? `conic-gradient(from 0deg,
+                #f5f5f5, #e9e9ec, #efefef, #e0e0e0, #f1f1f3,
+                #e5e5e8, #ededed, #dcdce0, #f5f5f5)`
+            : isWF
             ? `conic-gradient(from 0deg,
                 #161719, #1f2023, #161719, #1b1c1f, #151618,
                 #1e1f22, #171819, #1a1b1e, #161719)`
@@ -1277,7 +1302,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
           left: '12%', bottom: '12%',
           fontFamily: MONO, fontSize: 9, fontWeight: 700,
           letterSpacing: 1.4,
-          color: isWF ? 'rgba(220,224,230,.55)' : 'rgba(235,238,243,.55)',
+          color: isDay ? 'rgba(68,68,68,.65)' : isWF ? 'rgba(220,224,230,.55)' : 'rgba(235,238,243,.55)',
           pointerEvents:'none',
         }}>MIN</div>
         <div style={{
@@ -1285,7 +1310,7 @@ export function RadarView({ trending, allFeed, onOpenArticle, onClose, onRefresh
           right: '12%', bottom: '12%',
           fontFamily: MONO, fontSize: 9, fontWeight: 700,
           letterSpacing: 1.4,
-          color: isWF ? 'rgba(220,224,230,.55)' : 'rgba(235,238,243,.55)',
+          color: isDay ? 'rgba(68,68,68,.65)' : isWF ? 'rgba(220,224,230,.55)' : 'rgba(235,238,243,.55)',
           pointerEvents:'none',
         }}>MAX</div>
       </div>
